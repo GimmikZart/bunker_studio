@@ -11,6 +11,8 @@ export async function POST(request: Request, context: { params: Promise<{ versio
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
+  if (!tenantStore.getRole(organizationId, actorId))
+    return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
   if (tenantStore.getRole(organizationId, actorId) !== 'OWNER')
     return NextResponse.json({ error: 'Owner approval is required.' }, { status: 403 });
   const { versionId } = await context.params;

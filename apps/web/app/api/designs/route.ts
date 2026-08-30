@@ -1,7 +1,7 @@
 import { designVersionSchema } from '@bunker-studio/contracts';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../_auth';
-import { listDesignVersions, submitDesignVersion } from '../_store';
+import { listDesignVersions, submitDesignVersion, tenantStore } from '../_store';
 
 export async function GET(request: Request) {
   const organizationId = request.headers.get('x-bunker-organization-id')?.trim();
@@ -11,6 +11,8 @@ export async function GET(request: Request) {
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
+  if (!tenantStore.getRole(organizationId, actorId))
+    return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
   return NextResponse.json({ versions: listDesignVersions(organizationId) });
 }
 
@@ -22,6 +24,8 @@ export async function POST(request: Request) {
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
+  if (!tenantStore.getRole(organizationId, actorId))
+    return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
   try {
     const input = designVersionSchema.parse(await request.json());
     const version = submitDesignVersion(organizationId, {

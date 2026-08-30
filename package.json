@@ -14,9 +14,10 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:e2e": "playwright test",
+    "security": "pnpm audit --audit-level high",
     "test:watch": "turbo run test:watch",
     "typecheck": "turbo run typecheck",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm security"
   },
   "pnpm": {
     "overrides": {

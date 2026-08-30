@@ -14,7 +14,7 @@ pnpm install
 pnpm verify
 ```
 
-`pnpm verify` esegue formatter check, lint, typecheck, test unitari e build.
+`pnpm verify` esegue formatter check, lint, typecheck, test unitari, build e audit dipendenze.
 
 ## Avvio
 
