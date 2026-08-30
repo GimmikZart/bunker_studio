@@ -239,7 +239,17 @@ test('meetings, approvals, costs, notifications and repository metadata are tena
   expect((await repository.json()).repository.status).toBe('REQUIRES_AUTH');
   const activity = await request.get('/api/activity', { headers });
   expect(activity.status()).toBe(200);
-  expect((await activity.json()).activity).toEqual([]);
+  const activityRecords = (await activity.json()).activity as {
+    eventType: string;
+    aggregateType: string;
+  }[];
+  expect(activityRecords.length).toBeGreaterThan(0);
+  expect(activityRecords).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ eventType: 'AGENT_CREATED', aggregateType: 'agent' }),
+      expect.objectContaining({ eventType: 'AGENT_UPDATED', aggregateType: 'agent' }),
+    ]),
+  );
   const push = await request.post('/api/notifications/subscribe', {
     headers,
     data: { endpoint: 'https://push.example.test/subscription', p256dh: 'key', auth: 'auth' },

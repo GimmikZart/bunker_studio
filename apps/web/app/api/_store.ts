@@ -19,6 +19,7 @@ type WebRuntimeState = {
   pushSubscriptions: Map<string, PushSubscriptionRecord[]>;
   repositories: Map<string, RepositoryRecord>;
   tasks: Map<string, TaskRecord[]>;
+  activity: Map<string, ActivityRecord[]>;
 };
 
 type GlobalWithRuntime = typeof globalThis & { __bunkerStudioRuntime?: WebRuntimeState };
@@ -39,14 +40,51 @@ const state = (globalRuntime.__bunkerStudioRuntime ??= {
   pushSubscriptions: new Map<string, PushSubscriptionRecord[]>(),
   repositories: new Map<string, RepositoryRecord>(),
   tasks: new Map<string, TaskRecord[]>(),
+  activity: new Map<string, ActivityRecord[]>(),
 });
 state.notificationPreferences ??= new Map<string, NotificationPreferences>();
 state.conversations ??= new Map<string, ConversationRecord[]>();
 state.verificationRuns ??= new Map<string, VerificationRunRecord[]>();
 state.reviews ??= new Map<string, ReviewRecord[]>();
+state.activity ??= new Map<string, ActivityRecord[]>();
 
 export const tenantStore = state.tenantStore;
 export const workerRegistry = state.workerRegistry;
+
+export type ActivityRecord = {
+  id: string;
+  eventType: string;
+  aggregateType: string;
+  aggregateId: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+};
+
+export function addActivity(input: {
+  organizationId: string;
+  eventType: string;
+  aggregateType: string;
+  aggregateId: string;
+  payload?: Record<string, unknown>;
+}): ActivityRecord {
+  const record: ActivityRecord = {
+    id: crypto.randomUUID(),
+    eventType: input.eventType,
+    aggregateType: input.aggregateType,
+    aggregateId: input.aggregateId,
+    payload: structuredClone(input.payload ?? {}),
+    createdAt: new Date().toISOString(),
+  };
+  state.activity.set(input.organizationId, [
+    ...(state.activity.get(input.organizationId) ?? []),
+    record,
+  ]);
+  return structuredClone(record);
+}
+
+export function listActivity(organizationId: string): ActivityRecord[] {
+  return structuredClone(state.activity.get(organizationId) ?? []);
+}
 
 export function addMemory(
   organizationId: string,

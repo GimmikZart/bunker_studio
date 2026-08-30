@@ -2,6 +2,24 @@
 
 Storico append-only.
 
+## 2026-08-31 — Agent detail, activity e Studio Labs protetto
+
+### Lavoro svolto
+
+- Aggiunti assegnamenti agenti tenant-scoped con vincoli RLS su organizzazione, team, progetto e reporting agent; export/import conserva le relazioni con ID rimappati.
+- Aggiunti endpoint e UI per dettaglio agente, assegnamenti, metriche deterministiche e activity append-only; gli eventi Supabase sono garantiti da trigger sulle tabelle di dominio.
+- Aggiunto Studio Labs con inizializzazione Owner-only di Studio Core, analisi segnali, proposta selezionabile, task+approval persistiti e gate server-side reviewer/CI/Owner/human senza deploy production.
+
+### Verifiche
+
+- `pnpm verify`: PASS, format, lint/typecheck 15/15, 21 task test, build Next e audit high verdi.
+- `supabase db reset --local`: PASS fino alle migration 00000000000012.
+- `pnpm exec playwright test tests/e2e/api-acceptance.spec.ts`: PASS 5/5; suite E2E completa precedente 8/9 per un’aspettativa activity obsoleta, poi caso corretto e mirato verificato.
+
+### Prossimo passo
+
+Eseguire AC-001 in quality con Supabase cloud e secondo dispositivo; i restanti quattro scenari `PARTIAL` restano bloccati da credenziali/runtime/device esterni.
+
 ## 2026-08-30 — Capability envelope e progetti multi-team
 
 ### Lavoro svolto

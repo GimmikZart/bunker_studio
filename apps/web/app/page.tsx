@@ -14,6 +14,7 @@ export default function HomePage() {
           </a>
           <a href="#projects">Projects</a>
           <a href="/agents">Agents</a>
+          <a href="/studio-labs">Studio Labs</a>
           <a href="/approvals">Approvals</a>
           <a href="/meetings">Meetings</a>
           <a href="/tasks">Tasks</a>

@@ -2,6 +2,10 @@
 
 ## Stato sintetico
 
+### Checkpoint 2026-08-31
+
+Sono stati completati e verificati gli assegnamenti agenti tenant-scoped (team/progetto/reporting line), il dettaglio agente, metriche deterministiche e la baseline activity append-only. Studio Labs ora dispone di inizializzazione Owner-only del progetto protetto, analisi deterministica, selezione task+approval e gate reviewer/CI/Owner/human con `productionDeploy: false`. La migrazione Supabase `00000000000012_domain_event_triggers.sql` registra gli eventi di dominio in modo centralizzato.
+
 Bootstrap, fondazioni domain e vertical slices principali sono implementati; il progetto non è ancora alla Definition of Done finale perché la matrice acceptance AC-001..AC-014 non è completamente verificata e alcune integrazioni richiedono credenziali quality.
 
 ## Lavoro completato e verificato
@@ -26,10 +30,10 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 - `pnpm lint`: PASS, 15 package task.
 - `pnpm typecheck`: PASS, 15 package task.
 - `pnpm test`: PASS, 21 task Turborepo.
-- `pnpm build`: PASS, 15 package task; Next genera 41 route/pagine.
+- `pnpm build`: PASS, 15 package task; Next genera 44 route/pagine.
 - `pnpm exec playwright test`: PASS, 9 test (health, onboarding, login/signup, PWA, tenancy/isolation, design/staffing/memory, worker, operations/review/portability, virgin template).
 - `pnpm audit --audit-level high`: PASS, nessuna vulnerabilità nota.
-- `supabase db reset --local`: PASS; migration `00000000000010_project_team_rls.sql` applicata e schema RLS verificato sul database locale.
+- `supabase db reset --local`: PASS; migrations `00000000000000..00000000000012` applicate, inclusi RLS assignments e trigger domain events.
 
 ## Problemi aperti
 
@@ -41,4 +45,4 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 
 ## Ultimo aggiornamento
 
-2026-08-30
+2026-08-31

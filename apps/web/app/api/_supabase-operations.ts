@@ -19,18 +19,11 @@ import type {
   TaskCreateRecord,
   ReviewRecord,
   VerificationRunRecord,
+  ActivityRecord,
 } from './_store';
 import type { ReviewFinding } from '@bunker-studio/contracts';
 
 type MeetingMinutes = NonNullable<MeetingRecord['minutes']>;
-export type ActivityRecord = {
-  id: string;
-  eventType: string;
-  aggregateType: string;
-  payload: Record<string, unknown>;
-  createdAt: string;
-};
-
 export type ProviderRecord = {
   id: string;
   providerType: string;
@@ -204,6 +197,7 @@ function mapActivity(value: unknown): ActivityRecord {
     id: stringValue(item.id, 'id'),
     eventType: stringValue(item.event_type, 'event_type'),
     aggregateType: stringValue(item.aggregate_type, 'aggregate_type'),
+    aggregateId: stringValue(item.aggregate_id, 'aggregate_id'),
     payload:
       item.payload_json && typeof item.payload_json === 'object'
         ? (item.payload_json as Record<string, unknown>)
@@ -1103,6 +1097,28 @@ export class SupabaseOperationalRepository {
       this.client.from('domain_events').select('*').eq('organization_id', organizationId),
     );
     return Array.isArray(data) ? data.map(mapActivity) : [];
+  }
+
+  async recordActivity(input: {
+    organizationId: string;
+    eventType: string;
+    aggregateType: string;
+    aggregateId: string;
+    payload?: Record<string, unknown>;
+  }): Promise<void> {
+    await unwrap(
+      this.client
+        .from('domain_events')
+        .insert({
+          organization_id: input.organizationId,
+          aggregate_type: input.aggregateType,
+          aggregate_id: input.aggregateId,
+          event_type: input.eventType,
+          payload_json: input.payload ?? {},
+          correlation_id: crypto.randomUUID(),
+        })
+        .select('*'),
+    );
   }
 
   async listTasks(organizationId: string, actorUserId: string): Promise<TaskRecord[]> {

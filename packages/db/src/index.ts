@@ -1,5 +1,6 @@
 import {
   type Agent,
+  type AgentAssignment,
   AuthorizationError,
   type AutonomyMode,
   canWrite,
@@ -24,6 +25,7 @@ export type TenantStoreState = {
   teams: Team[];
   projects: Project[];
   agents: Agent[];
+  assignments: AgentAssignment[];
 };
 
 export class TenantStore {
@@ -33,6 +35,7 @@ export class TenantStore {
     teams: [],
     projects: [],
     agents: [],
+    assignments: [],
   };
 
   createOrganization(input: {
@@ -96,6 +99,7 @@ export class TenantStore {
     description?: string;
     teamId?: string;
     teamIds?: string[];
+    isStudioCore?: boolean;
   }): Project {
     this.requireWrite(input.organizationId, input.actorUserId);
     const teamIds = [
@@ -120,7 +124,7 @@ export class TenantStore {
       description: input.description?.trim() ?? '',
       autonomyMode: 'AUTONOMOUS',
       status: 'ACTIVE',
-      isStudioCore: false,
+      isStudioCore: input.isStudioCore ?? false,
       defaultTeamId: teamIds[0] ?? null,
       teamIds,
       defaultBranch: 'main',
@@ -338,6 +342,63 @@ export class TenantStore {
     agent.archivedAt = new Date().toISOString();
   }
 
+  createAgentAssignment(input: {
+    organizationId: string;
+    actorUserId: string;
+    agentId: string;
+    teamId?: string | null;
+    projectId?: string | null;
+    reportsToAgentId?: string | null;
+  }): AgentAssignment {
+    this.requireWrite(input.organizationId, input.actorUserId);
+    this.validateAssignmentReferences(input);
+    const existing = this.state.assignments.find(
+      (assignment) =>
+        assignment.organizationId === input.organizationId &&
+        assignment.agentId === input.agentId &&
+        assignment.teamId === (input.teamId ?? null) &&
+        assignment.projectId === (input.projectId ?? null) &&
+        assignment.active,
+    );
+    if (existing) return structuredClone(existing);
+    const assignment: AgentAssignment = {
+      id: crypto.randomUUID(),
+      organizationId: input.organizationId,
+      agentId: input.agentId,
+      teamId: input.teamId ?? null,
+      projectId: input.projectId ?? null,
+      reportsToAgentId: input.reportsToAgentId ?? null,
+      active: true,
+    };
+    this.state.assignments.push(assignment);
+    return structuredClone(assignment);
+  }
+
+  listAgentAssignments(
+    agentId: string,
+    organizationId: string,
+    actorUserId: string,
+  ): AgentAssignment[] {
+    if (!this.getRole(organizationId, actorUserId)) throw new AuthorizationError();
+    return this.state.assignments
+      .filter(
+        (assignment) =>
+          assignment.organizationId === organizationId &&
+          assignment.agentId === agentId &&
+          assignment.active,
+      )
+      .map((assignment) => structuredClone(assignment));
+  }
+
+  archiveAgentAssignment(assignmentId: string, organizationId: string, actorUserId: string): void {
+    this.requireWrite(organizationId, actorUserId);
+    const assignment = this.state.assignments.find(
+      (candidate) => candidate.id === assignmentId && candidate.organizationId === organizationId,
+    );
+    if (!assignment) throw new AuthorizationError('Assignment not found.');
+    assignment.active = false;
+  }
+
   getRole(organizationId: string, userId: string): OrganizationRole | null {
     return (
       this.state.members.find(
@@ -388,6 +449,46 @@ export class TenantStore {
   private requireWrite(organizationId: string, userId: string): void {
     const role = this.getRole(organizationId, userId);
     if (!role || !canWrite(role)) throw new AuthorizationError();
+  }
+
+  private validateAssignmentReferences(input: {
+    organizationId: string;
+    agentId: string;
+    teamId?: string | null;
+    projectId?: string | null;
+    reportsToAgentId?: string | null;
+  }): void {
+    const agent = this.state.agents.find(
+      (candidate) =>
+        candidate.id === input.agentId && candidate.organizationId === input.organizationId,
+    );
+    if (!agent) throw new AuthorizationError('Agent not found.');
+    if (!input.teamId && !input.projectId)
+      throw new AuthorizationError('An assignment must reference a team or project.');
+    if (
+      input.teamId &&
+      !this.state.teams.some(
+        (team) => team.id === input.teamId && team.organizationId === input.organizationId,
+      )
+    )
+      throw new AuthorizationError('The selected team does not belong to this organization.');
+    if (
+      input.projectId &&
+      !this.state.projects.some(
+        (project) =>
+          project.id === input.projectId && project.organizationId === input.organizationId,
+      )
+    )
+      throw new AuthorizationError('The selected project does not belong to this organization.');
+    if (
+      input.reportsToAgentId &&
+      !this.state.agents.some(
+        (candidate) =>
+          candidate.id === input.reportsToAgentId &&
+          candidate.organizationId === input.organizationId,
+      )
+    )
+      throw new AuthorizationError('The reporting agent does not belong to this organization.');
   }
 }
 
@@ -572,6 +673,13 @@ export type PortableOrganization = {
     permissions?: string[];
     providerBindingId?: string;
   }[];
+  assignments?: {
+    id: string;
+    agentId: string;
+    teamId?: string | null;
+    projectId?: string | null;
+    reportsToAgentId?: string | null;
+  }[];
   memories: MemoryUnit[];
   conversations: {
     id: string;
@@ -601,6 +709,7 @@ export function exportOrganization(input: PortableOrganization): Record<string, 
     teams: input.teams,
     projects: input.projects,
     agents: input.agents,
+    assignments: input.assignments ?? [],
     memories: input.memories.filter((memory) => !memory.deletedAt),
     conversations: input.conversations,
     tasks: input.tasks ?? [],
@@ -627,6 +736,7 @@ export function importOrganization(input: ReturnType<typeof exportOrganization>)
     'teams',
     'projects',
     'agents',
+    'assignments',
     'memories',
     'conversations',
     'tasks',

@@ -5,13 +5,10 @@ import {
   type TenantStore,
 } from '@bunker-studio/db';
 import { createRequestSupabaseClient } from './_supabase';
-import {
-  SupabaseOperationalRepository,
-  type ActivityRecord,
-  type ProviderRecord,
-} from './_supabase-operations';
+import { SupabaseOperationalRepository, type ProviderRecord } from './_supabase-operations';
 import {
   addCost,
+  addActivity,
   addMemory,
   addNotification,
   addReview,
@@ -44,6 +41,7 @@ import {
   workerRegistry,
   createTask,
   listTasks,
+  listActivity,
   updateTask,
   submitDesignVersion,
   type ApprovalRecord,
@@ -58,6 +56,7 @@ import {
   type RepositoryRecord,
   type TaskRecord,
   type TaskCreateRecord,
+  type ActivityRecord,
 } from './_store';
 import type { MemoryUnit, RegisteredWorker } from '@bunker-studio/db';
 import { approveDesignVersion as applyDesignApproval } from '@bunker-studio/core';
@@ -219,6 +218,13 @@ type LocalOperationalRepository = {
     actorUserId: string,
   ) => ReviewRecord;
   listActivity: (organizationId: string, actorUserId: string) => ActivityRecord[];
+  recordActivity: (input: {
+    organizationId: string;
+    eventType: string;
+    aggregateType: string;
+    aggregateId: string;
+    payload?: Record<string, unknown>;
+  }) => Promise<void>;
   listWorkers: (organizationId: string, actorUserId: string) => RegisteredWorker[];
   listTasks: (organizationId: string, actorUserId: string) => TaskRecord[];
   createTask: (input: TaskCreateRecord, actorUserId: string) => TaskRecord;
@@ -300,7 +306,10 @@ const localOperationalRepository: LocalOperationalRepository = {
   addVerificationRun: (input) => addVerificationRun(input),
   listReviews: (organizationId, _actorUserId, taskId) => listReviews(organizationId, taskId),
   addReview: (input) => addReview(input),
-  listActivity: () => [],
+  listActivity: (organizationId) => listActivity(organizationId),
+  recordActivity: async (input) => {
+    addActivity(input);
+  },
   listWorkers: (organizationId) => workerRegistry.list(organizationId),
   listTasks: (organizationId) => listTasks(organizationId),
   createTask: (input) => createTask(input),

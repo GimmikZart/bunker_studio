@@ -1,7 +1,7 @@
 import { agentCreateSchema } from '@bunker-studio/contracts';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../_auth';
-import { getWebAgentRepository } from '../_data';
+import { getWebAgentRepository, getWebOperationalRepository } from '../_data';
 
 export async function GET(request: Request) {
   const organizationId = request.headers.get('x-bunker-organization-id')?.trim();
@@ -30,14 +30,22 @@ export async function POST(request: Request) {
       { status: 401 },
     );
   const store = await getWebAgentRepository();
-  if (!store)
+  const operations = await getWebOperationalRepository();
+  if (!store || !operations)
     return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
     const input = agentCreateSchema.parse(await request.json());
-    return NextResponse.json(
-      { agent: await store.createAgent({ ...input, organizationId, actorUserId: userId }) },
-      { status: 201 },
-    );
+    const agent = await store.createAgent({ ...input, organizationId, actorUserId: userId });
+    await operations
+      .recordActivity({
+        organizationId,
+        eventType: 'AGENT_CREATED',
+        aggregateType: 'agent',
+        aggregateId: agent.id,
+        payload: { actorUserId: userId, roleKey: agent.roleKey },
+      })
+      .catch(() => undefined);
+    return NextResponse.json({ agent }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.name === 'AuthorizationError')
       return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });

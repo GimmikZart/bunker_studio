@@ -6,6 +6,7 @@ export type OrganizationExport = {
   teams: PortableOrganization['teams'];
   projects: PortableOrganization['projects'];
   agents: PortableOrganization['agents'];
+  assignments: NonNullable<PortableOrganization['assignments']>;
   memories: PortableOrganization['memories'];
   conversations: PortableOrganization['conversations'];
   tasks: NonNullable<PortableOrganization['tasks']>;
@@ -37,6 +38,7 @@ export function parseOrganizationExport(value: unknown): OrganizationExport | nu
   )
     return null;
   const { teams, projects, agents, memories, conversations } = value;
+  const assignments = Array.isArray(value.assignments) ? value.assignments : [];
   const tasks = Array.isArray(value.tasks) ? value.tasks : [];
   if (
     !Array.isArray(teams) ||
@@ -44,7 +46,8 @@ export function parseOrganizationExport(value: unknown): OrganizationExport | nu
     !Array.isArray(agents) ||
     !Array.isArray(memories) ||
     !Array.isArray(conversations) ||
-    !Array.isArray(tasks)
+    !Array.isArray(tasks) ||
+    !Array.isArray(assignments)
   )
     return null;
   if (
@@ -64,6 +67,17 @@ export function parseOrganizationExport(value: unknown): OrganizationExport | nu
         optionalStringArray(item.skills) &&
         optionalStringArray(item.tools) &&
         optionalStringArray(item.permissions),
+    ) ||
+    !assignments.every(
+      (item) =>
+        record(item) &&
+        string(item.id) &&
+        string(item.agentId) &&
+        (item.teamId === undefined || item.teamId === null || string(item.teamId)) &&
+        (item.projectId === undefined || item.projectId === null || string(item.projectId)) &&
+        (item.reportsToAgentId === undefined ||
+          item.reportsToAgentId === null ||
+          string(item.reportsToAgentId)),
     ) ||
     !memories.every(
       (item) =>
@@ -97,6 +111,7 @@ export function parseOrganizationExport(value: unknown): OrganizationExport | nu
     teams: teams as OrganizationExport['teams'],
     projects: projects as OrganizationExport['projects'],
     agents: agents as OrganizationExport['agents'],
+    assignments: assignments as OrganizationExport['assignments'],
     memories: memories as OrganizationExport['memories'],
     conversations: conversations as OrganizationExport['conversations'],
     tasks: tasks as OrganizationExport['tasks'],

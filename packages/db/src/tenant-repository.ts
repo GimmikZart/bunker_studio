@@ -236,6 +236,7 @@ export class SupabaseTenancyRepository {
     description?: string;
     teamId?: string;
     teamIds?: string[];
+    isStudioCore?: boolean;
   }): Promise<Project> {
     await this.requireWrite(input.organizationId, input.actorUserId);
     const teamIds = [
@@ -263,6 +264,7 @@ export class SupabaseTenancyRepository {
           slug: slugify(input.name),
           description: input.description?.trim() ?? '',
           default_team_id: teamIds[0] ?? null,
+          is_studio_core: input.isStudioCore ?? false,
         })
         .select('*')
         .single(),

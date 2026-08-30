@@ -33,6 +33,13 @@ export async function GET(
       operations.listConversations(organizationId, actorId),
       operations.listTasks(organizationId, actorId),
     ]);
+    const assignments = (
+      await Promise.all(
+        registeredAgents.map((agent) =>
+          agents.listAgentAssignments(agent.id, organizationId, actorId),
+        ),
+      )
+    ).flat();
     const pack = exportOrganization({
       organization: { id: organization.id, name: organization.name },
       teams: teams.map(({ id, name }) => ({ id, name })),
@@ -53,6 +60,13 @@ export async function GET(
         tools: agent.tools,
         permissions: agent.permissions,
         providerBindingId: agent.providerBindingId,
+      })),
+      assignments: assignments.map(({ id, agentId, teamId, projectId, reportsToAgentId }) => ({
+        id,
+        agentId,
+        teamId,
+        projectId,
+        reportsToAgentId,
       })),
       memories,
       conversations: conversations.map(({ id, agentId, externalSessionId, messages }) => ({

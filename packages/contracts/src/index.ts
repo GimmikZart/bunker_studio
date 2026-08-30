@@ -139,6 +139,31 @@ export const agentUpdateSchema = agentCreateSchema
   .partial()
   .extend({ name: z.string().trim().min(1).max(120).optional() });
 
+export const agentAssignmentSchema = z
+  .object({
+    teamId: z.string().uuid().nullable().optional(),
+    projectId: z.string().uuid().nullable().optional(),
+    reportsToAgentId: z.string().uuid().nullable().optional(),
+  })
+  .refine((value) => Boolean(value.teamId || value.projectId), {
+    message: 'An assignment must reference a team or project.',
+  });
+export type AgentAssignmentInput = z.infer<typeof agentAssignmentSchema>;
+
+export const studioLabRequestSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('INITIALIZE') }),
+  z.object({ action: z.literal('ANALYZE') }),
+  z.object({
+    action: z.literal('SELECT'),
+    projectId: z.string().uuid(),
+    proposalId: z.string().min(1).max(80),
+  }),
+]);
+export type StudioLabRequest = z.infer<typeof studioLabRequestSchema>;
+
+export const studioLabMergeSchema = z.object({ taskId: z.string().uuid() });
+export type StudioLabMergeInput = z.infer<typeof studioLabMergeSchema>;
+
 export const authCredentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(256),

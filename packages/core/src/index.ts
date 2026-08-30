@@ -80,6 +80,16 @@ export type Agent = {
   archivedAt: string | null;
 };
 
+export type AgentAssignment = {
+  id: string;
+  organizationId: string;
+  agentId: string;
+  teamId: string | null;
+  projectId: string | null;
+  reportsToAgentId: string | null;
+  active: boolean;
+};
+
 export function derivePresence(input: {
   online: boolean;
   taskState?:
@@ -187,6 +197,23 @@ export function protectedProjectPolicy(input: {
   if (input.requestedAction === 'DEPLOY' || input.requestedAction === 'EDIT_POLICY')
     return { allowed: false, approvalRequired: true };
   return { allowed: true, approvalRequired: true };
+}
+
+export function protectedMergeGate(input: {
+  isStudioCore: boolean;
+  reviewerPassed: boolean;
+  ciPassed: boolean;
+  ownerApproved: boolean;
+  actorIsAgent: boolean;
+}): { allowed: boolean; missing: string[]; productionDeployAllowed: false } {
+  if (!input.isStudioCore) return { allowed: true, missing: [], productionDeployAllowed: false };
+  const missing = [
+    ...(!input.reviewerPassed ? ['REVIEWER'] : []),
+    ...(!input.ciPassed ? ['CI'] : []),
+    ...(!input.ownerApproved ? ['OWNER_APPROVAL'] : []),
+    ...(input.actorIsAgent ? ['HUMAN_ACTOR'] : []),
+  ];
+  return { allowed: missing.length === 0, missing, productionDeployAllowed: false };
 }
 
 export type CostEntry = { amount: number; occurredAt: string; provider: string; model: string };

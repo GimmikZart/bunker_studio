@@ -1,4 +1,4 @@
-import { AuthorizationError, type Agent } from '@bunker-studio/core';
+import { AuthorizationError, type Agent, type AgentAssignment } from '@bunker-studio/core';
 import { type SupabaseDataClient, type QueryResult } from './tenant-repository.js';
 
 async function unwrap(result: PromiseLike<QueryResult>): Promise<unknown> {
@@ -43,6 +43,20 @@ function mapAgent(value: unknown): Agent {
       : [],
     providerBindingId: binding ? stringValue(object(binding).id, 'agent_bindings.id') : 'unbound',
     archivedAt: typeof item.archived_at === 'string' ? item.archived_at : null,
+  };
+}
+
+function mapAssignment(value: unknown): AgentAssignment {
+  const item = object(value);
+  return {
+    id: stringValue(item.id, 'id'),
+    organizationId: stringValue(item.organization_id, 'organization_id'),
+    agentId: stringValue(item.agent_id, 'agent_id'),
+    teamId: typeof item.team_id === 'string' ? item.team_id : null,
+    projectId: typeof item.project_id === 'string' ? item.project_id : null,
+    reportsToAgentId:
+      typeof item.reports_to_agent_id === 'string' ? item.reports_to_agent_id : null,
+    active: item.active !== false,
   };
 }
 
@@ -187,6 +201,78 @@ export class SupabaseAgentRepository {
     void result;
   }
 
+  async createAgentAssignment(input: {
+    organizationId: string;
+    actorUserId: string;
+    agentId: string;
+    teamId?: string | null;
+    projectId?: string | null;
+    reportsToAgentId?: string | null;
+  }): Promise<AgentAssignment> {
+    await this.requireWrite(input.organizationId, input.actorUserId);
+    if (!input.teamId && !input.projectId)
+      throw new AuthorizationError('An assignment must reference a team or project.');
+    await this.getAgent(input.agentId, input.organizationId, input.actorUserId);
+    await this.requireReference('teams', input.teamId, input.organizationId, 'team');
+    await this.requireReference('projects', input.projectId, input.organizationId, 'project');
+    await this.requireReference(
+      'agents',
+      input.reportsToAgentId,
+      input.organizationId,
+      'reporting agent',
+    );
+    const data = await unwrap(
+      this.client
+        .from('agent_assignments')
+        .insert({
+          organization_id: input.organizationId,
+          agent_id: input.agentId,
+          team_id: input.teamId ?? null,
+          project_id: input.projectId ?? null,
+          reports_to_agent_id: input.reportsToAgentId ?? null,
+          active: true,
+        })
+        .select('*')
+        .single(),
+    );
+    return mapAssignment(data);
+  }
+
+  async listAgentAssignments(
+    agentId: string,
+    organizationId: string,
+    actorUserId: string,
+  ): Promise<AgentAssignment[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('agent_assignments')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('agent_id', agentId)
+        .eq('active', true),
+    );
+    return Array.isArray(data) ? data.map(mapAssignment) : [];
+  }
+
+  async archiveAgentAssignment(
+    assignmentId: string,
+    organizationId: string,
+    actorUserId: string,
+  ): Promise<void> {
+    await this.requireWrite(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('agent_assignments')
+        .update({ active: false })
+        .eq('id', assignmentId)
+        .eq('active', true)
+        .select('id')
+        .maybeSingle(),
+    );
+    if (!data) throw new AuthorizationError('Assignment not found.');
+  }
+
   private async requireMember(organizationId: string, userId: string): Promise<string> {
     const data = await unwrap(
       this.client
@@ -204,5 +290,25 @@ export class SupabaseAgentRepository {
   private async requireWrite(organizationId: string, userId: string): Promise<void> {
     const role = await this.requireMember(organizationId, userId);
     if (!['OWNER', 'ADMIN'].includes(role)) throw new AuthorizationError();
+  }
+
+  private async requireReference(
+    table: string,
+    id: string | null | undefined,
+    organizationId: string,
+    label: string,
+  ): Promise<void> {
+    if (!id) return;
+    const data = await unwrap(
+      this.client
+        .from(table)
+        .select('id')
+        .eq('id', id)
+        .eq('organization_id', organizationId)
+        .is('archived_at', null)
+        .maybeSingle(),
+    );
+    if (!data)
+      throw new AuthorizationError(`The selected ${label} does not belong to this organization.`);
   }
 }

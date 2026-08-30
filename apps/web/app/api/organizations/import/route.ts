@@ -27,11 +27,25 @@ export async function POST(request: Request) {
     const projectIdsInPack = new Set(pack.projects.map((project) => project.id));
     const teamIdsInPack = new Set(pack.teams.map((team) => team.id));
     const taskIdsInPack = new Set(pack.tasks.map((task) => task.id));
+    const agentIdsInPack = new Set(pack.agents.map((agent) => agent.id));
     if (
       pack.projects.some(
         (project) =>
           (project.teamId !== undefined && !teamIdsInPack.has(project.teamId)) ||
           (project.teamIds ?? []).some((teamId) => !teamIdsInPack.has(teamId)),
+      ) ||
+      pack.assignments.some(
+        (assignment) =>
+          !agentIdsInPack.has(assignment.agentId) ||
+          (assignment.teamId !== undefined &&
+            assignment.teamId !== null &&
+            !teamIdsInPack.has(assignment.teamId)) ||
+          (assignment.projectId !== undefined &&
+            assignment.projectId !== null &&
+            !projectIdsInPack.has(assignment.projectId)) ||
+          (assignment.reportsToAgentId !== undefined &&
+            assignment.reportsToAgentId !== null &&
+            !agentIdsInPack.has(assignment.reportsToAgentId)),
       ) ||
       pack.tasks.some(
         (task) =>
@@ -129,6 +143,25 @@ export async function POST(request: Request) {
       });
       agentIds.set(agent.id, created.id);
     }
+    let assignmentsImported = 0;
+    for (const assignment of pack.assignments) {
+      const agentId = agentIds.get(assignment.agentId);
+      const teamId = assignment.teamId ? teamIds.get(assignment.teamId) : undefined;
+      const projectId = assignment.projectId ? projectIds.get(assignment.projectId) : undefined;
+      const reportsToAgentId = assignment.reportsToAgentId
+        ? agentIds.get(assignment.reportsToAgentId)
+        : undefined;
+      if (!agentId || (!teamId && !projectId)) throw new Error('Assignment cannot be remapped.');
+      await agents.createAgentAssignment({
+        organizationId: organization.id,
+        actorUserId: actorId,
+        agentId,
+        teamId,
+        projectId,
+        reportsToAgentId,
+      });
+      assignmentsImported += 1;
+    }
     let memoriesImported = 0;
     for (const memory of pack.memories) {
       await operations.addMemory(
@@ -166,6 +199,7 @@ export async function POST(request: Request) {
           teams: teamIds.size,
           projects: projectIds.size,
           agents: agentIds.size,
+          assignments: assignmentsImported,
           tasks: tasksImported,
           memories: memoriesImported,
           conversations: conversationsImported,

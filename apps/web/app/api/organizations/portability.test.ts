@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { POST as createAgent } from '../agents/route';
+import { POST as createAssignment } from '../agents/[agentId]/assignments/route';
 import { POST as createOrganization } from './route';
 import { POST as createTeam } from './[organizationId]/teams/route';
 import { POST as createProject } from './[organizationId]/projects/route';
@@ -38,7 +39,7 @@ describe('organization portability routes', () => {
       }),
       { params: Promise.resolve({ organizationId: organization.id }) },
     );
-    await createAgent(
+    const agentResponse = await createAgent(
       new Request('http://localhost', {
         method: 'POST',
         headers,
@@ -51,7 +52,17 @@ describe('organization portability routes', () => {
         }),
       }),
     );
+    const agent = (await agentResponse.json()).agent;
     const project = (await projectResponse.json()).project;
+    const assignment = await createAssignment(
+      new Request('http://localhost', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ teamId: team.id, projectId: project.id }),
+      }),
+      { params: Promise.resolve({ agentId: agent.id }) },
+    );
+    expect(assignment.status).toBe(201);
     const firstTask = await createTask(
       new Request('http://localhost/api/tasks', {
         method: 'POST',
@@ -86,6 +97,7 @@ describe('organization portability routes', () => {
     expect(pack.teams).toHaveLength(1);
     expect(pack.projects).toHaveLength(1);
     expect(pack.agents).toHaveLength(1);
+    expect(pack.assignments).toHaveLength(1);
     expect(pack.tasks).toHaveLength(2);
     pack.tasks.reverse();
 
@@ -103,6 +115,7 @@ describe('organization portability routes', () => {
       teams: 1,
       projects: 1,
       agents: 1,
+      assignments: 1,
       tasks: 2,
     });
     expect(importedPayload.providerStatus).toBe('REQUIRES_REAUTH');

@@ -3,6 +3,7 @@ import {
   createFixTaskTitles,
   evaluateReviewCycle,
   protectedProjectPolicy,
+  protectedMergeGate,
   requiresDesignApproval,
   reviewBlocksCompletion,
   reviewOutcome,
@@ -37,5 +38,30 @@ describe('control-plane policies', () => {
       allowed: true,
       approvalRequired: true,
     });
+  });
+
+  it('requires every protected merge gate and never enables production deploy', () => {
+    expect(
+      protectedMergeGate({
+        isStudioCore: true,
+        reviewerPassed: false,
+        ciPassed: false,
+        ownerApproved: false,
+        actorIsAgent: false,
+      }),
+    ).toEqual({
+      allowed: false,
+      missing: ['REVIEWER', 'CI', 'OWNER_APPROVAL'],
+      productionDeployAllowed: false,
+    });
+    expect(
+      protectedMergeGate({
+        isStudioCore: true,
+        reviewerPassed: true,
+        ciPassed: true,
+        ownerApproved: true,
+        actorIsAgent: true,
+      }),
+    ).toMatchObject({ allowed: false, missing: ['HUMAN_ACTOR'], productionDeployAllowed: false });
   });
 });

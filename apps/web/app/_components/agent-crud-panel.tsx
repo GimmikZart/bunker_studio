@@ -277,6 +277,9 @@ export function AgentCrudPanel() {
             <button className="secondary-button" type="button" onClick={() => startEdit(agent)}>
               Edit
             </button>
+            <a className="secondary-button" href={`/agents?agentId=${agent.id}`}>
+              Details
+            </a>
             <button className="secondary-button" type="button" onClick={() => void archive(agent)}>
               Archive
             </button>

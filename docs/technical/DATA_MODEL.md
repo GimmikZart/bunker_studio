@@ -80,6 +80,7 @@ Unique organization/user.
 - archived_at
 
 ### `agent_assignments`
+- organization_id
 - agent_id
 - team_id nullable
 - project_id nullable
