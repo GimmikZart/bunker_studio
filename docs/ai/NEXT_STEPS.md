@@ -2,11 +2,11 @@
 
 ## Prossima attività
 
-Completare una UI task/workflow con creazione e transizioni controllate, quindi eseguire accessibility/performance smoke e chiudere la matrice quality esterna.
+Eseguire nella quality isolata i cinque scenari `PARTIAL` della matrice (PC loss cloud, restart multi-processo pg-boss, GitHub/CI protetto, VAPID/device e Ollama/LM Studio), registrando evidenze e RPO/RTO del backup drill.
 
 ### Area interessata
 
-`apps/web/app/tasks/`, `apps/web/app/api/tasks/`, `packages/orchestration/`, `docs/quality/ACCEPTANCE_MATRIX.md` e `docs/DEPLOYMENT.md`.
+`docs/quality/ACCEPTANCE_MATRIX.md`, `docs/quality/BACKUP_RESTORE_DRILL.md` e `docs/DEPLOYMENT.md`.
 
 ### Comportamento atteso
 
@@ -14,7 +14,7 @@ Le richieste production devono usare client Supabase SSR con RLS; lo store in-me
 
 ### Definition of Done locale
 
-AC-001..AC-014 tracciati con esito, test verdi, eventuali blocker esterni separati dal codice e documentazione backup/restore/accessi quality aggiornata.
+AC-001..AC-014 tracciati con esito, test verdi, eventuali blocker esterni separati dal codice e documentazione backup/restore/accessi quality aggiornata. Nessuna modifica al codice è richiesta prima di disporre degli accessi quality/device/runtime indicati.
 
 ### Verifica
 

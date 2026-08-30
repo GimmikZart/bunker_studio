@@ -222,4 +222,4 @@ Fondamenti M1–M4 e policy trasversali stabilizzati. Riprendere da `docs/ai/NEX
 
 ### Stato finale della sessione
 
-UI tenancy/operational aggiornata e repository stabile. Prossimo passo: UI task/workflow e poi verifiche quality esterne dei cinque scenari `PARTIAL`.
+UI tenancy/operational e task/workflow aggiornati; repository stabile. Prossimo passo: eseguire i cinque scenari quality `PARTIAL` e il backup/restore drill quando saranno disponibili gli accessi esterni.
