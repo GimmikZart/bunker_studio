@@ -8,6 +8,7 @@ export type OrganizationExport = {
   agents: PortableOrganization['agents'];
   memories: PortableOrganization['memories'];
   conversations: PortableOrganization['conversations'];
+  tasks: NonNullable<PortableOrganization['tasks']>;
   providerConnections?: PortableOrganization['providerConnections'];
 };
 
@@ -32,12 +33,14 @@ export function parseOrganizationExport(value: unknown): OrganizationExport | nu
   )
     return null;
   const { teams, projects, agents, memories, conversations } = value;
+  const tasks = Array.isArray(value.tasks) ? value.tasks : [];
   if (
     !Array.isArray(teams) ||
     !Array.isArray(projects) ||
     !Array.isArray(agents) ||
     !Array.isArray(memories) ||
-    !Array.isArray(conversations)
+    !Array.isArray(conversations) ||
+    !Array.isArray(tasks)
   )
     return null;
   if (
@@ -52,7 +55,22 @@ export function parseOrganizationExport(value: unknown): OrganizationExport | nu
         ['PROJECT_KNOWLEDGE', 'DECISION', 'LESSON', 'PINNED'].includes(String(item.type)) &&
         typeof item.importance === 'number',
     ) ||
-    !conversations.every((item) => record(item) && string(item.id) && stringArray(item.messages))
+    !conversations.every((item) => record(item) && string(item.id) && stringArray(item.messages)) ||
+    !tasks.every(
+      (item) =>
+        record(item) &&
+        string(item.id) &&
+        string(item.projectId) &&
+        string(item.title) &&
+        ['FRONTEND', 'BACKEND', 'DESIGN', 'TEST', 'DOCS', 'REVIEW'].includes(
+          String(item.taskType),
+        ) &&
+        string(item.state) &&
+        stringArray(item.dependencies) &&
+        stringArray(item.writeScope) &&
+        typeof item.estimatedCost === 'number' &&
+        typeof item.priority === 'number',
+    )
   )
     return null;
   return {
@@ -63,6 +81,7 @@ export function parseOrganizationExport(value: unknown): OrganizationExport | nu
     agents: agents as OrganizationExport['agents'],
     memories: memories as OrganizationExport['memories'],
     conversations: conversations as OrganizationExport['conversations'],
+    tasks: tasks as OrganizationExport['tasks'],
     providerConnections: Array.isArray(value.providerConnections)
       ? (value.providerConnections as OrganizationExport['providerConnections'])
       : undefined,

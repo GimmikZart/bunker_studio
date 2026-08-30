@@ -15,7 +15,7 @@ Updated 2026-08-30. `PASS` means automated evidence is present in this repositor
 | AC-009 protected self-improvement | PARTIAL | Protected core policy and owner gate are deterministic; GitHub/CI quality integration needs credentials. |
 | AC-010 memory scaling | PASS | Bounded relevance retrieval/provenance test; full archive is not passed to context; API search exercised by `tests/e2e/api-acceptance.spec.ts`. |
 | AC-011 push notification | PARTIAL | Payload/deep-link/service-worker tests and persisted per-category preferences pass; VAPID delivery and background-device test need quality credentials/device. |
-| AC-012 export/import | PASS | Export/import routes and DB tests prove secrets are excluded, IDs are remapped and provider connections are marked reauth. |
+| AC-012 export/import | PASS | Export/import routes and DB tests prove secrets are excluded, organization/task/dependency IDs are remapped and provider connections are marked reauth; imported tasks remain DRAFT. |
 | AC-013 local worker | PARTIAL | Registry, heartbeat, capability and concurrency tests pass; API registration/heartbeat is exercised by `tests/e2e/api-acceptance.spec.ts`; Ollama/LM Studio network smoke requires a local runtime. |
 | AC-014 multiuser isolation | PASS | API cross-organization tests plus Supabase RLS migration verification; exercised by `tests/e2e/api-acceptance.spec.ts`. |
 

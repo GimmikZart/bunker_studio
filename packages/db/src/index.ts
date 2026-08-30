@@ -531,6 +531,18 @@ export type PortableOrganization = {
     externalSessionId?: string;
     messages: string[];
   }[];
+  tasks?: {
+    id: string;
+    projectId: string;
+    title: string;
+    description: string;
+    taskType: string;
+    state: string;
+    dependencies: string[];
+    writeScope: string[];
+    estimatedCost: number;
+    priority: number;
+  }[];
   providerConnections?: { id: string; encryptedSecretBlob?: string }[];
 };
 
@@ -543,6 +555,7 @@ export function exportOrganization(input: PortableOrganization): Record<string, 
     agents: input.agents,
     memories: input.memories.filter((memory) => !memory.deletedAt),
     conversations: input.conversations,
+    tasks: input.tasks ?? [],
     providerConnections: (input.providerConnections ?? []).map(({ id }) => ({
       id,
       status: 'REQUIRES_REAUTH',
@@ -568,6 +581,7 @@ export function importOrganization(input: ReturnType<typeof exportOrganization>)
     'agents',
     'memories',
     'conversations',
+    'tasks',
     'providerConnections',
   ] as const) {
     for (const value of (input[collection] ?? []) as unknown[]) remap(value);

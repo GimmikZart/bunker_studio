@@ -48,6 +48,30 @@ export async function POST(request: Request) {
       });
       projectIds.set(project.id, created.id);
     }
+    let tasksImported = 0;
+    for (const task of pack.tasks) {
+      const projectId = projectIds.get(task.projectId);
+      const id = remapped.idMap.get(task.id);
+      const dependencies = task.dependencies.map((dependency) => remapped.idMap.get(dependency));
+      if (!projectId || !id || dependencies.some((dependency) => !dependency))
+        throw new Error('Task relationship cannot be remapped.');
+      await operations.createTask(
+        {
+          id,
+          organizationId: organization.id,
+          projectId,
+          title: task.title,
+          description: task.description,
+          taskType: task.taskType as 'FRONTEND' | 'BACKEND' | 'DESIGN' | 'TEST' | 'DOCS' | 'REVIEW',
+          dependencies: dependencies as string[],
+          writeScope: task.writeScope,
+          estimatedCost: task.estimatedCost,
+          priority: task.priority,
+        },
+        actorId,
+      );
+      tasksImported += 1;
+    }
     const agentIds = new Map<string, string>();
     for (const agent of pack.agents) {
       const created = await agents.createAgent({
@@ -98,6 +122,7 @@ export async function POST(request: Request) {
           teams: teamIds.size,
           projects: projectIds.size,
           agents: agentIds.size,
+          tasks: tasksImported,
           memories: memoriesImported,
           conversations: conversationsImported,
         },

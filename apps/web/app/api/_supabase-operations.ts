@@ -16,6 +16,7 @@ import type {
   PushSubscriptionRecord,
   RepositoryRecord,
   TaskRecord,
+  TaskCreateRecord,
   ReviewRecord,
   VerificationRunRecord,
 } from './_store';
@@ -1115,15 +1116,13 @@ export class SupabaseOperationalRepository {
     return Array.isArray(data) ? data.map(mapTask) : [];
   }
 
-  async createTask(
-    input: Omit<TaskRecord, 'id' | 'state' | 'createdAt'>,
-    actorUserId: string,
-  ): Promise<TaskRecord> {
+  async createTask(input: TaskCreateRecord, actorUserId: string): Promise<TaskRecord> {
     await this.requireMember(input.organizationId, actorUserId);
     const data = await unwrap(
       this.client
         .from('tasks')
         .insert({
+          ...(input.id ? { id: input.id } : {}),
           organization_id: input.organizationId,
           project_id: input.projectId,
           title: input.title,

@@ -231,6 +231,8 @@ export type TaskRecord = {
   createdAt: string;
 };
 
+export type TaskCreateRecord = Omit<TaskRecord, 'id' | 'state' | 'createdAt'> & { id?: string };
+
 export type VerificationRunRecord = VerificationRun & {
   id: string;
   organizationId: string;
@@ -423,10 +425,10 @@ export function getRepository(projectId: string): RepositoryRecord | null {
   return repository ? structuredClone(repository) : null;
 }
 
-export function createTask(input: Omit<TaskRecord, 'id' | 'state' | 'createdAt'>): TaskRecord {
+export function createTask(input: TaskCreateRecord): TaskRecord {
   const task: TaskRecord = {
     ...input,
-    id: crypto.randomUUID(),
+    id: input.id ?? crypto.randomUUID(),
     state: 'DRAFT',
     createdAt: new Date().toISOString(),
   };

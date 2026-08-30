@@ -25,12 +25,13 @@ export async function GET(
     );
     if (!organization)
       return NextResponse.json({ error: 'Organization not found.' }, { status: 404 });
-    const [teams, projects, registeredAgents, memories, conversations] = await Promise.all([
+    const [teams, projects, registeredAgents, memories, conversations, tasks] = await Promise.all([
       tenancy.listTeams(organizationId, actorId),
       tenancy.listProjects(organizationId, actorId),
       agents.listAgents(organizationId, actorId),
       operations.listMemories(organizationId, actorId),
       operations.listConversations(organizationId, actorId),
+      operations.listTasks(organizationId, actorId),
     ]);
     const pack = exportOrganization({
       organization: { id: organization.id, name: organization.name },
@@ -55,6 +56,31 @@ export async function GET(
         externalSessionId,
         messages,
       })),
+      tasks: tasks.map(
+        ({
+          id,
+          projectId,
+          title,
+          description,
+          taskType,
+          state,
+          dependencies,
+          writeScope,
+          estimatedCost,
+          priority,
+        }) => ({
+          id,
+          projectId,
+          title,
+          description,
+          taskType,
+          state,
+          dependencies,
+          writeScope,
+          estimatedCost,
+          priority,
+        }),
+      ),
     });
     return new NextResponse(JSON.stringify(pack), {
       status: 200,

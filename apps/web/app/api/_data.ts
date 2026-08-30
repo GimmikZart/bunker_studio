@@ -57,6 +57,7 @@ import {
   type PushSubscriptionRecord,
   type RepositoryRecord,
   type TaskRecord,
+  type TaskCreateRecord,
 } from './_store';
 import type { MemoryUnit, RegisteredWorker } from '@bunker-studio/db';
 import { approveDesignVersion as applyDesignApproval } from '@bunker-studio/core';
@@ -220,10 +221,7 @@ type LocalOperationalRepository = {
   listActivity: (organizationId: string, actorUserId: string) => ActivityRecord[];
   listWorkers: (organizationId: string, actorUserId: string) => RegisteredWorker[];
   listTasks: (organizationId: string, actorUserId: string) => TaskRecord[];
-  createTask: (
-    input: Omit<TaskRecord, 'id' | 'state' | 'createdAt'>,
-    actorUserId: string,
-  ) => TaskRecord;
+  createTask: (input: TaskCreateRecord, actorUserId: string) => TaskRecord;
   transitionTask: (
     taskId: string,
     organizationId: string,

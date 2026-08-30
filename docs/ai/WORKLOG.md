@@ -247,7 +247,7 @@ Checkpoint stabile nei commit `4e1a5b3`, `65884f7` e `9853717`. Restano i cinque
 
 ### Lavoro svolto
 
-- Aggiunte route tenant-scoped per export/import organizzazione con formato versionato, remap degli ID, esclusione dei secret e stato provider `REQUIRES_REAUTH`.
+- Aggiunte route tenant-scoped per export/import organizzazione con formato versionato, remap degli ID di organizzazione/task/dipendenze, esclusione dei secret e stato provider `REQUIRES_REAUTH`.
 - Aggiunta persistenza conversazioni necessaria alla portabilità chat, sia nello store locale di test sia nell'adapter Supabase.
 - Aggiunti endpoint per registrare/listare verifiche di task e report di review, con findings protetti da RLS e fix task creati solo dal risultato deterministico della policy.
 
