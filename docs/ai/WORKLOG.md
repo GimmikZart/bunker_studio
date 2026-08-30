@@ -23,6 +23,10 @@ Storico append-only.
 
 Acceptance locale stabilizzata. Prossimo passo: eseguire in quality le righe `PARTIAL` della matrice con credenziali/device/runtime espliciti.
 
+Nota di handoff: gli endpoint web sono ancora in-memory in sviluppo e devono
+essere cablati al repository Supabase autenticato prima della verifica
+multi-processo quality.
+
 ## 2026-08-30 — Sessione 1 — Product & architecture definition
 
 ### Lavoro svolto

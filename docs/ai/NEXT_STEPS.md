@@ -2,15 +2,15 @@
 
 ## Prossima attività
 
-Eseguire in quality la verifica degli scenari ancora `PARTIAL`: sessione cloud da secondo device, restart multi-process pg-boss, integrazione GitHub/CI protetta, Web Push su device in background e smoke Ollama/LM Studio.
+Cablate il repository Supabase autenticato negli endpoint web, mantenendo lo store in-memory solo come fixture locale, quindi verificare la persistenza dopo riavvio multi-processo.
 
 ### Area interessata
 
-`docs/quality/ACCEPTANCE_MATRIX.md`, `docs/quality/BACKUP_RESTORE_DRILL.md`, `docs/DEPLOYMENT.md` e configurazione quality isolata.
+`packages/db/src/`, `apps/web/app/api/`, `docs/quality/ACCEPTANCE_MATRIX.md` e `docs/DEPLOYMENT.md`.
 
 ### Comportamento atteso
 
-Ogni scenario `PARTIAL` deve avere una verifica manuale ripetibile con credenziali e budget espliciti; nessun test deve bypassare autorizzazioni, budget o approval gate.
+Le richieste production devono usare client Supabase SSR con RLS; lo store in-memory è ammesso solo per fixture non-production. Nessun test deve bypassare autorizzazioni, budget o approval gate.
 
 ### Definition of Done locale
 

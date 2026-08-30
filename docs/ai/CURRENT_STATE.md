@@ -32,6 +32,7 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 ## Problemi aperti
 
 - Provider reali, Supabase cloud, GitHub, VAPID/Web Push e client pg-boss concreto richiedono configurazione/credenziali quality; fake e adapter contract-first sono disponibili.
+- Gli endpoint verticali usano ancora uno store fixture in-memory in sviluppo; il prossimo lavoro deve cablare il repository Supabase autenticato per la persistenza multi-processo in produzione.
 - Mancano ancora le verifiche quality esterne dei criteri `PARTIAL`, una UI task/workflow più ricca rispetto agli endpoint verticali e il drill backup/restore su un progetto quality.
 - I check gitleaks/semgrep/osv-scanner non sono installati nell'host; audit pnpm è verde.
 
