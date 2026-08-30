@@ -1,6 +1,6 @@
 import { TenantStore, WorkerRegistry } from '@bunker-studio/db';
 import type { CostEntry, DesignRecord } from '@bunker-studio/core';
-import type { ReviewFinding, VerificationRun } from '@bunker-studio/contracts';
+import type { LeadPlan, ReviewFinding, VerificationRun } from '@bunker-studio/contracts';
 import type { MemoryUnit } from '@bunker-studio/db';
 
 type WebRuntimeState = {
@@ -20,6 +20,7 @@ type WebRuntimeState = {
   repositories: Map<string, RepositoryRecord>;
   tasks: Map<string, TaskRecord[]>;
   activity: Map<string, ActivityRecord[]>;
+  workflows: Map<string, WorkflowRecord[]>;
 };
 
 type GlobalWithRuntime = typeof globalThis & { __bunkerStudioRuntime?: WebRuntimeState };
@@ -41,12 +42,14 @@ const state = (globalRuntime.__bunkerStudioRuntime ??= {
   repositories: new Map<string, RepositoryRecord>(),
   tasks: new Map<string, TaskRecord[]>(),
   activity: new Map<string, ActivityRecord[]>(),
+  workflows: new Map<string, WorkflowRecord[]>(),
 });
 state.notificationPreferences ??= new Map<string, NotificationPreferences>();
 state.conversations ??= new Map<string, ConversationRecord[]>();
 state.verificationRuns ??= new Map<string, VerificationRunRecord[]>();
 state.reviews ??= new Map<string, ReviewRecord[]>();
 state.activity ??= new Map<string, ActivityRecord[]>();
+state.workflows ??= new Map<string, WorkflowRecord[]>();
 
 export const tenantStore = state.tenantStore;
 export const workerRegistry = state.workerRegistry;
@@ -84,6 +87,65 @@ export function addActivity(input: {
 
 export function listActivity(organizationId: string): ActivityRecord[] {
   return structuredClone(state.activity.get(organizationId) ?? []);
+}
+
+export type WorkflowRecord = {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  goal: string;
+  assumptions: string[];
+  verificationSteps: string[];
+  taskIds: string[];
+  rootTaskId: string | null;
+  status: 'IDLE' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+  createdByUserId: string;
+  createdAt: string;
+};
+
+export function createWorkflow(input: {
+  organizationId: string;
+  projectId: string;
+  plan: Pick<LeadPlan, 'goal' | 'assumptions' | 'verificationSteps'>;
+  createdByUserId: string;
+}): WorkflowRecord {
+  const workflow: WorkflowRecord = {
+    id: crypto.randomUUID(),
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    goal: input.plan.goal,
+    assumptions: [...input.plan.assumptions],
+    verificationSteps: [...input.plan.verificationSteps],
+    taskIds: [],
+    rootTaskId: null,
+    status: 'IDLE',
+    createdByUserId: input.createdByUserId,
+    createdAt: new Date().toISOString(),
+  };
+  state.workflows.set(input.organizationId, [
+    ...(state.workflows.get(input.organizationId) ?? []),
+    workflow,
+  ]);
+  return structuredClone(workflow);
+}
+
+export function listWorkflows(organizationId: string): WorkflowRecord[] {
+  return structuredClone(state.workflows.get(organizationId) ?? []);
+}
+
+export function updateWorkflowTasks(
+  organizationId: string,
+  workflowId: string,
+  taskIds: string[],
+  rootTaskId: string | null,
+): WorkflowRecord {
+  const workflow = (state.workflows.get(organizationId) ?? []).find(
+    (item) => item.id === workflowId,
+  );
+  if (!workflow) throw new Error('Workflow not found.');
+  workflow.taskIds = [...taskIds];
+  workflow.rootTaskId = rootTaskId;
+  return structuredClone(workflow);
 }
 
 export function addMemory(
@@ -258,12 +320,14 @@ export type TaskRecord = {
   id: string;
   organizationId: string;
   projectId: string;
+  workflowId?: string;
   title: string;
   description: string;
   taskType: 'FRONTEND' | 'BACKEND' | 'DESIGN' | 'TEST' | 'DOCS' | 'REVIEW';
   state: string;
   dependencies: string[];
   writeScope: string[];
+  definitionOfDone?: string[];
   estimatedCost: number;
   priority: number;
   createdAt: string;

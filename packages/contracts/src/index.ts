@@ -57,6 +57,12 @@ export const leadPlanSchema = z.object({
 });
 export type LeadPlan = z.infer<typeof leadPlanSchema>;
 
+export const leadPlanSubmissionSchema = z.object({
+  projectId: z.string().uuid(),
+  plan: leadPlanSchema,
+});
+export type LeadPlanSubmission = z.infer<typeof leadPlanSubmissionSchema>;
+
 export const verificationRunSchema = z.object({
   kind: z.enum(['FORMAT', 'LINT', 'TYPECHECK', 'UNIT', 'INTEGRATION', 'E2E', 'SECURITY', 'BUILD']),
   commandOrCheck: z.string().min(1),

@@ -2,6 +2,25 @@
 
 Storico append-only.
 
+## 2026-08-31 — Lead workflow plan persistito
+
+### Lavoro svolto
+
+- Aggiunto il contratto `leadPlanSubmissionSchema` e l’endpoint tenant-scoped `POST/GET /api/workflows/plan`.
+- Validato il DAG Lead prima della materializzazione; le dipendenze vengono rimappate agli UUID persistiti in ordine topologico.
+- Persistiti workflow, task DRAFT, `workflow_id` e Definition of Done strutturata nell’adapter locale e nel repository Supabase; aggiunta la migration `00000000000013_workflow_plan.sql`.
+
+### Verifiche
+
+- Test mirati workflow: PASS, 2 test.
+- `pnpm verify`: PASS, format/lint/typecheck/test/build/audit.
+- `supabase db reset --local`: PASS fino alla migration `00000000000013`.
+- `pnpm test:e2e`: PASS, 9/9.
+
+### Prossimo passo
+
+Eseguire AC-001 in quality con Supabase cloud e secondo dispositivo; le verifiche `PARTIAL` restano bloccate da credenziali/runtime/device esterni.
+
 ## 2026-08-31 — Agent detail, activity e Studio Labs protetto
 
 ### Lavoro svolto

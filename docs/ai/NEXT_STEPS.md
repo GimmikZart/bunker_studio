@@ -4,7 +4,7 @@
 
 Eseguire AC-001 in quality con una sessione Supabase cloud da un secondo dispositivo e registrare evidenza di recupero dopo la perdita del PC principale.
 
-Il codice locale è verificato; dopo AC-001 procedere con gli altri scenari `PARTIAL` già elencati nella matrice. Non cambiare `CURRENT_STATE.md` a `IMPLEMENTAZIONE COMPLETATA` finché tali verifiche esterne non sono concluse.
+Il codice locale, incluso il piano Lead persistito in `POST /api/workflows/plan`, è verificato; dopo AC-001 procedere con gli altri scenari `PARTIAL` già elencati nella matrice. Non cambiare `CURRENT_STATE.md` a `IMPLEMENTAZIONE COMPLETATA` finché tali verifiche esterne non sono concluse.
 
 ## Prossima attività
 

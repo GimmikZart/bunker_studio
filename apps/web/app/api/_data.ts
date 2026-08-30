@@ -42,6 +42,9 @@ import {
   createTask,
   listTasks,
   listActivity,
+  createWorkflow,
+  listWorkflows,
+  updateWorkflowTasks,
   updateTask,
   submitDesignVersion,
   type ApprovalRecord,
@@ -57,8 +60,10 @@ import {
   type TaskRecord,
   type TaskCreateRecord,
   type ActivityRecord,
+  type WorkflowRecord,
 } from './_store';
 import type { MemoryUnit, RegisteredWorker } from '@bunker-studio/db';
+import type { LeadPlan } from '@bunker-studio/contracts';
 import { approveDesignVersion as applyDesignApproval } from '@bunker-studio/core';
 import type { DesignRecord } from '@bunker-studio/core';
 import { FakeRuntime, HttpAgentRuntime, type AgentRuntime } from '@bunker-studio/agent-runtime';
@@ -225,6 +230,23 @@ type LocalOperationalRepository = {
     aggregateId: string;
     payload?: Record<string, unknown>;
   }) => Promise<void>;
+  listWorkflows: (organizationId: string, actorUserId: string) => WorkflowRecord[];
+  createWorkflow: (
+    input: {
+      organizationId: string;
+      projectId: string;
+      plan: Pick<LeadPlan, 'goal' | 'assumptions' | 'verificationSteps'>;
+      createdByUserId: string;
+    },
+    actorUserId: string,
+  ) => WorkflowRecord;
+  updateWorkflowTasks: (
+    organizationId: string,
+    workflowId: string,
+    taskIds: string[],
+    rootTaskId: string | null,
+    actorUserId: string,
+  ) => WorkflowRecord;
   listWorkers: (organizationId: string, actorUserId: string) => RegisteredWorker[];
   listTasks: (organizationId: string, actorUserId: string) => TaskRecord[];
   createTask: (input: TaskCreateRecord, actorUserId: string) => TaskRecord;
@@ -310,6 +332,10 @@ const localOperationalRepository: LocalOperationalRepository = {
   recordActivity: async (input) => {
     addActivity(input);
   },
+  listWorkflows: (organizationId) => listWorkflows(organizationId),
+  createWorkflow: (input) => createWorkflow(input),
+  updateWorkflowTasks: (organizationId, workflowId, taskIds, rootTaskId) =>
+    updateWorkflowTasks(organizationId, workflowId, taskIds, rootTaskId),
   listWorkers: (organizationId) => workerRegistry.list(organizationId),
   listTasks: (organizationId) => listTasks(organizationId),
   createTask: (input) => createTask(input),

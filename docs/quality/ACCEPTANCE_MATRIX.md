@@ -1,8 +1,8 @@
 # Bunker Studio V1 acceptance matrix
 
-Updated 2026-08-30. `PASS` means automated evidence is present in this repository. `PARTIAL` means the in-scope foundation is implemented but requires an external credential, device, provider or multi-process quality run. The latest local release check also covers agent registry management, notification preferences, Settings/provider visibility and the task state-machine UI, without changing the external-quality statuses below.
+Updated 2026-08-31. `PASS` means automated evidence is present in this repository. `PARTIAL` means the in-scope foundation is implemented but requires an external credential, device, provider or multi-process quality run. The latest local release check also covers agent registry management, notification preferences, Settings/provider visibility and the task state-machine UI, without changing the external-quality statuses below.
 
-Checkpoint 2026-08-31: the local protected Studio Labs workflow now creates gated task/approval records and enforces reviewer, CI, Owner and human-actor requirements server-side; AC-009 remains `PARTIAL` until the GitHub/CI quality integration is exercised.
+Checkpoint 2026-08-31: the local protected Studio Labs workflow now creates gated task/approval records and enforces reviewer, CI, Owner and human-actor requirements server-side; the Lead plan endpoint persists validated DAGs, task links and Definition of Done metadata; AC-009 remains `PARTIAL` until the GitHub/CI quality integration is exercised.
 
 | Criterion | Status | Evidence / remaining verification |
 |---|---|---|

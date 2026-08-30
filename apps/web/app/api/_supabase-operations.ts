@@ -20,6 +20,7 @@ import type {
   ReviewRecord,
   VerificationRunRecord,
   ActivityRecord,
+  WorkflowRecord,
 } from './_store';
 import type { ReviewFinding } from '@bunker-studio/contracts';
 
@@ -210,10 +211,13 @@ function mapTask(value: unknown): TaskRecord {
   const item = object(value);
   const dependencies = Array.isArray(item.task_dependencies) ? item.task_dependencies : [];
   const readScope = Array.isArray(item.write_scope_json) ? item.write_scope_json : [];
+  const definition = object(item.definition_of_done_json ?? {});
+  const definitionItems = Array.isArray(definition.items) ? definition.items : [];
   return {
     id: stringValue(item.id, 'id'),
     organizationId: stringValue(item.organization_id, 'organization_id'),
     projectId: stringValue(item.project_id, 'project_id'),
+    ...(typeof item.workflow_id === 'string' ? { workflowId: item.workflow_id } : {}),
     title: stringValue(item.title, 'title'),
     description: stringValue(item.description ?? '', 'description'),
     taskType: item.task_type as TaskRecord['taskType'],
@@ -222,8 +226,37 @@ function mapTask(value: unknown): TaskRecord {
       .map((entry) => object(entry).depends_on_task_id)
       .filter((entry): entry is string => typeof entry === 'string'),
     writeScope: readScope.filter((entry): entry is string => typeof entry === 'string'),
-    estimatedCost: Number(object(item.definition_of_done_json ?? {}).estimated_cost ?? 0),
+    definitionOfDone: definitionItems.filter(
+      (entry: unknown): entry is string => typeof entry === 'string',
+    ),
+    estimatedCost: Number(definition.estimated_cost ?? 0),
     priority: typeof item.priority === 'number' ? item.priority : 0,
+    createdAt: stringValue(item.created_at, 'created_at'),
+  };
+}
+
+function mapWorkflow(value: unknown): WorkflowRecord {
+  const item = object(value);
+  const plan = object(item.plan_json ?? {});
+  const taskIds = Array.isArray(item.task_ids_json) ? item.task_ids_json : [];
+  const assumptions = Array.isArray(plan.assumptions) ? plan.assumptions : [];
+  const verificationSteps = Array.isArray(plan.verificationSteps) ? plan.verificationSteps : [];
+  return {
+    id: stringValue(item.id, 'id'),
+    organizationId: stringValue(item.organization_id, 'organization_id'),
+    projectId: stringValue(item.project_id, 'project_id'),
+    goal: stringValue(item.goal, 'goal'),
+    assumptions: assumptions.filter((entry): entry is string => typeof entry === 'string'),
+    verificationSteps: verificationSteps.filter(
+      (entry): entry is string => typeof entry === 'string',
+    ),
+    taskIds: taskIds.filter((entry): entry is string => typeof entry === 'string'),
+    rootTaskId: typeof item.root_task_id === 'string' ? item.root_task_id : null,
+    status:
+      item.status === 'RUNNING' || item.status === 'COMPLETED' || item.status === 'FAILED'
+        ? item.status
+        : 'IDLE',
+    createdByUserId: stringValue(item.created_by_user_id, 'created_by_user_id'),
     createdAt: stringValue(item.created_at, 'created_at'),
   };
 }
@@ -1132,6 +1165,65 @@ export class SupabaseOperationalRepository {
     return Array.isArray(data) ? data.map(mapTask) : [];
   }
 
+  async listWorkflows(organizationId: string, actorUserId: string): Promise<WorkflowRecord[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client.from('workflows').select('*').eq('organization_id', organizationId),
+    );
+    return Array.isArray(data) ? data.map(mapWorkflow) : [];
+  }
+
+  async createWorkflow(
+    input: {
+      organizationId: string;
+      projectId: string;
+      plan: { goal: string; assumptions: string[]; verificationSteps: string[] };
+      createdByUserId: string;
+    },
+    actorUserId: string,
+  ): Promise<WorkflowRecord> {
+    await this.requireMember(input.organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('workflows')
+        .insert({
+          organization_id: input.organizationId,
+          project_id: input.projectId,
+          goal: input.plan.goal,
+          status: 'IDLE',
+          created_by_user_id: input.createdByUserId,
+          plan_json: {
+            assumptions: input.plan.assumptions,
+            verificationSteps: input.plan.verificationSteps,
+          },
+          task_ids_json: [],
+        })
+        .select('*')
+        .single(),
+    );
+    return mapWorkflow(data);
+  }
+
+  async updateWorkflowTasks(
+    organizationId: string,
+    workflowId: string,
+    taskIds: string[],
+    rootTaskId: string | null,
+    actorUserId: string,
+  ): Promise<WorkflowRecord> {
+    await this.requireWrite(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('workflows')
+        .update({ task_ids_json: taskIds, root_task_id: rootTaskId })
+        .eq('id', workflowId)
+        .eq('organization_id', organizationId)
+        .select('*')
+        .single(),
+    );
+    return mapWorkflow(data);
+  }
+
   async createTask(input: TaskCreateRecord, actorUserId: string): Promise<TaskRecord> {
     await this.requireMember(input.organizationId, actorUserId);
     const data = await unwrap(
@@ -1141,13 +1233,17 @@ export class SupabaseOperationalRepository {
           ...(input.id ? { id: input.id } : {}),
           organization_id: input.organizationId,
           project_id: input.projectId,
+          ...(input.workflowId ? { workflow_id: input.workflowId } : {}),
           title: input.title,
           description: input.description,
           task_type: input.taskType,
           state: 'DRAFT',
           priority: input.priority,
           write_scope_json: input.writeScope,
-          definition_of_done_json: { estimated_cost: input.estimatedCost },
+          definition_of_done_json: {
+            estimated_cost: input.estimatedCost,
+            items: input.definitionOfDone ?? [],
+          },
         })
         .select('*')
         .single(),
