@@ -1,0 +1,24 @@
+# Bunker Studio V1 acceptance matrix
+
+Updated 2026-08-30. `PASS` means automated evidence is present in this repository. `PARTIAL` means the in-scope foundation is implemented but requires an external credential, device, provider or multi-process quality run.
+
+| Criterion | Status | Evidence / remaining verification |
+|---|---|---|
+| AC-001 PC loss | PARTIAL | Supabase durable schema, tenant APIs and export state exist; second-device cloud session test requires quality Supabase credentials. |
+| AC-002 provider switch | PASS | Binding-preserving agent registry and provider adapter contract tests. |
+| AC-003 parallel frontend/backend | PASS | Scope grouping, workspace isolation and Git artifact contract tests. |
+| AC-004 dependency serialization | PASS | `WorkflowRunner` DAG test proves dependent task waits for both prerequisites. |
+| AC-005 review loop | PASS | Reviewer finding creates fix title and re-review loop blocks until pass. |
+| AC-006 quota interruption | PARTIAL | Fake quota resume, lease reclaim and persistent composition are tested; multi-process pg-boss restart requires a configured client. |
+| AC-007 budget hard stop | PASS | Workflow budget test confirms provider handler is not invoked when estimate exceeds remaining budget. |
+| AC-008 design gate | PASS | Design submission/owner approval API test and immutable version policy. |
+| AC-009 protected self-improvement | PARTIAL | Protected core policy and owner gate are deterministic; GitHub/CI quality integration needs credentials. |
+| AC-010 memory scaling | PASS | Bounded relevance retrieval/provenance test; full archive is not passed to context. |
+| AC-011 push notification | PARTIAL | Payload/deep-link/service-worker tests pass; VAPID delivery and background-device test need quality credentials/device. |
+| AC-012 export/import | PASS | Secrets excluded, IDs remapped and provider connections marked reauth in DB tests. |
+| AC-013 local worker | PARTIAL | Registry, heartbeat, capability and concurrency tests pass; Ollama/LM Studio network smoke requires a local runtime. |
+| AC-014 multiuser isolation | PASS | API cross-organization tests plus Supabase RLS migration verification. |
+
+## Release blockers
+
+The remaining `PARTIAL` rows are external quality verification or integrations whose credentials/runtimes are not available in this workspace. They must be run before changing `docs/ai/CURRENT_STATE.md` to `IMPLEMENTAZIONE COMPLETATA`.

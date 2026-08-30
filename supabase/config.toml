@@ -1,0 +1,29 @@
+project_id = "bunker-studio"
+
+[api]
+enabled = true
+port = 55421
+
+[db]
+port = 55422
+
+[studio]
+enabled = true
+port = 55423
+
+[storage]
+enabled = true
+
+[inbucket]
+enabled = true
+port = 55424
+smtp_port = 55425
+pop3_port = 55426
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+
+[analytics]
+enabled = false
+port = 55427

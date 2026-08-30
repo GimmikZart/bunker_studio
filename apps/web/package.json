@@ -1,0 +1,28 @@
+{
+  "name": "@bunker-studio/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "lint": "eslint .",
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bunker-studio/agent-runtime": "workspace:*",
+    "@bunker-studio/core": "workspace:*",
+    "@bunker-studio/config": "workspace:*",
+    "@bunker-studio/contracts": "workspace:*",
+    "@bunker-studio/db": "workspace:*",
+    "next": "^15.5.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7"
+  }
+}

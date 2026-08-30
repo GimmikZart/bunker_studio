@@ -1,0 +1,1 @@
+-- Local development seed data is intentionally empty until the tenancy migration exists.
