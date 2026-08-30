@@ -12,6 +12,7 @@ type WebRuntimeState = {
   costs: Map<string, CostRecord[]>;
   notifications: Map<string, NotificationRecord[]>;
   notificationPreferences: Map<string, NotificationPreferences>;
+  conversations: Map<string, ConversationRecord[]>;
   pushSubscriptions: Map<string, PushSubscriptionRecord[]>;
   repositories: Map<string, RepositoryRecord>;
   tasks: Map<string, TaskRecord[]>;
@@ -29,11 +30,13 @@ const state = (globalRuntime.__bunkerStudioRuntime ??= {
   costs: new Map<string, CostRecord[]>(),
   notifications: new Map<string, NotificationRecord[]>(),
   notificationPreferences: new Map<string, NotificationPreferences>(),
+  conversations: new Map<string, ConversationRecord[]>(),
   pushSubscriptions: new Map<string, PushSubscriptionRecord[]>(),
   repositories: new Map<string, RepositoryRecord>(),
   tasks: new Map<string, TaskRecord[]>(),
 });
 state.notificationPreferences ??= new Map<string, NotificationPreferences>();
+state.conversations ??= new Map<string, ConversationRecord[]>();
 
 export const tenantStore = state.tenantStore;
 export const workerRegistry = state.workerRegistry;
@@ -147,6 +150,14 @@ export type NotificationRecord = {
 };
 
 export type NotificationPreferences = Record<NotificationRecord['category'], boolean>;
+
+export type ConversationRecord = {
+  id: string;
+  organizationId: string;
+  agentId: string;
+  externalSessionId: string;
+  messages: string[];
+};
 
 export const defaultNotificationPreferences: NotificationPreferences = {
   APPROVAL: true,
@@ -341,6 +352,37 @@ export function savePushSubscription(
     subscription,
   ]);
   return structuredClone(subscription);
+}
+
+export function recordConversation(
+  input: Omit<ConversationRecord, 'id' | 'messages'> & { messages: string[] },
+): ConversationRecord {
+  const current = state.conversations.get(input.organizationId) ?? [];
+  const existing = current.find(
+    (conversation) =>
+      conversation.agentId === input.agentId &&
+      conversation.externalSessionId === input.externalSessionId,
+  );
+  if (existing) {
+    existing.messages.push(...input.messages);
+    return structuredClone(existing);
+  }
+  const conversation: ConversationRecord = { ...input, id: crypto.randomUUID() };
+  state.conversations.set(input.organizationId, [...current, conversation]);
+  return structuredClone(conversation);
+}
+
+export function listConversations(organizationId: string): ConversationRecord[] {
+  return structuredClone(state.conversations.get(organizationId) ?? []);
+}
+
+export function importConversation(input: Omit<ConversationRecord, 'id'>): ConversationRecord {
+  const conversation: ConversationRecord = { ...input, id: crypto.randomUUID() };
+  state.conversations.set(input.organizationId, [
+    ...(state.conversations.get(input.organizationId) ?? []),
+    conversation,
+  ]);
+  return structuredClone(conversation);
 }
 
 export function saveRepository(input: RepositoryRecord): RepositoryRecord {

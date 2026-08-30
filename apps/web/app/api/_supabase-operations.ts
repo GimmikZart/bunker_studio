@@ -12,6 +12,7 @@ import type {
   MeetingRecord,
   NotificationRecord,
   NotificationPreferences,
+  ConversationRecord,
   PushSubscriptionRecord,
   RepositoryRecord,
   TaskRecord,
@@ -961,6 +962,84 @@ export class SupabaseOperationalRepository {
         ])
         .select('*'),
     );
+  }
+
+  async listConversations(
+    organizationId: string,
+    actorUserId: string,
+  ): Promise<ConversationRecord[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('conversations')
+        .select(
+          'id, organization_id, primary_agent_id, external_session_id, messages(content_json)',
+        )
+        .eq('organization_id', organizationId),
+    );
+    if (!Array.isArray(data)) return [];
+    return data.map((value) => {
+      const item = object(value);
+      const messages = Array.isArray(item.messages)
+        ? item.messages
+            .map((message) => object(message).content_json)
+            .map((content) => (content && typeof content === 'object' ? object(content).text : ''))
+            .filter((content): content is string => typeof content === 'string')
+        : [];
+      return {
+        id: stringValue(item.id, 'id'),
+        organizationId: stringValue(item.organization_id, 'organization_id'),
+        agentId: stringValue(item.primary_agent_id, 'primary_agent_id'),
+        externalSessionId: nullableString(item.external_session_id) ?? '',
+        messages,
+      };
+    });
+  }
+
+  async importConversation(
+    input: Omit<ConversationRecord, 'id'>,
+    actorUserId: string,
+  ): Promise<ConversationRecord> {
+    await this.requireMember(input.organizationId, actorUserId);
+    const conversation = object(
+      await unwrap(
+        this.client
+          .from('conversations')
+          .insert({
+            organization_id: input.organizationId,
+            conversation_type: 'DIRECT_CHAT',
+            primary_agent_id: input.agentId,
+            title: 'Imported direct chat',
+            external_session_id: input.externalSessionId || null,
+          })
+          .select('*')
+          .single(),
+      ),
+    );
+    if (input.messages.length) {
+      await unwrap(
+        this.client
+          .from('messages')
+          .insert(
+            input.messages.map((content, index) => ({
+              organization_id: input.organizationId,
+              conversation_id: conversation.id,
+              sender_type: index % 2 === 0 ? 'USER' : 'AGENT',
+              sender_user_id: index % 2 === 0 ? actorUserId : null,
+              sender_agent_id: index % 2 === 0 ? null : input.agentId,
+              content_json: { text: content },
+            })),
+          )
+          .select('*'),
+      );
+    }
+    return {
+      id: stringValue(conversation.id, 'id'),
+      organizationId: input.organizationId,
+      agentId: input.agentId,
+      externalSessionId: input.externalSessionId,
+      messages: [...input.messages],
+    };
   }
 
   async listActivity(organizationId: string, actorUserId: string): Promise<ActivityRecord[]> {

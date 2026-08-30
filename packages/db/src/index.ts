@@ -515,10 +515,22 @@ export class WorkerRegistry {
 export type PortableOrganization = {
   organization: { id: string; name: string };
   teams: { id: string; name: string }[];
-  projects: { id: string; name: string }[];
-  agents: { id: string; name: string }[];
+  projects: { id: string; name: string; teamId?: string }[];
+  agents: {
+    id: string;
+    name: string;
+    roleKey?: string;
+    title?: string;
+    personality?: Record<string, unknown>;
+    providerBindingId?: string;
+  }[];
   memories: MemoryUnit[];
-  conversations: { id: string; messages: string[] }[];
+  conversations: {
+    id: string;
+    agentId?: string;
+    externalSessionId?: string;
+    messages: string[];
+  }[];
   providerConnections?: { id: string; encryptedSecretBlob?: string }[];
 };
 

@@ -27,6 +27,9 @@ import {
   listNotifications,
   getNotificationPreferences,
   saveNotificationPreferences,
+  importConversation,
+  listConversations,
+  recordConversation,
   markNotificationRead,
   savePushSubscription,
   saveRepository,
@@ -44,6 +47,7 @@ import {
   type MeetingRecord,
   type NotificationRecord,
   type NotificationPreferences,
+  type ConversationRecord,
   type PushSubscriptionRecord,
   type RepositoryRecord,
   type TaskRecord,
@@ -188,6 +192,11 @@ type LocalOperationalRepository = {
     },
     actorUserId: string,
   ) => void;
+  listConversations: (organizationId: string, actorUserId: string) => ConversationRecord[];
+  importConversation: (
+    input: Omit<ConversationRecord, 'id'>,
+    actorUserId: string,
+  ) => ConversationRecord;
   listActivity: (organizationId: string, actorUserId: string) => ActivityRecord[];
   listWorkers: (organizationId: string, actorUserId: string) => RegisteredWorker[];
   listTasks: (organizationId: string, actorUserId: string) => TaskRecord[];
@@ -259,7 +268,15 @@ const localOperationalRepository: LocalOperationalRepository = {
     if (!node || node.organizationId !== organizationId) throw new Error('Worker not found.');
     return workerRegistry.heartbeat(nodeId);
   },
-  recordChat: () => undefined,
+  recordChat: (input) =>
+    recordConversation({
+      organizationId: input.organizationId,
+      agentId: input.agentId,
+      externalSessionId: input.externalSessionId,
+      messages: [input.userContent, input.assistantContent],
+    }),
+  listConversations: (organizationId) => listConversations(organizationId),
+  importConversation: (input) => importConversation(input),
   listActivity: () => [],
   listWorkers: (organizationId) => workerRegistry.list(organizationId),
   listTasks: (organizationId) => listTasks(organizationId),
