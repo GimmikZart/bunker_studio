@@ -42,4 +42,42 @@ describe('Anthropic adapter contract', () => {
     });
     expect(result.usage).toEqual({ inputTokens: 5, outputTokens: 6 });
   });
+
+  it('recombines usage reported across native SSE events', async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          encoder.encode(
+            'data: {"type":"message_start","message":{"usage":{"input_tokens":5}}}\n\n',
+          ),
+        );
+        controller.enqueue(
+          encoder.encode(
+            'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"ok"}}\n\n',
+          ),
+        );
+        controller.enqueue(
+          encoder.encode(
+            'data: {"type":"message_delta","delta":{"usage":{"output_tokens":6}}}\n\n',
+          ),
+        );
+        controller.enqueue(encoder.encode('data: {"type":"message_stop"}\n\n'));
+        controller.close();
+      },
+    });
+    const result = await collectRun(
+      createAnthropicRuntime({
+        endpoint: 'https://api.anthropic.test/v1/messages',
+        apiKey: 'test-key',
+        model: 'claude-test',
+        fetchFn: async () =>
+          new Response(stream, { status: 200, headers: { 'content-type': 'text/event-stream' } }),
+      }),
+      { agentId: 'a', prompt: 'ping', correlationId: 'c' },
+    );
+
+    expect(result.text).toBe('ok');
+    expect(result.usage).toEqual({ inputTokens: 5, outputTokens: 6 });
+  });
 });
