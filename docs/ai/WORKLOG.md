@@ -242,3 +242,22 @@ UI tenancy/operational e task/workflow aggiornati; repository stabile. Prossimo 
 ### Stato finale della sessione
 
 Checkpoint stabile nei commit `4e1a5b3`, `65884f7` e `9853717`. Restano i cinque scenari quality `PARTIAL` e il backup/restore drill con accessi esterni.
+
+## 2026-08-30 — Organization portability and persisted review outcomes
+
+### Lavoro svolto
+
+- Aggiunte route tenant-scoped per export/import organizzazione con formato versionato, remap degli ID, esclusione dei secret e stato provider `REQUIRES_REAUTH`.
+- Aggiunta persistenza conversazioni necessaria alla portabilità chat, sia nello store locale di test sia nell'adapter Supabase.
+- Aggiunti endpoint per registrare/listare verifiche di task e report di review, con findings protetti da RLS e fix task creati solo dal risultato deterministico della policy.
+
+### Verifiche
+
+- `pnpm verify`: PASS; format, lint, typecheck, 21 task di test, build Next a 40 route e audit sicurezza.
+- `pnpm test:e2e`: PASS; 8/8 scenari.
+- `supabase db reset --local`: PASS; migration `00000000000008_review_findings_rls.sql` applicata.
+- Test web: 11 file, 17 test passati, inclusi portabilità, verifica e review.
+
+### Stato finale della sessione
+
+Checkpoint stabile nei commit `0ab5f46` e `2de5113`. Restano le verifiche quality `PARTIAL` dipendenti da Supabase/GitHub/VAPID/provider/multiprocess e il backup/restore drill con accessi esterni.

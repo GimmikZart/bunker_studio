@@ -8,14 +8,14 @@ Updated 2026-08-30. `PASS` means automated evidence is present in this repositor
 | AC-002 provider switch | PASS | Binding-preserving agent registry and provider adapter contract tests. |
 | AC-003 parallel frontend/backend | PASS | Scope grouping, workspace isolation and Git artifact contract tests. |
 | AC-004 dependency serialization | PASS | `WorkflowRunner` DAG test proves dependent task waits for both prerequisites. |
-| AC-005 review loop | PASS | Reviewer finding creates fix title and re-review loop blocks until pass. |
+| AC-005 review loop | PASS | Reviewer finding creates a persisted review report, deterministic fix tasks and the package-level re-review loop blocks until pass. |
 | AC-006 quota interruption | PARTIAL | Fake quota resume, lease reclaim and persistent composition are tested; multi-process pg-boss restart requires a configured client. |
 | AC-007 budget hard stop | PASS | Workflow budget test confirms provider handler is not invoked when estimate exceeds remaining budget. |
 | AC-008 design gate | PASS | Design submission/owner approval API test and immutable version policy; exercised by `tests/e2e/api-acceptance.spec.ts`. |
 | AC-009 protected self-improvement | PARTIAL | Protected core policy and owner gate are deterministic; GitHub/CI quality integration needs credentials. |
 | AC-010 memory scaling | PASS | Bounded relevance retrieval/provenance test; full archive is not passed to context; API search exercised by `tests/e2e/api-acceptance.spec.ts`. |
 | AC-011 push notification | PARTIAL | Payload/deep-link/service-worker tests and persisted per-category preferences pass; VAPID delivery and background-device test need quality credentials/device. |
-| AC-012 export/import | PASS | Secrets excluded, IDs remapped and provider connections marked reauth in DB tests. |
+| AC-012 export/import | PASS | Export/import routes and DB tests prove secrets are excluded, IDs are remapped and provider connections are marked reauth. |
 | AC-013 local worker | PARTIAL | Registry, heartbeat, capability and concurrency tests pass; API registration/heartbeat is exercised by `tests/e2e/api-acceptance.spec.ts`; Ollama/LM Studio network smoke requires a local runtime. |
 | AC-014 multiuser isolation | PASS | API cross-organization tests plus Supabase RLS migration verification; exercised by `tests/e2e/api-acceptance.spec.ts`. |
 

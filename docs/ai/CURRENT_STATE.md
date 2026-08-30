@@ -9,9 +9,9 @@ Bootstrap, fondazioni domain e vertical slices principali sono implementati; il 
 - M0: monorepo pnpm/Turborepo, web/worker, package condivisi, strict TypeScript, ESLint, Prettier, Vitest, Playwright, env Zod, Dockerfile, CI, Supabase locale e shell Office responsive.
 - M1-M3: tenancy con ruoli/RLS, auth API fail-closed, CRUD organizzazioni/team/progetti/agenti/membri, agent registry, binding-preserving identity, runtime fake/HTTP e adapters OpenAI/Anthropic/OpenAI-compatible.
 - M4: state machine task, dependency DAG, parallel scope grouping, lease/reclaim, `DurableQueue`, adapter `PgBossQueue`, outbox dispatcher in-memory e Supabase con claim atomico, workflow runner, budget gate e quota resume.
-- M5-M6: Lead/verification/review contracts, workspace/artifact Git, safe parallelism e reviewer fix loop con limite cicli.
+- M5-M6: Lead/verification/review contracts, workspace/artifact Git, safe parallelism, risultati di verifica persistiti, report review tenant-scoped e reviewer fix loop con limite cicli.
 - M7-M14 verticali: design submission/owner approval, staffing proposal/confirmation, bounded meetings, bounded memory/search con provenance e delete, PWA/push adapter, worker registry/API, export/import ID remap, AES-256-GCM secrets e protected Studio policy.
-- UI/API: login/signup/onboarding, PWA manifest/service worker, CRUD tenancy (including reversible project/team archive), agent registry create/edit/archive, design/staffing/memory/worker, meetings/minutes, approvals, cost ledger/report, notification inbox/subscription/preferences e repository metadata endpoints.
+- UI/API: login/signup/onboarding, PWA manifest/service worker, CRUD tenancy (including reversible project/team archive), agent registry create/edit/archive, design/staffing/memory/worker, meetings/minutes, approvals, cost ledger/report, notification inbox/subscription/preferences, repository metadata, task verification e review report endpoints.
 - Persistenza production: repository Supabase SSR/RLS-aware per tenancy, agenti/provider binding, design gate, memorie, meetings/minutes, approval, cost ledger, notifiche/push, repository metadata e worker registry; lo store globale resta una fixture esclusivamente non-production.
 - Hardening release: singleton runtime per route bundle in sviluppo, budget cumulativo sui batch concorrenti, trigger Supabase per profilo e membership Owner, Docker context workspace e runbook quality/production.
 
@@ -25,10 +25,10 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 - `pnpm lint`: PASS, 15 package task.
 - `pnpm typecheck`: PASS, 15 package task.
 - `pnpm test`: PASS, 21 task Turborepo.
-- `pnpm build`: PASS, 15 package task; Next genera 38 route/pagine.
+- `pnpm build`: PASS, 15 package task; Next genera 40 route/pagine.
 - `pnpm exec playwright test`: PASS, 8 test (health, onboarding, login/signup, PWA, tenancy/isolation, design/staffing/memory, worker, operations).
 - `pnpm audit --audit-level high`: PASS, nessuna vulnerabilità nota.
-- `supabase db reset --local`: PASS; 45 policy pubbliche e 38 tabelle RLS-enabled verificate sul database locale.
+- `supabase db reset --local`: PASS; migration `00000000000008_review_findings_rls.sql` applicata e schema RLS verificato sul database locale.
 
 ## Problemi aperti
 
