@@ -2,6 +2,16 @@
 
 Storico append-only.
 
+## 2026-08-31 — Verifica E2E completa aggiornata
+
+### Verifiche
+
+- `pnpm test:e2e`: PASS, 10/10 scenari, inclusi lo smoke responsive/accessibility e tutti i flussi API/UI precedenti.
+
+### Prossimo passo
+
+Eseguire AC-001 in quality con Supabase cloud e secondo dispositivo; i cinque scenari `PARTIAL` restano vincolati a risorse esterne.
+
 ## 2026-08-31 — Quality smoke responsive/accessibility
 
 ### Lavoro svolto
