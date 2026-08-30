@@ -182,6 +182,16 @@ export class TenantStore {
     >,
   ): Project {
     this.requireWrite(organizationId, actorUserId);
+    const requestedTeamIds = patch.teamIds === undefined ? undefined : [...new Set(patch.teamIds)];
+    if (
+      requestedTeamIds?.some(
+        (teamId) =>
+          !this.state.teams.some(
+            (candidate) => candidate.id === teamId && candidate.organizationId === organizationId,
+          ),
+      )
+    )
+      throw new AuthorizationError('The selected team does not belong to this organization.');
     const project = this.state.projects.find(
       (item) => item.id === projectId && item.organizationId === organizationId && !item.archivedAt,
     );
@@ -195,7 +205,10 @@ export class TenantStore {
     if (patch.status !== undefined) project.status = patch.status;
     if (patch.defaultBranch !== undefined) project.defaultBranch = patch.defaultBranch.trim();
     if (patch.defaultTeamId !== undefined) project.defaultTeamId = patch.defaultTeamId;
-    if (patch.teamIds !== undefined) project.teamIds = [...new Set(patch.teamIds)];
+    if (requestedTeamIds !== undefined) {
+      project.teamIds = requestedTeamIds;
+      project.defaultTeamId = requestedTeamIds[0] ?? null;
+    }
     return structuredClone(project);
   }
 

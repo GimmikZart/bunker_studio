@@ -20,6 +20,24 @@ Storico append-only.
 
 Ripetere la verifica monorepo/E2E dopo il consolidamento del supporto multi-team, poi mantenere aperte soltanto le verifiche quality esterne già registrate come `PARTIAL`.
 
+## 2026-08-30 — Hardening multi-team e runtime capabilities
+
+### Lavoro svolto
+
+- Reso l’aggiornamento delle associazioni `project_teams` tenant-aware e coerente tra adapter locale e Supabase, con sostituzione controllata dell’insieme di team.
+- Aggiunto il test HTTP del runtime che verifica il capability envelope effettivamente serializzato verso il provider.
+
+### Verifiche
+
+- Test runtime: PASS, 4 test.
+- Typecheck db/web: PASS.
+- Test tenancy: PASS, 2 test.
+- Il checkpoint precedente resta coperto da `pnpm verify`, `pnpm test:e2e` 9/9 e reset Supabase locale fino alla migration 10.
+
+### Stato
+
+Repository stabile e riprendibile; restano soltanto i blocker quality esterni già riportati nella matrice acceptance.
+
 ## 2026-08-30 — Persistenza production dei verticali
 
 ### Lavoro svolto

@@ -27,6 +27,7 @@ type QueryBuilder = {
     options?: Record<string, unknown>,
   ) => MutationBuilder;
   update: (values: Record<string, unknown>) => QueryResultBuilder;
+  delete: () => QueryResultBuilder;
 };
 
 export type SupabaseDataClient = {
@@ -297,10 +298,27 @@ export class SupabaseTenancyRepository {
     patch: Partial<
       Pick<Project, 'name' | 'description' | 'autonomyMode' | 'status' | 'defaultBranch'> & {
         defaultTeamId: string | null;
+        teamIds?: string[];
       }
     >,
   ): Promise<Project> {
     await this.requireWrite(organizationId, actorUserId);
+    const teamIds = patch.teamIds === undefined ? undefined : [...new Set(patch.teamIds)];
+    if (teamIds !== undefined) {
+      for (const teamId of teamIds) {
+        const team = await unwrap(
+          this.client
+            .from('teams')
+            .select('id')
+            .eq('id', teamId)
+            .eq('organization_id', organizationId)
+            .is('archived_at', null)
+            .maybeSingle(),
+        );
+        if (!team)
+          throw new AuthorizationError('The selected team does not belong to this organization.');
+      }
+    }
     const values: Record<string, unknown> = {};
     if (patch.name !== undefined) {
       values.name = patch.name.trim();
@@ -308,6 +326,7 @@ export class SupabaseTenancyRepository {
     }
     if (patch.description !== undefined) values.description = patch.description.trim();
     if (patch.defaultTeamId !== undefined) values.default_team_id = patch.defaultTeamId;
+    if (teamIds !== undefined) values.default_team_id = teamIds[0] ?? null;
     if (patch.autonomyMode !== undefined) values.autonomy_mode = patch.autonomyMode;
     if (patch.status !== undefined) values.status = patch.status;
     if (patch.defaultBranch !== undefined) values.default_branch = patch.defaultBranch.trim();
@@ -322,7 +341,22 @@ export class SupabaseTenancyRepository {
         .maybeSingle(),
     );
     if (!data) throw new AuthorizationError('Project not found.');
-    return mapProject(data);
+    if (teamIds !== undefined) {
+      await unwrap(
+        this.client.from('project_teams').delete().eq('project_id', projectId).select('project_id'),
+      );
+      if (teamIds.length) {
+        await unwrap(
+          this.client
+            .from('project_teams')
+            .insert(teamIds.map((teamId) => ({ project_id: projectId, team_id: teamId })))
+            .select('project_id'),
+        );
+      }
+    }
+    const project = mapProject(data);
+    if (teamIds !== undefined) project.teamIds = teamIds;
+    return project;
   }
 
   async archiveProject(
