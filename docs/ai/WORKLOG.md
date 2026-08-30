@@ -451,3 +451,21 @@ Restano le verifiche quality `PARTIAL` dipendenti da accessi esterni e il backup
 ### Stato
 
 - Nessuna variazione sui blocker: AC-001, AC-006, AC-009, AC-011 e AC-013 richiedono rispettivamente quality cloud/device, pg-boss multi-processo, GitHub/CI, VAPID/device e runtime Ollama/LM Studio.
+
+## 2026-08-31 — Adapter pg-boss concreto e worker persistente
+
+### Lavoro svolto
+
+- Aggiunta la dipendenza `pg-boss` e l’adapter di processo che normalizza i job batch v12 nel contratto interno.
+- Aggiunto `startPersistentWorker` con polling della coda, dispatch periodico dell’outbox e shutdown ordinato; gli handler restano obbligatori e iniettati.
+- Mantenuta la compatibilità dell’orchestrazione con client fake e con client pg-boss che restituiscono un singolo job o una lista.
+
+### Verifiche
+
+- Queue orchestration: 20/20 test PASS.
+- Worker: 5/5 test PASS.
+- Typecheck e build worker: PASS.
+
+### Stato
+
+- AC-006 e AC-013 restano `PARTIAL` fino al test multi-processo con database quality e allo smoke di un runtime Ollama/LM Studio; non vengono simulati come completati.

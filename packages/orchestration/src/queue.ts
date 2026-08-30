@@ -76,6 +76,12 @@ export class DurableQueue {
  * structural makes orchestration easy to contract-test without a database,
  * while production can pass a real PgBoss instance.
  */
+export type PgBossFetchedJob = {
+  id: string;
+  name: string;
+  data: Record<string, unknown>;
+};
+
 export type PgBossClient = {
   send: (
     name: string,
@@ -85,7 +91,7 @@ export type PgBossClient = {
   fetch: (
     name: string,
     options?: Record<string, unknown>,
-  ) => Promise<{ id: string; name: string; data: Record<string, unknown> } | null>;
+  ) => Promise<PgBossFetchedJob | PgBossFetchedJob[] | null>;
   complete: (name: string, id: string) => Promise<void>;
   fail?: (name: string, id: string, error?: string) => Promise<void>;
 };
@@ -118,10 +124,11 @@ export class PgBossQueue {
   }
 
   async claim(options: { priority?: number } = {}): Promise<QueueJob | null> {
-    const job = await this.boss.fetch(this.queueName, {
+    const fetched = await this.boss.fetch(this.queueName, {
       batchSize: 1,
       priority: options.priority,
     });
+    const job = Array.isArray(fetched) ? (fetched[0] ?? null) : fetched;
     if (!job) return null;
     const payload = job.data as unknown as PgBossPayload;
     const result = {

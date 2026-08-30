@@ -84,4 +84,19 @@ describe('durable queue contract', () => {
     expect(sent[0]?.options?.singletonKey).toBe('task-1');
     expect((await queue.claim())?.id).toBe(created.id);
   });
+
+  it('accepts the array returned by pg-boss batch fetches', async () => {
+    const queue = new PgBossQueue({
+      send: async () => 'pg-job-2',
+      fetch: async () => [
+        {
+          id: 'pg-job-2',
+          name: 'bunker-studio.tasks',
+          data: { operationKey: 'task-2', type: 'task.run', payload: {}, availableAt: 0 },
+        },
+      ],
+      complete: async () => undefined,
+    });
+    expect((await queue.claim())?.operationKey).toBe('task-2');
+  });
 });

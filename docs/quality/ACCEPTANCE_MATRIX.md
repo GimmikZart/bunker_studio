@@ -11,14 +11,14 @@ Checkpoint 2026-08-31: the local protected Studio Labs workflow now creates gate
 | AC-003 parallel frontend/backend | PASS | `WorkflowRunner` executes disjoint scopes concurrently, serializes overlapping scopes, and persisted Lead tasks retain read/write scope and parallel-group metadata; Git artifact tests preserve isolated workspaces. |
 | AC-004 dependency serialization | PASS | `WorkflowRunner` DAG test proves dependent task waits for both prerequisites. |
 | AC-005 review loop | PASS | Reviewer finding creates a persisted review report, deterministic fix tasks and the package-level re-review loop blocks until pass. |
-| AC-006 quota interruption | PARTIAL | Fake quota resume, provider-session resume, lease reclaim and persistent composition are tested; multi-process pg-boss restart requires a configured client. |
+| AC-006 quota interruption | PARTIAL | Fake quota resume, provider-session resume, lease reclaim, concrete pg-boss v12 adapter and persistent worker composition are tested; multi-process restart with a configured database still requires quality execution. |
 | AC-007 budget hard stop | PASS | Workflow budget test confirms provider handler is not invoked when estimate exceeds remaining budget. |
 | AC-008 design gate | PASS | Design submission/owner approval API test and immutable version policy; exercised by `tests/e2e/api-acceptance.spec.ts`. |
 | AC-009 protected self-improvement | PARTIAL | Studio Labs UI/API creates protected task+Owner approval and the server gate requires reviewer, CI, Owner and human actor; GitHub/CI quality integration still needs credentials. |
 | AC-010 memory scaling | PASS | Bounded relevance retrieval/provenance test; full archive is not passed to context; API search exercised by `tests/e2e/api-acceptance.spec.ts`. |
 | AC-011 push notification | PARTIAL | Payload/deep-link/service-worker tests and persisted per-category preferences pass; VAPID delivery and background-device test need quality credentials/device. |
 | AC-012 export/import | PASS | Export/import routes and DB tests prove secrets are excluded, organization/task/dependency IDs are remapped and provider connections are marked reauth; imported tasks remain DRAFT. |
-| AC-013 local worker | PARTIAL | Registry, heartbeat, capability and concurrency tests pass; API registration/heartbeat is exercised by `tests/e2e/api-acceptance.spec.ts`; Ollama/LM Studio network smoke requires a local runtime. |
+| AC-013 local worker | PARTIAL | Registry, heartbeat, capability and concurrency tests pass; API registration/heartbeat and the pg-boss pull composition are available; Ollama/LM Studio network smoke and offline reassignment require a configured local runtime/quality node. |
 | AC-014 multiuser isolation | PASS | API cross-organization tests plus Supabase RLS migration verification; exercised by `tests/e2e/api-acceptance.spec.ts`. |
 
 ## Release blockers

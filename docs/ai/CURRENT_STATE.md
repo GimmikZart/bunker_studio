@@ -12,7 +12,7 @@ Bootstrap, fondazioni domain e vertical slices principali sono implementati; il 
 
 - M0: monorepo pnpm/Turborepo, web/worker, package condivisi, strict TypeScript, ESLint, Prettier, Vitest, Playwright, env Zod, Dockerfile, CI, Supabase locale e shell Office responsive.
 - M1-M3: tenancy con ruoli/RLS, auth API fail-closed, CRUD organizzazioni/team/progetti/agenti/membri, progetti assegnabili a più team tramite `project_teams`, agent registry, binding-preserving identity, runtime fake/HTTP e adapter OpenAI/Anthropic/OpenAI-compatible con payload/header nativi, SSE e usage normalizzato.
-- M4: state machine task, dependency DAG, parallel scope grouping, lease/reclaim, `DurableQueue`, adapter `PgBossQueue`, outbox dispatcher in-memory e Supabase con claim atomico, workflow runner concorrente con serializzazione degli scope, budget gate e quota resume con session preservation.
+- M4: state machine task, dependency DAG, parallel scope grouping, lease/reclaim, `DurableQueue`, adapter `PgBossQueue` compatibile con pg-boss v12 e composition worker persistente, outbox dispatcher in-memory e Supabase con claim atomico, workflow runner concorrente con serializzazione degli scope, budget gate e quota resume con session preservation.
 - M5-M6: Lead/verification/review contracts, workspace/artifact Git, safe parallelism, risultati di verifica persistiti, report review tenant-scoped e reviewer fix loop con limite cicli.
 - M7-M14 verticali: design submission/owner approval, staffing proposal/confirmation, bounded meetings, bounded memory/search con provenance e delete, PWA/push adapter, worker registry/API, export/import ID remap di task e dipendenze, AES-256-GCM secrets e protected Studio policy.
 - M2 capability envelope: avatar statici, skills/tools/permissions persistiti e trasferiti al runtime senza esporre segreti; migrazione compatibile per i record agent esistenti.
@@ -38,7 +38,7 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 
 ## Problemi aperti
 
-- Provider reali, Supabase cloud, GitHub, VAPID/Web Push e client pg-boss concreto richiedono configurazione/credenziali quality; fake e adapter contract-first sono disponibili.
+- Provider reali, Supabase cloud, GitHub, VAPID/Web Push e pg-boss multi-process quality richiedono configurazione/credenziali; adapter pg-boss concreto, fake e contract test sono disponibili.
 - La chat production seleziona un runtime HTTP configurato, usa il binding come modello di fallback e salva conversazioni/messaggi tenant-scoped; il fake runtime resta ammesso solo per fixture locali.
 - Office, Agent registry, Meetings, Approvals, Cost Center e Activity hanno pannelli client live con organization selector e stati/errori espliciti; Projects e Teams espongono create/edit/archive tenant-scoped, mentre Settings mostra runtime, provider senza segreti, worker/heartbeat e preferenze notifiche per categoria.
 - Mancano ancora le verifiche quality esterne dei criteri `PARTIAL` e il drill backup/restore su un progetto quality; la UI task/workflow supporta create, transizioni controllate e persistenza del piano Lead, mentre l’endpoint di esecuzione resta soggetto ai gate esistenti.
