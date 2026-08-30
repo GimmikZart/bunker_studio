@@ -1,5 +1,10 @@
-import { AuthorizationError, type OrganizationRole } from '@bunker-studio/core';
-import type { MemoryUnit, SupabaseDataClient, QueryResult } from '@bunker-studio/db';
+import { AuthorizationError, type DesignRecord, type OrganizationRole } from '@bunker-studio/core';
+import type {
+  MemoryUnit,
+  RegisteredWorker,
+  SupabaseDataClient,
+  QueryResult,
+} from '@bunker-studio/db';
 import type {
   ApprovalRecord,
   CostRecord,
@@ -157,6 +162,44 @@ function mapMemory(value: unknown): MemoryUnit {
     projectId: nullableString(item.project_id),
     sourceId: nullableString(item.source_id),
     deletedAt: typeof item.deleted_at === 'string' ? item.deleted_at : null,
+  };
+}
+
+function mapDesign(value: unknown): DesignRecord {
+  const item = object(value);
+  const spec = item.spec_json;
+  return {
+    id: stringValue(item.id, 'id'),
+    version: typeof item.version_number === 'number' ? item.version_number : 0,
+    status: item.status as DesignRecord['status'],
+    spec: spec && typeof spec === 'object' ? (spec as Record<string, unknown>) : {},
+    approvedAt: nullableString(item.approved_at),
+    approvedBy: nullableString(item.approved_by),
+  };
+}
+
+function mapWorker(value: unknown): RegisteredWorker {
+  const item = object(value);
+  const heartbeat =
+    typeof item.last_heartbeat_at === 'string' ? Date.parse(item.last_heartbeat_at) : 0;
+  const capabilitiesValue = object(item.capabilities_json ?? {});
+  const scopesValue = object(item.allowed_scopes_json ?? {});
+  return {
+    id: stringValue(item.id, 'id'),
+    name: stringValue(item.name, 'name'),
+    organizationId: stringValue(item.organization_id, 'organization_id'),
+    status:
+      item.status === 'REVOKED' ? 'REVOKED' : item.status === 'OFFLINE' ? 'OFFLINE' : 'ONLINE',
+    capabilities: Array.isArray(capabilitiesValue.items)
+      ? capabilitiesValue.items.filter((entry): entry is string => typeof entry === 'string')
+      : [],
+    allowedScopes: Array.isArray(scopesValue.items)
+      ? scopesValue.items.filter((entry): entry is string => typeof entry === 'string')
+      : [],
+    maxConcurrent: typeof item.max_concurrent === 'number' ? item.max_concurrent : 1,
+    activeJobs: typeof item.active_jobs === 'number' ? item.active_jobs : 0,
+    lastHeartbeatAt: Number.isNaN(heartbeat) ? 0 : heartbeat,
+    heartbeatIntervalMs: 60_000,
   };
 }
 
@@ -567,6 +610,203 @@ export class SupabaseOperationalRepository {
         .maybeSingle(),
     );
     return Boolean(data);
+  }
+
+  async listDesignVersions(organizationId: string, actorUserId: string): Promise<DesignRecord[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client.from('design_versions').select('*').eq('organization_id', organizationId),
+    );
+    return Array.isArray(data) ? data.map(mapDesign) : [];
+  }
+
+  async submitDesignVersion(
+    organizationId: string,
+    input: Pick<DesignRecord, 'version' | 'spec'> & {
+      rationale?: string;
+      previewArtifactIds?: string[];
+    },
+    actorUserId: string,
+  ): Promise<DesignRecord> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('design_versions')
+        .insert({
+          organization_id: organizationId,
+          design_request_id: null,
+          version_number: input.version,
+          status: 'SUBMITTED',
+          spec_json: input.spec,
+          rationale: input.rationale ?? '',
+          preview_artifact_ids: input.previewArtifactIds ?? [],
+        })
+        .select('*')
+        .single(),
+    );
+    return mapDesign(data);
+  }
+
+  async approveDesignVersion(
+    organizationId: string,
+    versionId: string,
+    actorUserId: string,
+  ): Promise<DesignRecord[]> {
+    const role = await this.requireMember(organizationId, actorUserId);
+    if (role !== 'OWNER') throw new AuthorizationError('Owner approval is required.');
+    const versions = await this.listDesignVersions(organizationId, actorUserId);
+    const target = versions.find(
+      (version) => version.id === versionId && version.status === 'SUBMITTED',
+    );
+    if (!target) throw new Error('Only a submitted design version can be approved.');
+    const approvedAt = new Date().toISOString();
+    for (const version of versions) {
+      const patch =
+        version.id === versionId
+          ? { status: 'APPROVED', approved_at: approvedAt, approved_by: actorUserId }
+          : version.status === 'APPROVED'
+            ? { status: 'SUPERSEDED' }
+            : null;
+      if (patch) {
+        await unwrap(
+          this.client
+            .from('design_versions')
+            .update(patch)
+            .eq('id', version.id)
+            .eq('organization_id', organizationId),
+        );
+      }
+    }
+    return this.listDesignVersions(organizationId, actorUserId);
+  }
+
+  async registerWorker(input: {
+    organizationId: string;
+    actorUserId: string;
+    name: string;
+    capabilities: string[];
+    allowedScopes?: string[];
+    maxConcurrent?: number;
+  }): Promise<RegisteredWorker> {
+    await this.requireMember(input.organizationId, input.actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('worker_nodes')
+        .insert({
+          organization_id: input.organizationId,
+          node_type: 'LOCAL',
+          name: input.name.trim(),
+          status: 'ONLINE',
+          credential_hash: crypto.randomUUID(),
+          capabilities_json: { items: input.capabilities },
+          allowed_scopes_json: { items: input.allowedScopes ?? [] },
+          max_concurrent: input.maxConcurrent ?? 1,
+          active_jobs: 0,
+          last_heartbeat_at: new Date().toISOString(),
+        })
+        .select('*')
+        .single(),
+    );
+    return mapWorker(data);
+  }
+
+  async getWorker(
+    nodeId: string,
+    organizationId: string,
+    actorUserId: string,
+  ): Promise<RegisteredWorker | null> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('worker_nodes')
+        .select('*')
+        .eq('id', nodeId)
+        .eq('organization_id', organizationId)
+        .maybeSingle(),
+    );
+    return data ? mapWorker(data) : null;
+  }
+
+  async heartbeatWorker(
+    nodeId: string,
+    organizationId: string,
+    actorUserId: string,
+  ): Promise<RegisteredWorker> {
+    await this.requireMember(organizationId, actorUserId);
+    const current = await this.getWorker(nodeId, organizationId, actorUserId);
+    if (!current || current.status === 'REVOKED') throw new Error('Worker is not active.');
+    const data = await unwrap(
+      this.client
+        .from('worker_nodes')
+        .update({ status: 'ONLINE', last_heartbeat_at: new Date().toISOString() })
+        .eq('id', nodeId)
+        .eq('organization_id', organizationId)
+        .select('*')
+        .single(),
+    );
+    return mapWorker(data);
+  }
+
+  async recordChat(
+    input: {
+      organizationId: string;
+      agentId: string;
+      externalSessionId: string;
+      userContent: string;
+      assistantContent: string;
+      provider: string;
+    },
+    actorUserId: string,
+  ): Promise<void> {
+    await this.requireMember(input.organizationId, actorUserId);
+    const existing = await unwrap(
+      this.client
+        .from('conversations')
+        .select('*')
+        .eq('organization_id', input.organizationId)
+        .eq('primary_agent_id', input.agentId)
+        .eq('external_session_id', input.externalSessionId)
+        .maybeSingle(),
+    );
+    const conversation = existing
+      ? object(existing)
+      : object(
+          await unwrap(
+            this.client
+              .from('conversations')
+              .insert({
+                organization_id: input.organizationId,
+                conversation_type: 'DIRECT_CHAT',
+                primary_agent_id: input.agentId,
+                title: 'Direct chat',
+                external_session_id: input.externalSessionId,
+              })
+              .select('*')
+              .single(),
+          ),
+        );
+    await unwrap(
+      this.client
+        .from('messages')
+        .insert([
+          {
+            organization_id: input.organizationId,
+            conversation_id: conversation.id,
+            sender_type: 'USER',
+            sender_user_id: actorUserId,
+            content_json: { text: input.userContent },
+          },
+          {
+            organization_id: input.organizationId,
+            conversation_id: conversation.id,
+            sender_type: 'AGENT',
+            sender_agent_id: input.agentId,
+            content_json: { text: input.assistantContent },
+            provider_metadata: { provider: input.provider },
+          },
+        ])
+        .select('*'),
+    );
   }
 
   private async requireMember(organizationId: string, userId: string): Promise<OrganizationRole> {

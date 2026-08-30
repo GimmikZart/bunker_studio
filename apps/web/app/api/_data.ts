@@ -16,6 +16,7 @@ import {
   getMeeting,
   getMemories,
   getRepository,
+  listDesignVersions,
   listApprovals,
   listCosts,
   listMeetings,
@@ -23,9 +24,12 @@ import {
   markNotificationRead,
   savePushSubscription,
   saveRepository,
+  replaceDesignVersions,
   resolveApproval,
   tenantStore,
   updateMeeting,
+  workerRegistry,
+  submitDesignVersion,
   type ApprovalRecord,
   type CostRecord,
   type MeetingRecord,
@@ -33,7 +37,10 @@ import {
   type PushSubscriptionRecord,
   type RepositoryRecord,
 } from './_store';
-import type { MemoryUnit } from '@bunker-studio/db';
+import type { MemoryUnit, RegisteredWorker } from '@bunker-studio/db';
+import { approveDesignVersion as applyDesignApproval } from '@bunker-studio/core';
+import type { DesignRecord } from '@bunker-studio/core';
+import { FakeRuntime, HttpAgentRuntime, type AgentRuntime } from '@bunker-studio/agent-runtime';
 
 export type WebTenancyRepository = TenantStore | SupabaseTenancyRepository;
 
@@ -114,6 +121,49 @@ type LocalOperationalRepository = {
   ) => MemoryUnit;
   listMemories: (organizationId: string, actorUserId: string) => MemoryUnit[];
   deleteMemory: (organizationId: string, memoryId: string, actorUserId: string) => boolean;
+  listDesignVersions: (organizationId: string, actorUserId: string) => DesignRecord[];
+  submitDesignVersion: (
+    organizationId: string,
+    input: Pick<DesignRecord, 'version' | 'spec'> & {
+      rationale?: string;
+      previewArtifactIds?: string[];
+    },
+    actorUserId: string,
+  ) => DesignRecord;
+  approveDesignVersion: (
+    organizationId: string,
+    versionId: string,
+    actorUserId: string,
+  ) => DesignRecord[];
+  registerWorker: (input: {
+    organizationId: string;
+    actorUserId: string;
+    name: string;
+    capabilities: string[];
+    allowedScopes?: string[];
+    maxConcurrent?: number;
+  }) => RegisteredWorker;
+  getWorker: (
+    nodeId: string,
+    organizationId: string,
+    actorUserId: string,
+  ) => RegisteredWorker | null;
+  heartbeatWorker: (
+    nodeId: string,
+    organizationId: string,
+    actorUserId: string,
+  ) => RegisteredWorker;
+  recordChat: (
+    input: {
+      organizationId: string;
+      agentId: string;
+      externalSessionId: string;
+      userContent: string;
+      assistantContent: string;
+      provider: string;
+    },
+    actorUserId: string,
+  ) => void;
 };
 
 const localOperationalRepository: LocalOperationalRepository = {
@@ -137,10 +187,43 @@ const localOperationalRepository: LocalOperationalRepository = {
   addMemory: (organizationId, input) => addMemory(organizationId, input),
   listMemories: (organizationId) => getMemories(organizationId),
   deleteMemory: (organizationId, memoryId) => deleteMemory(organizationId, memoryId),
+  listDesignVersions: (organizationId) => listDesignVersions(organizationId),
+  submitDesignVersion: (organizationId, input) =>
+    submitDesignVersion(organizationId, { version: input.version, spec: input.spec }),
+  approveDesignVersion: (organizationId, versionId, actorUserId) => {
+    const versions = listDesignVersions(organizationId);
+    const approved = applyDesignApproval(versions, versionId, actorUserId);
+    replaceDesignVersions(organizationId, approved);
+    return approved;
+  },
+  registerWorker: ({ organizationId, name, capabilities, allowedScopes, maxConcurrent }) =>
+    workerRegistry.register({ organizationId, name, capabilities, allowedScopes, maxConcurrent }),
+  getWorker: (nodeId, organizationId) => {
+    const node = workerRegistry.get(nodeId);
+    return node?.organizationId === organizationId ? node : null;
+  },
+  heartbeatWorker: (nodeId, organizationId) => {
+    const node = workerRegistry.get(nodeId);
+    if (!node || node.organizationId !== organizationId) throw new Error('Worker not found.');
+    return workerRegistry.heartbeat(nodeId);
+  },
+  recordChat: () => undefined,
 };
 
 export async function getWebOperationalRepository(): Promise<WebOperationalRepository | null> {
   if (process.env.NODE_ENV !== 'production') return localOperationalRepository;
   const client = await createRequestSupabaseClient();
   return client ? new SupabaseOperationalRepository(client as unknown as SupabaseDataClient) : null;
+}
+
+export function getWebAgentRuntime(providerBindingId?: string): AgentRuntime | null {
+  if (process.env.NODE_ENV !== 'production') return new FakeRuntime({});
+  const endpoint = process.env.AGENT_PROVIDER_ENDPOINT;
+  if (!endpoint) return null;
+  return new HttpAgentRuntime({
+    provider: process.env.AGENT_PROVIDER_TYPE ?? 'openai-compatible',
+    endpoint,
+    apiKey: process.env.AGENT_PROVIDER_API_KEY,
+    model: process.env.AGENT_PROVIDER_MODEL || providerBindingId,
+  });
 }

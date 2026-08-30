@@ -2,11 +2,11 @@
 
 ## Prossima attività
 
-Estendere il repository Supabase autenticato a agenti e record operativi (design, memory, meetings, approvals, costs, notifications, workers), mantenendo lo store in-memory solo come fixture locale, quindi verificare la persistenza dopo riavvio multi-processo.
+Collegare il runtime provider configurato alla chat production e persistere conversazioni/messaggi con RLS; mantenere `FakeRuntime` solo per fixture locali e aggiungere contract test per il percorso provider-independent.
 
 ### Area interessata
 
-`packages/db/src/`, `apps/web/app/api/`, `docs/quality/ACCEPTANCE_MATRIX.md` e `docs/DEPLOYMENT.md`.
+`packages/agent-runtime/src/`, `packages/config/src/`, `apps/web/app/api/`, `supabase/migrations/` e `docs/quality/ACCEPTANCE_MATRIX.md`.
 
 ### Comportamento atteso
 

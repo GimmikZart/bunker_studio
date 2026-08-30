@@ -170,14 +170,16 @@ function normalizeHttpError(status: number, statusText: string): RuntimeError {
 export async function collectRun(runtime: AgentRuntime, input: RunRequest): Promise<RunResult> {
   let text = '';
   let sessionId = input.sessionId ?? '';
+  let provider = 'normalized';
   for await (const event of runtime.start(input)) {
     sessionId = event.sessionId;
+    provider = event.provider ?? provider;
     if (event.type === 'TEXT_DELTA') text += event.text ?? '';
   }
   return {
     sessionId,
     text,
     usage: { inputTokens: input.prompt.length, outputTokens: text.length },
-    provider: 'normalized',
+    provider,
   };
 }

@@ -13,6 +13,12 @@ const envSchema = z.object({
     .default('postgresql://postgres:postgres@127.0.0.1:54322/postgres'),
   WEB_PORT: z.coerce.number().int().positive().default(3000),
   WORKER_HEARTBEAT_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+  AGENT_PROVIDER_TYPE: z
+    .enum(['openai', 'anthropic', 'openai-compatible'])
+    .default('openai-compatible'),
+  AGENT_PROVIDER_ENDPOINT: z.union([z.string().url(), z.literal('')]).optional(),
+  AGENT_PROVIDER_API_KEY: z.union([z.string().min(1), z.literal('')]).optional(),
+  AGENT_PROVIDER_MODEL: z.union([z.string().min(1), z.literal('')]).optional(),
 });
 
 export type StudioEnv = z.infer<typeof envSchema>;

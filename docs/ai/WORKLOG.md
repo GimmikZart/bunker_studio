@@ -2,6 +2,25 @@
 
 Storico append-only.
 
+## 2026-08-30 — Persistenza production dei verticali
+
+### Lavoro svolto
+
+- Aggiunto adapter Supabase SSR/RLS-aware per design versions, memorie, meetings/minutes, approval, cost ledger, notifiche/push, repository metadata e worker registry.
+- Corretto il bypass production nei PATCH di team/progetto e nella staffing confirmation.
+- Aggiunti vincoli SQL per costo meeting, capacità/concorrenza worker, upsert push/repository e isolamento tenant delle design versions.
+
+### Verifiche
+
+- `pnpm typecheck`: PASS, 15 package task.
+- `pnpm lint`: PASS, 15 package task.
+- `supabase db reset --local`: PASS, migrations 00000000000000..06.
+- `pnpm exec playwright test tests/e2e/api-acceptance.spec.ts`: PASS, 4 scenari.
+
+### Prossimo passo
+
+Comporre il provider runtime production e persistere conversations/messages con RLS; i provider reali restano subordinati a credenziali quality.
+
 ## 2026-08-30 — Acceptance E2E e operational API slices
 
 ### Lavoro svolto

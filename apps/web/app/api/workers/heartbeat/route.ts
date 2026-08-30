@@ -1,7 +1,7 @@
 import { workerHeartbeatSchema } from '@bunker-studio/contracts';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../_auth';
-import { workerRegistry } from '../../_store';
+import { getWebOperationalRepository } from '../../_data';
 
 export async function POST(request: Request) {
   const actorId = await resolveActorId(request);
@@ -11,12 +11,16 @@ export async function POST(request: Request) {
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
+  const operations = await getWebOperationalRepository();
+  if (!operations)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
     const { nodeId } = workerHeartbeatSchema.parse(await request.json());
-    const node = workerRegistry.get(nodeId);
-    if (!node || node.organizationId !== organizationId)
-      return NextResponse.json({ error: 'Worker not found.' }, { status: 404 });
-    return NextResponse.json({ worker: workerRegistry.heartbeat(nodeId) });
+    const node = await operations.getWorker(nodeId, organizationId, actorId);
+    if (!node) return NextResponse.json({ error: 'Worker not found.' }, { status: 404 });
+    return NextResponse.json({
+      worker: await operations.heartbeatWorker(nodeId, organizationId, actorId),
+    });
   } catch {
     return NextResponse.json({ error: 'Worker heartbeat rejected.' }, { status: 409 });
   }

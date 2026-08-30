@@ -1,7 +1,7 @@
 import { staffingConfirmationSchema } from '@bunker-studio/contracts';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../_auth';
-import { tenantStore } from '../../_store';
+import { getWebAgentRepository } from '../../_data';
 
 export async function POST(request: Request) {
   const organizationId = request.headers.get('x-bunker-organization-id')?.trim();
@@ -11,11 +11,16 @@ export async function POST(request: Request) {
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
+  const store = await getWebAgentRepository();
+  if (!store)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
     const input = staffingConfirmationSchema.parse(await request.json());
     if (!input.confirmed) return NextResponse.json({ hired: [], confirmed: false });
-    const hired = input.agents.map((agent) =>
-      tenantStore.createAgent({ ...agent, organizationId, actorUserId: actorId }),
+    const hired = await Promise.all(
+      input.agents.map((agent) =>
+        store.createAgent({ ...agent, organizationId, actorUserId: actorId }),
+      ),
     );
     return NextResponse.json({ hired, confirmed: true }, { status: 201 });
   } catch (error) {

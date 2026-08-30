@@ -1,7 +1,6 @@
-import { approveDesignVersion } from '@bunker-studio/core';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../../_auth';
-import { listDesignVersions, replaceDesignVersions, tenantStore } from '../../../_store';
+import { getWebOperationalRepository } from '../../../_data';
 
 export async function POST(request: Request, context: { params: Promise<{ versionId: string }> }) {
   const organizationId = request.headers.get('x-bunker-organization-id')?.trim();
@@ -11,15 +10,16 @@ export async function POST(request: Request, context: { params: Promise<{ versio
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
-  if (!tenantStore.getRole(organizationId, actorId))
-    return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
-  if (tenantStore.getRole(organizationId, actorId) !== 'OWNER')
+  const operations = await getWebOperationalRepository();
+  if (!operations)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  const role = await operations.getRole(organizationId, actorId);
+  if (!role) return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
+  if (role !== 'OWNER')
     return NextResponse.json({ error: 'Owner approval is required.' }, { status: 403 });
   const { versionId } = await context.params;
   try {
-    const versions = listDesignVersions(organizationId);
-    const approved = approveDesignVersion(versions, versionId, actorId);
-    replaceDesignVersions(organizationId, approved);
+    const approved = await operations.approveDesignVersion(organizationId, versionId, actorId);
     return NextResponse.json({ versions: approved });
   } catch {
     return NextResponse.json(
