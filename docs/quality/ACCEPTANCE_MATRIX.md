@@ -1,6 +1,6 @@
 # Bunker Studio V1 acceptance matrix
 
-Updated 2026-08-30. `PASS` means automated evidence is present in this repository. `PARTIAL` means the in-scope foundation is implemented but requires an external credential, device, provider or multi-process quality run. The latest local release check also covers Settings/provider visibility and the task state-machine UI, without changing the external-quality statuses below.
+Updated 2026-08-30. `PASS` means automated evidence is present in this repository. `PARTIAL` means the in-scope foundation is implemented but requires an external credential, device, provider or multi-process quality run. The latest local release check also covers agent registry management, notification preferences, Settings/provider visibility and the task state-machine UI, without changing the external-quality statuses below.
 
 | Criterion | Status | Evidence / remaining verification |
 |---|---|---|
@@ -14,7 +14,7 @@ Updated 2026-08-30. `PASS` means automated evidence is present in this repositor
 | AC-008 design gate | PASS | Design submission/owner approval API test and immutable version policy; exercised by `tests/e2e/api-acceptance.spec.ts`. |
 | AC-009 protected self-improvement | PARTIAL | Protected core policy and owner gate are deterministic; GitHub/CI quality integration needs credentials. |
 | AC-010 memory scaling | PASS | Bounded relevance retrieval/provenance test; full archive is not passed to context; API search exercised by `tests/e2e/api-acceptance.spec.ts`. |
-| AC-011 push notification | PARTIAL | Payload/deep-link/service-worker tests pass; VAPID delivery and background-device test need quality credentials/device. |
+| AC-011 push notification | PARTIAL | Payload/deep-link/service-worker tests and persisted per-category preferences pass; VAPID delivery and background-device test need quality credentials/device. |
 | AC-012 export/import | PASS | Secrets excluded, IDs remapped and provider connections marked reauth in DB tests. |
 | AC-013 local worker | PARTIAL | Registry, heartbeat, capability and concurrency tests pass; API registration/heartbeat is exercised by `tests/e2e/api-acceptance.spec.ts`; Ollama/LM Studio network smoke requires a local runtime. |
 | AC-014 multiuser isolation | PASS | API cross-organization tests plus Supabase RLS migration verification; exercised by `tests/e2e/api-acceptance.spec.ts`. |

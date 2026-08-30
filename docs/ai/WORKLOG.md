@@ -223,3 +223,22 @@ Fondamenti M1–M4 e policy trasversali stabilizzati. Riprendere da `docs/ai/NEX
 ### Stato finale della sessione
 
 UI tenancy/operational e task/workflow aggiornati; repository stabile. Prossimo passo: eseguire i cinque scenari quality `PARTIAL` e il backup/restore drill quando saranno disponibili gli accessi esterni.
+
+## 2026-08-30 — Agent registry e notification preferences
+
+### Lavoro svolto
+
+- Aggiunta UI Agents per create/edit/archive tenant-scoped, con provider binding label e credenziali sempre server-side.
+- Aggiunta archiviazione reversibile per team e progetti tramite DELETE semantico, con protezione del progetto Studio core e test di isolamento.
+- Aggiunte preferenze notifiche per categoria (`APPROVAL`, `SECURITY`, `BUDGET`, `QUOTA`, `WORKFLOW`) con route GET/PATCH, stato locale e persistenza Supabase/RLS.
+- Estesa la policy push provider-neutral per rispettare le preferenze categoria quando il dispatcher viene configurato.
+
+### Verifiche
+
+- `pnpm verify`: PASS; format, lint, typecheck, 21 task di test, build Next e audit sicurezza.
+- `pnpm test:e2e`: PASS; 8/8 scenari.
+- `supabase db reset --local`: PASS; migration `00000000000007_notification_preferences.sql` applicata.
+
+### Stato finale della sessione
+
+Checkpoint stabile nei commit `4e1a5b3`, `65884f7` e `9853717`. Restano i cinque scenari quality `PARTIAL` e il backup/restore drill con accessi esterni.
