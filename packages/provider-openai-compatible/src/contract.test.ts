@@ -28,4 +28,27 @@ describe('OpenAI-compatible adapter contract', () => {
     expect(result.text).toBe('local response');
     expect(result.provider).toBe('openai-compatible');
   });
+
+  it('normalizes an OpenAI-compatible SSE response', async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":"local"}}]}\n\n'));
+        controller.enqueue(
+          encoder.encode('data: {"choices":[{"delta":{"content":" stream"}}]}\n\n'),
+        );
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        controller.close();
+      },
+    });
+    const result = await collectRun(
+      createCompatibleRuntime({
+        endpoint: 'http://127.0.0.1:1234/v1/chat/completions',
+        fetchFn: async () =>
+          new Response(stream, { status: 200, headers: { 'content-type': 'text/event-stream' } }),
+      }),
+      { agentId: 'a', prompt: 'ping', correlationId: 'c' },
+    );
+    expect(result.text).toBe('local stream');
+  });
 });

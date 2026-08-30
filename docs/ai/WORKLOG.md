@@ -2,6 +2,17 @@
 
 Storico append-only.
 
+## 2026-08-31 — OpenAI-compatible SSE contract
+
+### Verifiche
+
+- Corretto l’adapter OpenAI-compatible per dichiarare e gestire realmente gli stream SSE; aggiunto contract test con chunk `delta` e terminazione `[DONE]`.
+- Typecheck, lint, build e 3 test del package OpenAI-compatible: PASS.
+
+### Prossimo passo
+
+Eseguire smoke su Ollama/LM Studio in quality quando il runtime locale è disponibile.
+
 ## 2026-08-31 — Adapter provider nativi e streaming normalizzato
 
 ### Lavoro svolto

@@ -27,8 +27,25 @@ export function createCompatibleRuntime(options: {
         capabilities: input.capabilities ?? { skills: [], tools: [], permissions: [] },
       }),
     }),
+    parseStreamChunk: parseOpenAICompatibleStreamChunk,
     capabilities: { streaming: true, resume: false },
   });
+}
+
+function parseOpenAICompatibleStreamChunk(payload: unknown) {
+  const item = payload as {
+    choices?: { delta?: { content?: string }; finish_reason?: string | null }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+  return {
+    text: item.choices?.[0]?.delta?.content,
+    done: Boolean(item.choices?.[0]?.finish_reason),
+    usage:
+      typeof item.usage?.prompt_tokens === 'number' &&
+      typeof item.usage?.completion_tokens === 'number'
+        ? { inputTokens: item.usage.prompt_tokens, outputTokens: item.usage.completion_tokens }
+        : undefined,
+  };
 }
 
 export function createCompatibleFakeRuntime(): AgentRuntime {
