@@ -82,6 +82,8 @@ export type PgBossFetchedJob = {
   data: Record<string, unknown>;
 };
 
+export const DEFAULT_PG_BOSS_QUEUE = 'bunker-studio.tasks';
+
 export type PgBossClient = {
   send: (
     name: string,
@@ -103,7 +105,7 @@ export class PgBossQueue {
 
   constructor(
     private readonly boss: PgBossClient,
-    private readonly queueName = 'bunker-studio.tasks',
+    private readonly queueName = DEFAULT_PG_BOSS_QUEUE,
   ) {}
 
   async enqueue(input: QueueInput): Promise<QueueJob> {

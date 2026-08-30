@@ -469,3 +469,15 @@ Restano le verifiche quality `PARTIAL` dipendenti da accessi esterni e il backup
 ### Stato
 
 - AC-006 e AC-013 restano `PARTIAL` fino al test multi-processo con database quality e allo smoke di un runtime Ollama/LM Studio; non vengono simulati come completati.
+
+## 2026-08-31 — Smoke pg-boss PostgreSQL locale
+
+### Verifiche
+
+- Avviato `pg-boss` v12 contro il PostgreSQL Supabase locale.
+- Creazione queue, `send`, `fetch` batch e `complete`: PASS.
+- Il controllo ha rilevato e corretto la necessità di creare esplicitamente la queue prima del primo invio.
+
+### Stato
+
+- La prova conferma l’integrazione single-process locale; non sostituisce il test di restart multi-processo su quality richiesto da AC-006.

@@ -35,6 +35,7 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 - `pnpm audit --audit-level high`: PASS, nessuna vulnerabilità nota.
 - `supabase db reset --local`: PASS; migrations `00000000000000..00000000000013` applicate, inclusi RLS assignments, trigger domain events e metadati workflow plan.
 - Test mirati post-hardening: Lead workflow plan 2/2, AgentRuntime 6/6, Anthropic adapter 2/2, typecheck 15/15: PASS.
+- Smoke pg-boss v12 su PostgreSQL Supabase locale (queue init, send/fetch batch, complete): PASS; il restart multi-processo quality resta da eseguire.
 
 ## Problemi aperti
 

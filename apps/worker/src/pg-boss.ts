@@ -1,5 +1,5 @@
 import { PgBoss } from 'pg-boss';
-import type { PgBossClient } from '@bunker-studio/orchestration';
+import { DEFAULT_PG_BOSS_QUEUE, type PgBossClient } from '@bunker-studio/orchestration';
 
 export type StartedPgBoss = {
   client: PgBossClient;
@@ -39,8 +39,12 @@ export function createPgBossClient(boss: PgBossLike): PgBossClient {
  * instance. Keeping this adapter at the process boundary prevents pg-boss
  * types from leaking into orchestration and keeps tests injectable.
  */
-export async function startPgBoss(connectionString: string): Promise<StartedPgBoss> {
+export async function startPgBoss(
+  connectionString: string,
+  queueName = DEFAULT_PG_BOSS_QUEUE,
+): Promise<StartedPgBoss> {
   if (!connectionString.trim()) throw new Error('DATABASE_URL is required for pg-boss.');
   const boss = await new PgBoss(connectionString).start();
+  if (!(await boss.getQueue(queueName))) await boss.createQueue(queueName);
   return { client: createPgBossClient(boss), stop: () => boss.stop() };
 }
