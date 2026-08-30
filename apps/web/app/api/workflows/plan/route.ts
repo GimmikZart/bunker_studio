@@ -121,6 +121,8 @@ export async function GET(request: Request) {
   if (!operations)
     return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
+    if (!(await operations.getRole(organizationId, actorUserId)))
+      return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
     return NextResponse.json({
       workflows: await operations.listWorkflows(organizationId, actorUserId),
     });

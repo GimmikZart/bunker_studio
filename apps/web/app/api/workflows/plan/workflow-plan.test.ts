@@ -80,6 +80,13 @@ describe('Lead workflow plan route', () => {
 
     const listed = await listWorkflows(new Request('http://localhost', { headers }));
     expect((await listed.json()).workflows).toHaveLength(1);
+
+    const intruder = await listWorkflows(
+      new Request('http://localhost', {
+        headers: { ...headers, 'x-bunker-user-id': `intruder-${crypto.randomUUID()}` },
+      }),
+    );
+    expect(intruder.status).toBe(403);
   });
 
   it('rejects cyclic plans before creating a workflow', async () => {
