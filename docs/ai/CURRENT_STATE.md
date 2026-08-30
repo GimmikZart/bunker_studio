@@ -26,7 +26,7 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 - `pnpm typecheck`: PASS, 15 package task.
 - `pnpm test`: PASS, 21 task Turborepo.
 - `pnpm build`: PASS, 15 package task; Next genera 41 route/pagine.
-- `pnpm exec playwright test`: PASS, 8 test (health, onboarding, login/signup, PWA, tenancy/isolation, design/staffing/memory, worker, operations).
+- `pnpm exec playwright test`: PASS, 9 test (health, onboarding, login/signup, PWA, tenancy/isolation, design/staffing/memory, worker, operations/review/portability, virgin template).
 - `pnpm audit --audit-level high`: PASS, nessuna vulnerabilità nota.
 - `supabase db reset --local`: PASS; migration `00000000000008_review_findings_rls.sql` applicata e schema RLS verificato sul database locale.
 

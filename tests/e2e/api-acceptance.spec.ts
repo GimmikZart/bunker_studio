@@ -132,6 +132,16 @@ test('meetings, approvals, costs, notifications and repository metadata are tena
     data: { state: 'READY' },
   });
   expect((await readyTask.json()).task.state).toBe('READY');
+  const verification = await request.post(`/api/tasks/${taskId}/verification`, {
+    headers,
+    data: {
+      kind: 'TYPECHECK',
+      commandOrCheck: 'pnpm typecheck',
+      status: 'PASS',
+      durationMs: 120,
+    },
+  });
+  expect(verification.status()).toBe(201);
   const agents = await Promise.all(
     ['Lead', 'Reviewer'].map((title) =>
       request.post('/api/agents', {
@@ -143,6 +153,30 @@ test('meetings, approvals, costs, notifications and repository metadata are tena
   const agentIds = await Promise.all(
     agents.map(async (response) => (await response.json()).agent.id as string),
   );
+  const review = await request.post('/api/reviews', {
+    headers,
+    data: {
+      projectId: project.id,
+      taskId,
+      reviewerAgentId: agentIds[1],
+      report: {
+        candidateSha: 'e2e-candidate',
+        status: 'PASS',
+        summary: 'All automated checks passed.',
+        findings: [],
+        verificationRuns: [
+          {
+            kind: 'LINT',
+            commandOrCheck: 'pnpm lint',
+            status: 'PASS',
+            durationMs: 90,
+          },
+        ],
+      },
+    },
+  });
+  expect(review.status()).toBe(201);
+  expect((await review.json()).verificationRuns).toHaveLength(1);
   const editedAgent = await request.patch(`/api/agents/${agentIds[0]}`, {
     headers,
     data: { name: 'Lead Architect', providerBindingId: 'new-model' },
@@ -211,4 +245,24 @@ test('meetings, approvals, costs, notifications and repository metadata are tena
     data: { endpoint: 'https://push.example.test/subscription', p256dh: 'key', auth: 'auth' },
   });
   expect(push.status()).toBe(201);
+
+  const exported = await request.get(`/api/organizations/${organization.id}/export`, { headers });
+  expect(exported.status()).toBe(200);
+  const exportedPack = await exported.json();
+  expect(exportedPack.tasks).toHaveLength(1);
+  const imported = await request.post('/api/organizations/import', {
+    headers: { 'content-type': 'application/json', 'x-bunker-user-id': userId },
+    data: exportedPack,
+  });
+  expect(imported.status()).toBe(201);
+  expect((await imported.json()).imported.tasks).toBe(1);
+});
+
+test('virgin template export contains no tenant data or secrets', async ({ request }) => {
+  const response = await request.get('/api/organizations/template');
+  expect(response.status()).toBe(200);
+  const template = await response.json();
+  expect(template.manifest.kind).toBe('VIRGIN_TEMPLATE');
+  expect(template.data.organizations).toEqual([]);
+  expect(template.data.secrets).toEqual([]);
 });

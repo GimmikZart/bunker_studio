@@ -253,14 +253,14 @@ Checkpoint stabile nei commit `4e1a5b3`, `65884f7` e `9853717`. Restano i cinque
 
 ### Verifiche
 
-- `pnpm verify`: PASS; format, lint, typecheck, 21 task di test, build Next a 40 route e audit sicurezza.
-- `pnpm test:e2e`: PASS; 8/8 scenari.
+- `pnpm verify`: PASS; format, lint, typecheck, 21 task di test, build Next a 41 route e audit sicurezza.
+- `pnpm test:e2e`: PASS; 9/9 scenari.
 - `supabase db reset --local`: PASS; migration `00000000000008_review_findings_rls.sql` applicata.
 - Test web: 11 file, 17 test passati, inclusi portabilità, verifica e review.
 
 ### Stato finale della sessione
 
-Checkpoint stabile nei commit `0ab5f46`, `2de5113`, `322acb2` e `79967bf`. Restano le verifiche quality `PARTIAL` dipendenti da Supabase/GitHub/VAPID/provider/multiprocess e il backup/restore drill con accessi esterni.
+Checkpoint stabile nei commit `0ab5f46`, `2de5113`, `322acb2`, `79967bf` e `26b4f76`. Restano le verifiche quality `PARTIAL` dipendenti da Supabase/GitHub/VAPID/provider/multiprocess e il backup/restore drill con accessi esterni.
 
 ## 2026-08-30 — Virgin template and verification evidence completion
 
@@ -273,7 +273,7 @@ Checkpoint stabile nei commit `0ab5f46`, `2de5113`, `322acb2` e `79967bf`. Resta
 
 - Test route review e template: PASS.
 - `pnpm verify`: PASS; format, lint, typecheck, 21 task di test, build Next a 41 route e audit sicurezza.
-- `pnpm test:e2e`: PASS; 8/8 scenari dopo l’estensione del round-trip ai task e alle dipendenze.
+- `pnpm test:e2e`: PASS; 9/9 scenari, inclusi review/verifica, portabilità E2E e virgin template.
 
 ### Stato finale della sessione
 
