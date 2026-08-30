@@ -9,20 +9,30 @@ import {
   type Team,
 } from '@bunker-studio/core';
 
-type QueryResult = { data: unknown; error: { message: string } | null };
+export type QueryResult = { data: unknown; error: { message: string } | null };
 type AsyncResult = PromiseLike<QueryResult>;
 type QueryResultBuilder = PromiseLike<QueryResult> & {
+  select: (columns?: string) => QueryResultBuilder;
   eq: (column: string, value: unknown) => QueryResultBuilder;
+  is: (column: string, value: unknown) => QueryResultBuilder;
   maybeSingle: () => AsyncResult;
   single: () => AsyncResult;
 };
 type MutationBuilder = { select: (columns?: string) => QueryResultBuilder };
 type QueryBuilder = {
   select: (columns?: string) => QueryResultBuilder;
-  insert: (values: Record<string, unknown>) => MutationBuilder;
+  insert: (values: Record<string, unknown> | Array<Record<string, unknown>>) => MutationBuilder;
+  upsert: (
+    values: Record<string, unknown> | Array<Record<string, unknown>>,
+    options?: Record<string, unknown>,
+  ) => MutationBuilder;
+  update: (values: Record<string, unknown>) => QueryResultBuilder;
 };
 
-export type SupabaseDataClient = { from: (table: string) => QueryBuilder };
+export type SupabaseDataClient = {
+  from: (table: string) => QueryBuilder;
+  rpc: (functionName: string, args: Record<string, unknown>) => AsyncResult;
+};
 
 function row(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object') throw new Error('Unexpected database response.');
@@ -172,6 +182,30 @@ export class SupabaseTenancyRepository {
     return Array.isArray(data) ? data.map(mapTeam).filter((item) => !item.archivedAt) : [];
   }
 
+  async updateTeam(
+    teamId: string,
+    organizationId: string,
+    actorUserId: string,
+    patch: Partial<Pick<Team, 'name' | 'description'>>,
+  ): Promise<Team> {
+    await this.requireWrite(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('teams')
+        .update({
+          ...(patch.name === undefined ? {} : { name: patch.name.trim() }),
+          ...(patch.description === undefined ? {} : { description: patch.description.trim() }),
+        })
+        .eq('id', teamId)
+        .eq('organization_id', organizationId)
+        .is('archived_at', null)
+        .select('*')
+        .maybeSingle(),
+    );
+    if (!data) throw new AuthorizationError('Team not found.');
+    return mapTeam(data);
+  }
+
   async createProject(input: {
     organizationId: string;
     actorUserId: string;
@@ -202,6 +236,41 @@ export class SupabaseTenancyRepository {
       this.client.from('projects').select('*').eq('organization_id', organizationId),
     );
     return Array.isArray(data) ? data.map(mapProject).filter((item) => !item.archivedAt) : [];
+  }
+
+  async updateProject(
+    projectId: string,
+    organizationId: string,
+    actorUserId: string,
+    patch: Partial<
+      Pick<Project, 'name' | 'description' | 'autonomyMode' | 'status' | 'defaultBranch'> & {
+        defaultTeamId: string | null;
+      }
+    >,
+  ): Promise<Project> {
+    await this.requireWrite(organizationId, actorUserId);
+    const values: Record<string, unknown> = {};
+    if (patch.name !== undefined) {
+      values.name = patch.name.trim();
+      values.slug = slugify(patch.name);
+    }
+    if (patch.description !== undefined) values.description = patch.description.trim();
+    if (patch.defaultTeamId !== undefined) values.default_team_id = patch.defaultTeamId;
+    if (patch.autonomyMode !== undefined) values.autonomy_mode = patch.autonomyMode;
+    if (patch.status !== undefined) values.status = patch.status;
+    if (patch.defaultBranch !== undefined) values.default_branch = patch.defaultBranch.trim();
+    const data = await unwrap(
+      this.client
+        .from('projects')
+        .update(values)
+        .eq('id', projectId)
+        .eq('organization_id', organizationId)
+        .is('archived_at', null)
+        .select('*')
+        .maybeSingle(),
+    );
+    if (!data) throw new AuthorizationError('Project not found.');
+    return mapProject(data);
   }
 
   async addMember(input: {

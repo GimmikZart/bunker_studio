@@ -16,6 +16,7 @@ export * from './secrets.js';
 export * from './supabase.js';
 export * from './outbox.js';
 export * from './tenant-repository.js';
+export * from './agent-repository.js';
 
 export type TenantStoreState = {
   organizations: Organization[];
@@ -166,7 +167,9 @@ export class TenantStore {
     organizationId: string,
     actorUserId: string,
     patch: Partial<
-      Pick<Project, 'name' | 'description' | 'autonomyMode' | 'status' | 'defaultBranch'>
+      Pick<Project, 'name' | 'description' | 'autonomyMode' | 'status' | 'defaultBranch'> & {
+        defaultTeamId: string | null;
+      }
     >,
   ): Project {
     this.requireWrite(organizationId, actorUserId);
@@ -182,6 +185,7 @@ export class TenantStore {
     if (patch.autonomyMode !== undefined) project.autonomyMode = patch.autonomyMode;
     if (patch.status !== undefined) project.status = patch.status;
     if (patch.defaultBranch !== undefined) project.defaultBranch = patch.defaultBranch.trim();
+    if (patch.defaultTeamId !== undefined) project.defaultTeamId = patch.defaultTeamId;
     return structuredClone(project);
   }
 

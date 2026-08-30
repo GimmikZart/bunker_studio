@@ -1,0 +1,161 @@
+import { AuthorizationError, type Agent } from '@bunker-studio/core';
+import { type SupabaseDataClient, type QueryResult } from './tenant-repository.js';
+
+async function unwrap(result: PromiseLike<QueryResult>): Promise<unknown> {
+  const response = await result;
+  if (response.error) throw new Error(response.error.message);
+  return response.data;
+}
+
+function object(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object') throw new Error('Unexpected database response.');
+  return value as Record<string, unknown>;
+}
+
+function stringValue(value: unknown, field: string): string {
+  if (typeof value !== 'string') throw new Error(`Database field ${field} is invalid.`);
+  return value;
+}
+
+function mapAgent(value: unknown): Agent {
+  const item = object(value);
+  const bindings = Array.isArray(item.agent_bindings) ? item.agent_bindings : [];
+  const binding = bindings.find((candidate) => {
+    const record = object(candidate);
+    return record.active_to === null || record.active_to === undefined;
+  });
+  return {
+    id: stringValue(item.id, 'id'),
+    organizationId: stringValue(item.organization_id, 'organization_id'),
+    name: stringValue(item.name, 'name'),
+    roleKey: stringValue(item.role_key, 'role_key'),
+    title: stringValue(item.title ?? '', 'title'),
+    personality: (item.personality_json ?? {}) as Record<string, unknown>,
+    providerBindingId: binding ? stringValue(object(binding).id, 'agent_bindings.id') : 'unbound',
+    archivedAt: typeof item.archived_at === 'string' ? item.archived_at : null,
+  };
+}
+
+export class SupabaseAgentRepository {
+  constructor(private readonly client: SupabaseDataClient) {}
+
+  async listAgents(organizationId: string, actorUserId: string): Promise<Agent[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('agents')
+        .select('*, agent_bindings(id, active_to)')
+        .eq('organization_id', organizationId),
+    );
+    return Array.isArray(data) ? data.map(mapAgent).filter((item) => !item.archivedAt) : [];
+  }
+
+  async getAgent(agentId: string, organizationId: string, actorUserId: string): Promise<Agent> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('agents')
+        .select('*, agent_bindings(id, active_to)')
+        .eq('id', agentId)
+        .eq('organization_id', organizationId)
+        .maybeSingle(),
+    );
+    if (!data) throw new AuthorizationError('Agent not found.');
+    const agent = mapAgent(data);
+    if (agent.archivedAt) throw new AuthorizationError('Agent not found.');
+    return agent;
+  }
+
+  async createAgent(input: {
+    organizationId: string;
+    actorUserId: string;
+    name: string;
+    roleKey: string;
+    title: string;
+    providerBindingId: string;
+    personality?: Record<string, unknown>;
+  }): Promise<Agent> {
+    await this.requireWrite(input.organizationId, input.actorUserId);
+    const data = await unwrap(
+      this.client.rpc('create_agent_with_default_binding', {
+        target_organization_id: input.organizationId,
+        input_name: input.name.trim(),
+        input_role_key: input.roleKey,
+        input_title: input.title,
+        input_personality_json: input.personality ?? {},
+        binding_label: input.providerBindingId,
+      }),
+    );
+    const result = Array.isArray(data) ? data[0] : data;
+    if (!result) throw new Error('Agent creation returned no row.');
+    return mapAgent({
+      ...object(result),
+      agent_bindings: [{ id: object(result).provider_binding_id }],
+    });
+  }
+
+  async updateAgent(
+    agentId: string,
+    organizationId: string,
+    actorUserId: string,
+    patch: Partial<Pick<Agent, 'name' | 'roleKey' | 'title' | 'personality' | 'providerBindingId'>>,
+  ): Promise<Agent> {
+    await this.requireWrite(organizationId, actorUserId);
+    const values: Record<string, unknown> = {};
+    if (patch.name !== undefined) values.name = patch.name.trim();
+    if (patch.roleKey !== undefined) values.role_key = patch.roleKey;
+    if (patch.title !== undefined) values.title = patch.title;
+    if (patch.personality !== undefined) values.personality_json = patch.personality;
+    if (Object.keys(values).length) {
+      await unwrap(
+        this.client
+          .from('agents')
+          .update(values)
+          .eq('id', agentId)
+          .eq('organization_id', organizationId)
+          .select('*, agent_bindings(id, active_to)')
+          .single(),
+      );
+    }
+    if (patch.providerBindingId !== undefined) {
+      await unwrap(
+        this.client.rpc('switch_agent_binding', {
+          target_agent_id: agentId,
+          binding_label: patch.providerBindingId,
+        }),
+      );
+    }
+    return this.getAgent(agentId, organizationId, actorUserId);
+  }
+
+  async archiveAgent(agentId: string, organizationId: string, actorUserId: string): Promise<void> {
+    await this.requireWrite(organizationId, actorUserId);
+    const result = await unwrap(
+      this.client
+        .from('agents')
+        .update({ archived_at: new Date().toISOString(), status: 'ARCHIVED' })
+        .eq('id', agentId)
+        .eq('organization_id', organizationId),
+    );
+    void result;
+  }
+
+  private async requireMember(organizationId: string, userId: string): Promise<string> {
+    const data = await unwrap(
+      this.client
+        .from('organization_members')
+        .select('role')
+        .eq('organization_id', organizationId)
+        .eq('user_id', userId)
+        .maybeSingle(),
+    );
+    const role = data && object(data).role;
+    if (typeof role !== 'string') throw new AuthorizationError();
+    return role;
+  }
+
+  private async requireWrite(organizationId: string, userId: string): Promise<void> {
+    const role = await this.requireMember(organizationId, userId);
+    if (!['OWNER', 'ADMIN'].includes(role)) throw new AuthorizationError();
+  }
+}

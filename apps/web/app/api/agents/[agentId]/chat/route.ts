@@ -2,7 +2,7 @@ import { collectRun, FakeRuntime } from '@bunker-studio/agent-runtime';
 import { chatMessageSchema } from '@bunker-studio/contracts';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../../_auth';
-import { tenantStore } from '../../../_store';
+import { getWebAgentRepository } from '../../../_data';
 
 export async function POST(request: Request, context: { params: Promise<{ agentId: string }> }) {
   const organizationId = request.headers.get('x-bunker-organization-id')?.trim();
@@ -13,8 +13,11 @@ export async function POST(request: Request, context: { params: Promise<{ agentI
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
+  const store = await getWebAgentRepository();
+  if (!store)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
-    const agent = tenantStore.getAgent(agentId, organizationId, actorId);
+    const agent = await store.getAgent(agentId, organizationId, actorId);
     const input = chatMessageSchema.parse(await request.json());
     const result = await collectRun(new FakeRuntime({}), {
       agentId: agent.id,

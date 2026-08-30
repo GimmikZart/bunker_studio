@@ -1,7 +1,11 @@
 import { meetingCreateSchema } from '@bunker-studio/contracts';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../_auth';
-import { createMeeting, listMeetings, tenantStore } from '../_store';
+import {
+  getWebAgentRepository,
+  getWebOperationalRepository,
+  getWebTenancyRepository,
+} from '../_data';
 
 export async function GET(request: Request) {
   const actorId = await resolveActorId(request);
@@ -11,9 +15,12 @@ export async function GET(request: Request) {
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
-  if (!tenantStore.getRole(organizationId, actorId))
+  const operations = await getWebOperationalRepository();
+  if (!operations)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  if (!(await operations.getRole(organizationId, actorId)))
     return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
-  return NextResponse.json({ meetings: listMeetings(organizationId) });
+  return NextResponse.json({ meetings: await operations.listMeetings(organizationId, actorId) });
 }
 
 export async function POST(request: Request) {
@@ -24,17 +31,24 @@ export async function POST(request: Request) {
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
-  if (!tenantStore.getRole(organizationId, actorId))
+  const operations = await getWebOperationalRepository();
+  const tenancy = await getWebTenancyRepository();
+  const agents = await getWebAgentRepository();
+  if (!operations || !tenancy || !agents)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  if (!(await operations.getRole(organizationId, actorId)))
     return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
   try {
     const input = meetingCreateSchema.parse(await request.json());
-    const project = tenantStore
-      .listProjects(organizationId, actorId)
-      .find((item) => item.id === input.projectId);
+    const project = (await tenancy.listProjects(organizationId, actorId)).find(
+      (item) => item.id === input.projectId,
+    );
     if (!project) return NextResponse.json({ error: 'Project not found.' }, { status: 404 });
-    input.agentIds.forEach((agentId) => tenantStore.getAgent(agentId, organizationId, actorId));
+    await Promise.all(
+      input.agentIds.map((agentId) => agents.getAgent(agentId, organizationId, actorId)),
+    );
     return NextResponse.json(
-      { meeting: createMeeting({ organizationId, ...input }) },
+      { meeting: await operations.createMeeting({ organizationId, ...input }, actorId) },
       { status: 201 },
     );
   } catch (error) {

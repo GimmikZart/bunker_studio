@@ -2,7 +2,6 @@ import { teamCreateSchema, teamUpdateSchema } from '@bunker-studio/contracts';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../../_auth';
 import { getWebTenancyRepository } from '../../../_data';
-import { tenantStore } from '../../../_store';
 
 export async function POST(
   request: Request,
@@ -53,11 +52,14 @@ export async function PATCH(
   const actorUserId = await resolveActorId(request);
   const { organizationId } = await context.params;
   const teamId = new URL(request.url).searchParams.get('teamId');
+  const store = await getWebTenancyRepository();
   if (!actorUserId || !teamId)
     return NextResponse.json({ error: 'Authentication and team are required.' }, { status: 401 });
+  if (!store)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
     return NextResponse.json({
-      team: tenantStore.updateTeam(
+      team: await store.updateTeam(
         teamId,
         organizationId,
         actorUserId,

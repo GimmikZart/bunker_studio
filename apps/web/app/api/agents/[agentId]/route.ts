@@ -1,7 +1,7 @@
 import { agentUpdateSchema } from '@bunker-studio/contracts';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../_auth';
-import { tenantStore } from '../../_store';
+import { getWebAgentRepository } from '../../_data';
 
 export async function PATCH(request: Request, context: { params: Promise<{ agentId: string }> }) {
   const organizationId = request.headers.get('x-bunker-organization-id')?.trim();
@@ -12,9 +12,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ agent
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
+  const store = await getWebAgentRepository();
+  if (!store)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
     return NextResponse.json({
-      agent: tenantStore.updateAgent(
+      agent: await store.updateAgent(
         agentId,
         organizationId,
         actorUserId,
@@ -37,8 +40,11 @@ export async function DELETE(request: Request, context: { params: Promise<{ agen
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
+  const store = await getWebAgentRepository();
+  if (!store)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
-    tenantStore.archiveAgent(agentId, organizationId, actorUserId);
+    await store.archiveAgent(agentId, organizationId, actorUserId);
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     if (error instanceof Error && error.name === 'AuthorizationError')

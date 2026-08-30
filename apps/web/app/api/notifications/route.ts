@@ -1,7 +1,7 @@
 import { notificationCreateSchema, notificationReadSchema } from '@bunker-studio/contracts';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../_auth';
-import { addNotification, listNotifications, markNotificationRead, tenantStore } from '../_store';
+import { getWebOperationalRepository } from '../_data';
 
 export async function GET(request: Request) {
   const actorId = await resolveActorId(request);
@@ -11,9 +11,12 @@ export async function GET(request: Request) {
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
-  if (!tenantStore.getRole(organizationId, actorId))
+  const operations = await getWebOperationalRepository();
+  if (!operations)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  if (!(await operations.getRole(organizationId, actorId)))
     return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
-  const notifications = listNotifications(actorId, organizationId);
+  const notifications = await operations.listNotifications(actorId, organizationId, actorId);
   return NextResponse.json({
     notifications,
     unread: notifications.filter((item) => !item.readAt).length,
@@ -28,20 +31,20 @@ export async function POST(request: Request) {
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
-  if (!tenantStore.getRole(organizationId, actorId))
-    return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
+  const operations = await getWebOperationalRepository();
+  if (!operations)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  const role = await operations.getRole(organizationId, actorId);
+  if (!role) return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
   try {
     const input = notificationCreateSchema.parse(await request.json());
-    if (
-      input.userId !== actorId &&
-      !['OWNER', 'ADMIN'].includes(tenantStore.getRole(organizationId, actorId) ?? '')
-    )
+    if (input.userId !== actorId && !['OWNER', 'ADMIN'].includes(role))
       return NextResponse.json(
         { error: 'Notification recipient is not allowed.' },
         { status: 403 },
       );
     return NextResponse.json(
-      { notification: addNotification({ ...input, organizationId }) },
+      { notification: await operations.addNotification({ ...input, organizationId }, actorId) },
       { status: 201 },
     );
   } catch {
@@ -52,9 +55,12 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const actorId = await resolveActorId(request);
   if (!actorId) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+  const operations = await getWebOperationalRepository();
+  if (!operations)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
     const { notificationId } = notificationReadSchema.parse(await request.json());
-    if (!markNotificationRead(actorId, notificationId))
+    if (!(await operations.markNotificationRead(actorId, notificationId)))
       return NextResponse.json({ error: 'Notification not found.' }, { status: 404 });
     return new NextResponse(null, { status: 204 });
   } catch {

@@ -12,6 +12,7 @@ Storico append-only.
 - Rafforzato il workflow con budget cumulativo sui task concorrenti.
 - Aggiunti trigger Supabase per profilo utente e membership Owner, contesto Docker workspace e runbook quality/production.
 - Aggiunto `SupabaseTenancyRepository` con client SSR/RLS-aware e fallback fixture limitato a non-production per organizzazioni, team, progetti e membri.
+- Aggiunto `SupabaseAgentRepository`, RPC atomiche per creazione/switch binding provider e route agenti production-aware.
 
 ### Verifiche
 

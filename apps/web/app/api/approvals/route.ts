@@ -2,13 +2,7 @@ import { approvalCreateSchema, approvalResolutionSchema } from '@bunker-studio/c
 import { canWrite } from '@bunker-studio/core';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../_auth';
-import {
-  addNotification,
-  createApproval,
-  listApprovals,
-  resolveApproval,
-  tenantStore,
-} from '../_store';
+import { getWebOperationalRepository } from '../_data';
 
 export async function GET(request: Request) {
   const actorId = await resolveActorId(request);
@@ -18,9 +12,12 @@ export async function GET(request: Request) {
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
-  if (!tenantStore.getRole(organizationId, actorId))
+  const operations = await getWebOperationalRepository();
+  if (!operations)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  if (!(await operations.getRole(organizationId, actorId)))
     return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
-  return NextResponse.json({ approvals: listApprovals(organizationId) });
+  return NextResponse.json({ approvals: await operations.listApprovals(organizationId, actorId) });
 }
 
 export async function POST(request: Request) {
@@ -31,20 +28,29 @@ export async function POST(request: Request) {
       { error: 'Authentication and organization are required.' },
       { status: 401 },
     );
-  if (!tenantStore.getRole(organizationId, actorId))
+  const operations = await getWebOperationalRepository();
+  if (!operations)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  if (!(await operations.getRole(organizationId, actorId)))
     return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
   try {
     const input = approvalCreateSchema.parse(await request.json());
-    const approval = createApproval({ ...input, organizationId, requestedByUserId: actorId });
-    addNotification({
-      organizationId,
-      userId: actorId,
-      category: 'APPROVAL',
-      severity: input.risk,
-      title: input.title,
-      body: 'An approval is waiting for an authorized decision.',
-      deepLink: `/approvals?approvalId=${approval.id}`,
-    });
+    const approval = await operations.createApproval(
+      { ...input, organizationId, requestedByUserId: actorId },
+      actorId,
+    );
+    await operations.addNotification(
+      {
+        organizationId,
+        userId: actorId,
+        category: 'APPROVAL',
+        severity: input.risk,
+        title: input.title,
+        body: 'An approval is waiting for an authorized decision.',
+        deepLink: `/approvals?approvalId=${approval.id}`,
+      },
+      actorId,
+    );
     return NextResponse.json({ approval }, { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Invalid approval payload.' }, { status: 400 });
@@ -60,13 +66,16 @@ export async function PATCH(request: Request) {
       { error: 'Authentication, organization and approval are required.' },
       { status: 401 },
     );
-  const role = tenantStore.getRole(organizationId, actorId);
+  const operations = await getWebOperationalRepository();
+  if (!operations)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  const role = await operations.getRole(organizationId, actorId);
   if (!role) return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
   if (!canWrite(role))
     return NextResponse.json({ error: 'Owner or admin approval is required.' }, { status: 403 });
   try {
     const input = approvalResolutionSchema.parse(await request.json());
-    const approval = resolveApproval(
+    const approval = await operations.resolveApproval(
       organizationId,
       approvalId,
       input.status,

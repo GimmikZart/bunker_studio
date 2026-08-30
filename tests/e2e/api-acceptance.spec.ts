@@ -125,6 +125,16 @@ test('meetings, approvals, costs, notifications and repository metadata are tena
   const agentIds = await Promise.all(
     agents.map(async (response) => (await response.json()).agent.id as string),
   );
+  const editedAgent = await request.patch(`/api/agents/${agentIds[0]}`, {
+    headers,
+    data: { name: 'Lead Architect', providerBindingId: 'new-model' },
+  });
+  expect((await editedAgent.json()).agent.providerBindingId).toBe('new-model');
+  const chat = await request.post(`/api/agents/${agentIds[0]}/chat`, {
+    headers,
+    data: { content: 'Summarize the architecture boundary.' },
+  });
+  expect((await chat.json()).message.content).toContain('Summarize');
   const meetingResponse = await request.post('/api/meetings', {
     headers,
     data: {

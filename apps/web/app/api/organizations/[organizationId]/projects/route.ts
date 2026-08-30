@@ -2,7 +2,6 @@ import { projectCreateSchema, projectUpdateSchema } from '@bunker-studio/contrac
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../../_auth';
 import { getWebTenancyRepository } from '../../../_data';
-import { tenantStore } from '../../../_store';
 
 export async function POST(
   request: Request,
@@ -53,19 +52,21 @@ export async function PATCH(
   const actorUserId = await resolveActorId(request);
   const { organizationId } = await context.params;
   const projectId = new URL(request.url).searchParams.get('projectId');
+  const store = await getWebTenancyRepository();
   if (!actorUserId || !projectId)
     return NextResponse.json(
       { error: 'Authentication and project are required.' },
       { status: 401 },
     );
+  if (!store)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
+    const input = projectUpdateSchema.parse(await request.json());
     return NextResponse.json({
-      project: tenantStore.updateProject(
-        projectId,
-        organizationId,
-        actorUserId,
-        projectUpdateSchema.parse(await request.json()),
-      ),
+      project: await store.updateProject(projectId, organizationId, actorUserId, {
+        ...input,
+        defaultTeamId: input.teamId,
+      }),
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'AuthorizationError')
