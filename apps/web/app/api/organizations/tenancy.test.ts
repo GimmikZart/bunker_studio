@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { POST as createProject } from './[organizationId]/projects/route';
-import { POST as createTeam } from './[organizationId]/teams/route';
+import {
+  DELETE as archiveProject,
+  GET as listProjects,
+  POST as createProject,
+} from './[organizationId]/projects/route';
+import {
+  DELETE as archiveTeam,
+  GET as listTeams,
+  POST as createTeam,
+} from './[organizationId]/teams/route';
 import { POST as createOrganization } from '../organizations/route';
 
 describe('tenancy CRUD routes', () => {
@@ -34,6 +42,25 @@ describe('tenancy CRUD routes', () => {
       { params: Promise.resolve({ organizationId: organization.id }) },
     );
     expect(projectResponse.status).toBe(201);
+    const project = (await projectResponse.json()).project;
+    const archivedTeamResponse = await archiveTeam(
+      new Request(`http://localhost?teamId=${team.id}`, { method: 'DELETE', headers }),
+      { params: Promise.resolve({ organizationId: organization.id }) },
+    );
+    expect(archivedTeamResponse.status).toBe(204);
+    const archivedProjectResponse = await archiveProject(
+      new Request(`http://localhost?projectId=${project.id}`, { method: 'DELETE', headers }),
+      { params: Promise.resolve({ organizationId: organization.id }) },
+    );
+    expect(archivedProjectResponse.status).toBe(204);
+    const activeTeams = await listTeams(new Request('http://localhost', { headers }), {
+      params: Promise.resolve({ organizationId: organization.id }),
+    });
+    const activeProjects = await listProjects(new Request('http://localhost', { headers }), {
+      params: Promise.resolve({ organizationId: organization.id }),
+    });
+    expect((await activeTeams.json()).teams).toEqual([]);
+    expect((await activeProjects.json()).projects).toEqual([]);
   });
 
   it('rejects a cross-organization writer', async () => {

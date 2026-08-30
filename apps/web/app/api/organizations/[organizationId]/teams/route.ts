@@ -72,3 +72,25 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid team payload.' }, { status: 400 });
   }
 }
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ organizationId: string }> },
+) {
+  const actorUserId = await resolveActorId(request);
+  const { organizationId } = await context.params;
+  const teamId = new URL(request.url).searchParams.get('teamId');
+  const store = await getWebTenancyRepository();
+  if (!actorUserId || !teamId)
+    return NextResponse.json({ error: 'Authentication and team are required.' }, { status: 401 });
+  if (!store)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  try {
+    await store.archiveTeam(teamId, organizationId, actorUserId);
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AuthorizationError')
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    return NextResponse.json({ error: 'Team not found.' }, { status: 404 });
+  }
+}

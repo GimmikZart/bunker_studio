@@ -195,6 +195,8 @@ export class TenantStore {
       (item) => item.id === projectId && item.organizationId === organizationId,
     );
     if (!project) throw new AuthorizationError('Project not found.');
+    if (project.isStudioCore)
+      throw new AuthorizationError('The protected Studio project cannot be archived.');
     project.archivedAt = new Date().toISOString();
   }
 

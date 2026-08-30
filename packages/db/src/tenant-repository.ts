@@ -206,6 +206,21 @@ export class SupabaseTenancyRepository {
     return mapTeam(data);
   }
 
+  async archiveTeam(teamId: string, organizationId: string, actorUserId: string): Promise<void> {
+    await this.requireWrite(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('teams')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', teamId)
+        .eq('organization_id', organizationId)
+        .is('archived_at', null)
+        .select('id')
+        .maybeSingle(),
+    );
+    if (!data) throw new AuthorizationError('Team not found.');
+  }
+
   async createProject(input: {
     organizationId: string;
     actorUserId: string;
@@ -271,6 +286,36 @@ export class SupabaseTenancyRepository {
     );
     if (!data) throw new AuthorizationError('Project not found.');
     return mapProject(data);
+  }
+
+  async archiveProject(
+    projectId: string,
+    organizationId: string,
+    actorUserId: string,
+  ): Promise<void> {
+    await this.requireWrite(organizationId, actorUserId);
+    const existing = await unwrap(
+      this.client
+        .from('projects')
+        .select('is_studio_core')
+        .eq('id', projectId)
+        .eq('organization_id', organizationId)
+        .is('archived_at', null)
+        .maybeSingle(),
+    );
+    if (!existing) throw new AuthorizationError('Project not found.');
+    if (row(existing).is_studio_core === true)
+      throw new AuthorizationError('The protected Studio project cannot be archived.');
+    await unwrap(
+      this.client
+        .from('projects')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', projectId)
+        .eq('organization_id', organizationId)
+        .is('archived_at', null)
+        .select('id')
+        .maybeSingle(),
+    );
   }
 
   async addMember(input: {

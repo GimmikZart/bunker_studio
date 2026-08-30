@@ -89,6 +89,22 @@ export function OrganizationCrudPanel({ kind }: { kind: 'projects' | 'teams' }) 
     setDescription('');
   }
 
+  async function archive(record: RecordItem) {
+    if (!window.confirm(`Archive ${record.name}? It will remain recoverable.`)) return;
+    setError('');
+    const parameter = kind === 'projects' ? 'projectId' : 'teamId';
+    const response = await fetch(`${endpoint}?${parameter}=${record.id}`, {
+      method: 'DELETE',
+      headers: apiHeaders(organizationId),
+    });
+    if (!response.ok) {
+      setError('The resource could not be archived.');
+      return;
+    }
+    await load(organizationId);
+    setNotice('Archived.');
+  }
+
   return (
     <section className="live-panel" aria-label={`${kind} management`}>
       <div className="live-panel-toolbar">
@@ -165,6 +181,9 @@ export function OrganizationCrudPanel({ kind }: { kind: 'projects' | 'teams' }) 
             </span>
             <button className="secondary-button" type="button" onClick={() => startEdit(record)}>
               Edit
+            </button>
+            <button className="secondary-button" type="button" onClick={() => void archive(record)}>
+              Archive
             </button>
           </div>
         ))}

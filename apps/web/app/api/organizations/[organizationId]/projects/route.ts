@@ -74,3 +74,28 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid project payload.' }, { status: 400 });
   }
 }
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ organizationId: string }> },
+) {
+  const actorUserId = await resolveActorId(request);
+  const { organizationId } = await context.params;
+  const projectId = new URL(request.url).searchParams.get('projectId');
+  const store = await getWebTenancyRepository();
+  if (!actorUserId || !projectId)
+    return NextResponse.json(
+      { error: 'Authentication and project are required.' },
+      { status: 401 },
+    );
+  if (!store)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  try {
+    await store.archiveProject(projectId, organizationId, actorUserId);
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AuthorizationError')
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    return NextResponse.json({ error: 'Project not found.' }, { status: 404 });
+  }
+}
