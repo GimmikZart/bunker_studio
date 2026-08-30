@@ -5,7 +5,11 @@ import {
   type TenantStore,
 } from '@bunker-studio/db';
 import { createRequestSupabaseClient } from './_supabase';
-import { SupabaseOperationalRepository } from './_supabase-operations';
+import {
+  SupabaseOperationalRepository,
+  type ActivityRecord,
+  type ProviderRecord,
+} from './_supabase-operations';
 import {
   addCost,
   addMemory,
@@ -29,6 +33,9 @@ import {
   tenantStore,
   updateMeeting,
   workerRegistry,
+  createTask,
+  listTasks,
+  updateTask,
   submitDesignVersion,
   type ApprovalRecord,
   type CostRecord,
@@ -36,11 +43,13 @@ import {
   type NotificationRecord,
   type PushSubscriptionRecord,
   type RepositoryRecord,
+  type TaskRecord,
 } from './_store';
 import type { MemoryUnit, RegisteredWorker } from '@bunker-studio/db';
 import { approveDesignVersion as applyDesignApproval } from '@bunker-studio/core';
 import type { DesignRecord } from '@bunker-studio/core';
 import { FakeRuntime, HttpAgentRuntime, type AgentRuntime } from '@bunker-studio/agent-runtime';
+import { canTransition, type TaskState } from '@bunker-studio/orchestration';
 
 export type WebTenancyRepository = TenantStore | SupabaseTenancyRepository;
 
@@ -63,6 +72,7 @@ export type WebOperationalRepository = SupabaseOperationalRepository | LocalOper
 type LocalOperationalRepository = {
   getRole: (organizationId: string, actorUserId: string) => ReturnType<typeof tenantStore.getRole>;
   listMeetings: (organizationId: string, actorUserId: string) => MeetingRecord[];
+  listProviders: (organizationId: string, actorUserId: string) => ProviderRecord[];
   createMeeting: (
     input: Omit<
       MeetingRecord,
@@ -164,11 +174,35 @@ type LocalOperationalRepository = {
     },
     actorUserId: string,
   ) => void;
+  listActivity: (organizationId: string, actorUserId: string) => ActivityRecord[];
+  listWorkers: (organizationId: string, actorUserId: string) => RegisteredWorker[];
+  listTasks: (organizationId: string, actorUserId: string) => TaskRecord[];
+  createTask: (
+    input: Omit<TaskRecord, 'id' | 'state' | 'createdAt'>,
+    actorUserId: string,
+  ) => TaskRecord;
+  transitionTask: (
+    taskId: string,
+    organizationId: string,
+    state: TaskState,
+    actorUserId: string,
+  ) => TaskRecord;
 };
 
 const localOperationalRepository: LocalOperationalRepository = {
   getRole: (organizationId, actorUserId) => tenantStore.getRole(organizationId, actorUserId),
   listMeetings: (organizationId) => listMeetings(organizationId),
+  listProviders: () => [
+    {
+      id: 'local-fake-provider',
+      providerType: 'fake',
+      displayName: 'Local fake provider',
+      status: 'READY',
+      capabilities: ['chat', 'structured-output'],
+      models: ['fake-default'],
+      lastVerifiedAt: undefined,
+    },
+  ],
   createMeeting: (input) => createMeeting(input),
   getMeeting: (organizationId, meetingId) => getMeeting(organizationId, meetingId),
   updateMeeting: (organizationId, meeting) => updateMeeting(organizationId, meeting),
@@ -208,6 +242,16 @@ const localOperationalRepository: LocalOperationalRepository = {
     return workerRegistry.heartbeat(nodeId);
   },
   recordChat: () => undefined,
+  listActivity: () => [],
+  listWorkers: (organizationId) => workerRegistry.list(organizationId),
+  listTasks: (organizationId) => listTasks(organizationId),
+  createTask: (input) => createTask(input),
+  transitionTask: (taskId, organizationId, state) => {
+    const task = listTasks(organizationId).find((item) => item.id === taskId);
+    if (!task) throw new Error('Task not found.');
+    if (!canTransition(task.state as TaskState, state)) throw new Error('Invalid task transition.');
+    return updateTask(organizationId, { ...task, state });
+  },
 };
 
 export async function getWebOperationalRepository(): Promise<WebOperationalRepository | null> {

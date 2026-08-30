@@ -21,6 +21,24 @@ Storico append-only.
 
 Comporre il provider runtime production e persistere conversations/messages con RLS; i provider reali restano subordinati a credenziali quality.
 
+## 2026-08-30 — Office e pannelli operativi live
+
+### Lavoro svolto
+
+- Sostituiti i placeholder statici di Office, Agents, Meetings, Approvals e Costs con pannelli client che selezionano l'organizzazione e leggono le API tenant-scoped.
+- Aggiunte azioni Approve/Reject nell'inbox e visualizzazione deterministica degli agenti nelle aree dell'Office.
+- Mantenuti stati di caricamento, empty state ed error state senza introdurre decisioni LLM lato client.
+
+### Verifiche
+
+- `pnpm --filter @bunker-studio/web lint`: PASS.
+- `pnpm --filter @bunker-studio/web typecheck`: PASS.
+- `pnpm exec playwright test tests/e2e/studio.spec.ts`: PASS, 3 scenari.
+
+### Prossimo passo
+
+Completare Projects, Teams, Settings e Activity con viste client collegate alle rispettive API.
+
 ## 2026-08-30 — Acceptance E2E e operational API slices
 
 ### Lavoro svolto
@@ -186,3 +204,22 @@ M0 completata. Prossimo passo: M1 — Auth, Tenancy & Core Data.
 ### Stato finale della sessione
 
 Fondamenti M1–M4 e policy trasversali stabilizzati. Riprendere da `docs/ai/NEXT_STEPS.md` per completare Auth/sessione Supabase e CRUD tenancy.
+
+## 2026-08-30 — Operational UI and Settings
+
+### Lavoro svolto
+
+- Aggiunti endpoint e adapter tenant-scoped per task/activity e pannelli live per il control plane.
+- Projects e Teams ora supportano creazione e modifica dalla UI con organization selector e ruoli API invariati.
+- Settings ora mostra runtime configurato, provider e catalogo modelli, worker, capabilities e heartbeat senza restituire segreti.
+- Aggiunta copertura route per Settings e aggiornata la build E2E per compilare i package condivisi prima di Playwright.
+
+### Verifiche
+
+- `pnpm verify`: PASS; 21 test task, build Next.js e audit sicurezza verdi.
+- `pnpm test:e2e`: PASS; 8/8 scenari.
+- `pnpm --filter @bunker-studio/web test`: PASS; 9 test.
+
+### Stato finale della sessione
+
+UI tenancy/operational aggiornata e repository stabile. Prossimo passo: UI task/workflow e poi verifiche quality esterne dei cinque scenari `PARTIAL`.

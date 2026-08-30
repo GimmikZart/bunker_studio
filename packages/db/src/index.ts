@@ -462,6 +462,12 @@ export class WorkerRegistry {
     return node ? structuredClone(node) : null;
   }
 
+  list(organizationId: string): RegisteredWorker[] {
+    return [...this.nodes.values()]
+      .filter((node) => node.organizationId === organizationId)
+      .map((node) => structuredClone(node));
+  }
+
   setOffline(nodeId: string): void {
     const node = this.nodes.get(nodeId);
     if (node && node.status !== 'REVOKED') node.status = 'OFFLINE';

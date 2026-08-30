@@ -225,6 +225,155 @@ h2 {
   color: #a2aab3;
   font-size: 12px;
 }
+.live-panel {
+  margin-top: 36px;
+}
+.live-panel-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.live-panel-toolbar select {
+  min-width: 220px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: white;
+  color: var(--ink);
+}
+.live-panel-card {
+  align-items: flex-start;
+  margin-top: 0;
+}
+.live-summary {
+  font-size: 13px;
+}
+.live-error {
+  color: #b42318 !important;
+  font-size: 13px;
+}
+.live-records {
+  width: min(100%, 460px);
+  display: grid;
+  gap: 8px;
+}
+.live-record {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+  font-size: 13px;
+}
+.live-record strong,
+.live-record small {
+  display: block;
+}
+.live-record small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+.settings-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.settings-grid .live-panel-card {
+  min-height: 100%;
+}
+.approval-actions {
+  display: flex;
+  gap: 6px;
+}
+.approval-actions button {
+  padding: 7px 10px;
+  font-size: 11px;
+}
+.resource-form {
+  display: grid;
+  gap: 8px;
+  max-width: 560px;
+  margin: 0 0 24px;
+}
+.resource-form label {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.resource-form input,
+.resource-form textarea {
+  width: 100%;
+  border: 1px solid #d6d9df;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--ink);
+  background: white;
+}
+.resource-form .action-row {
+  margin-top: 8px;
+}
+.task-create-form {
+  display: grid;
+  gap: 8px;
+  max-width: 560px;
+  margin: 0 0 24px;
+}
+.task-create-form label {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.task-create-form input,
+.task-create-form select {
+  width: 100%;
+  border: 1px solid #d6d9df;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--ink);
+  background: white;
+}
+.task-create-form button {
+  margin-top: 8px;
+}
+.task-records {
+  width: min(100%, 680px);
+}
+.task-records select {
+  border: 1px solid #d6d9df;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font: inherit;
+  color: var(--ink);
+  background: white;
+}
+.settings-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.settings-grid .live-panel-card {
+  min-height: 100%;
+}
+.office-agent {
+  display: block;
+  padding: 9px 0;
+  color: var(--ink);
+  text-decoration: none;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.office-agent span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
 .getting-started {
   display: flex;
   align-items: center;
@@ -283,6 +432,12 @@ h2 {
   .office-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
   .meeting-area {
     grid-column: span 2;
   }
@@ -305,5 +460,12 @@ h2 {
   }
   .hero {
     padding-top: 48px;
+  }
+  .live-panel-toolbar {
+    align-items: start;
+    flex-direction: column;
+  }
+  .live-panel-toolbar select {
+    width: 100%;
   }
 }

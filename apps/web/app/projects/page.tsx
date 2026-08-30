@@ -1,3 +1,5 @@
+import { OrganizationCrudPanel } from '../_components/organization-crud-panel';
+
 export default function ProjectsPage() {
   return (
     <main className="shell onboarding-shell">
@@ -7,12 +9,7 @@ export default function ProjectsPage() {
         Projects bind goals, teams, repositories, budgets, workflows, and the agents responsible for
         delivery.
       </p>
-      <div className="getting-started">
-        <div>
-          <h2>No projects yet</h2>
-          <p>Create an organization first, then add its first project.</p>
-        </div>
-      </div>
+      <OrganizationCrudPanel kind="projects" />
     </main>
   );
 }

@@ -1,3 +1,5 @@
+import { LivePanel } from '../_components/live-panel';
+
 export default function AgentsPage() {
   return (
     <main className="shell onboarding-shell">
@@ -7,15 +9,11 @@ export default function AgentsPage() {
         Agent identity, role, provider binding, and performance live here. Create the first agent
         through the onboarding API.
       </p>
-      <div className="getting-started">
-        <div>
-          <h2>Agent registry</h2>
-          <p>No active agents yet.</p>
-        </div>
-        <a className="primary-button" href="/onboarding">
-          Create agent
-        </a>
-      </div>
+      <LivePanel
+        resource="agents"
+        title="Agent registry"
+        description="Identity stays stable while provider bindings can change under owner policy."
+      />
     </main>
   );
 }

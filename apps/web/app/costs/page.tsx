@@ -1,3 +1,5 @@
+import { LivePanel } from '../_components/live-panel';
+
 export default function CostsPage() {
   return (
     <main className="shell onboarding-shell">
@@ -6,12 +8,11 @@ export default function CostsPage() {
       <p className="hero-copy">
         Track today, week, month, forecast, budgets, provider quota, and the runs driving spend.
       </p>
-      <div className="getting-started">
-        <div>
-          <h2>$0.00</h2>
-          <p>Current month spend · no ledger entries yet.</p>
-        </div>
-      </div>
+      <LivePanel
+        resource="costs"
+        title="Cost center"
+        description="Numbers come from the deterministic ledger; narrative summaries never decide budget gates."
+      />
     </main>
   );
 }

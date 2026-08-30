@@ -1,3 +1,5 @@
+import { LivePanel } from '../_components/live-panel';
+
 export default function ActivityPage() {
   return (
     <main className="shell onboarding-shell">
@@ -7,12 +9,11 @@ export default function ActivityPage() {
         Events are append-only, correlated, and filterable by agent, team, project, type, and
         severity.
       </p>
-      <div className="getting-started">
-        <div>
-          <h2>No activity yet</h2>
-          <p>Events will appear here as the studio works.</p>
-        </div>
-      </div>
+      <LivePanel
+        resource="activity"
+        title="Activity timeline"
+        description="Append-only events stay correlated and tenant-scoped as the studio works."
+      />
     </main>
   );
 }

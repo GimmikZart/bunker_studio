@@ -33,8 +33,9 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 ## Problemi aperti
 
 - Provider reali, Supabase cloud, GitHub, VAPID/Web Push e client pg-boss concreto richiedono configurazione/credenziali quality; fake e adapter contract-first sono disponibili.
-- In produzione la chat deve ancora selezionare un provider runtime configurato e salvare conversazioni/messaggi; il fake runtime resta ammesso solo per fixture locali.
-- Mancano ancora le verifiche quality esterne dei criteri `PARTIAL`, una UI task/workflow più ricca rispetto agli endpoint verticali e il drill backup/restore su un progetto quality.
+- La chat production seleziona un runtime HTTP configurato, usa il binding come modello di fallback e salva conversazioni/messaggi tenant-scoped; il fake runtime resta ammesso solo per fixture locali.
+- Office, Agent registry, Meetings, Approvals, Cost Center e Activity hanno pannelli client live con organization selector e stati/errori espliciti; Projects e Teams espongono create/edit tenant-scoped, mentre Settings mostra runtime, provider senza segreti e worker/heartbeat.
+- Mancano ancora le verifiche quality esterne dei criteri `PARTIAL` e il drill backup/restore su un progetto quality; la UI task/workflow ora supporta create e transizioni controllate.
 - I check gitleaks/semgrep/osv-scanner non sono installati nell'host; audit pnpm è verde.
 
 ## Ultimo aggiornamento

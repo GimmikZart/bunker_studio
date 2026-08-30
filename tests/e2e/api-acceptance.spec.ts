@@ -114,6 +114,24 @@ test('meetings, approvals, costs, notifications and repository metadata are tena
     data: { name: 'Operations project' },
   });
   const project = (await projectResponse.json()).project as { id: string };
+  const task = await request.post('/api/tasks', {
+    headers,
+    data: {
+      projectId: project.id,
+      title: 'Persist task state',
+      taskType: 'BACKEND',
+      dependencies: [],
+      writeScope: ['apps/api'],
+      estimatedCost: 0.5,
+    },
+  });
+  expect(task.status()).toBe(201);
+  const taskId = (await task.json()).task.id as string;
+  const readyTask = await request.patch(`/api/tasks?taskId=${taskId}`, {
+    headers,
+    data: { state: 'READY' },
+  });
+  expect((await readyTask.json()).task.state).toBe('READY');
   const agents = await Promise.all(
     ['Lead', 'Reviewer'].map((title) =>
       request.post('/api/agents', {
@@ -185,6 +203,9 @@ test('meetings, approvals, costs, notifications and repository metadata are tena
     data: { providerType: 'GITHUB', owner: 'example', name: 'operations' },
   });
   expect((await repository.json()).repository.status).toBe('REQUIRES_AUTH');
+  const activity = await request.get('/api/activity', { headers });
+  expect(activity.status()).toBe(200);
+  expect((await activity.json()).activity).toEqual([]);
   const push = await request.post('/api/notifications/subscribe', {
     headers,
     data: { endpoint: 'https://push.example.test/subscription', p256dh: 'key', auth: 'auth' },

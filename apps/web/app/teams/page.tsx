@@ -1,3 +1,5 @@
+import { OrganizationCrudPanel } from '../_components/organization-crud-panel';
+
 export default function TeamsPage() {
   return (
     <main className="shell onboarding-shell">
@@ -6,12 +8,7 @@ export default function TeamsPage() {
       <p className="hero-copy">
         Teams group persistent agents around projects, scopes, capabilities, and reporting lines.
       </p>
-      <div className="getting-started">
-        <div>
-          <h2>No teams yet</h2>
-          <p>Teams can be created after organization onboarding.</p>
-        </div>
-      </div>
+      <OrganizationCrudPanel kind="teams" />
     </main>
   );
 }

@@ -228,3 +228,38 @@ export const repositoryConnectionSchema = z.object({
   name: z.string().trim().min(1).max(200),
   defaultBranch: z.string().trim().min(1).max(120).default('main'),
 });
+
+export const taskStateSchema = z.enum([
+  'DRAFT',
+  'READY',
+  'QUEUED',
+  'RUNNING',
+  'WAITING_DEPENDENCY',
+  'WAITING_APPROVAL',
+  'WAITING_PROVIDER_QUOTA',
+  'WAITING_BUDGET_APPROVAL',
+  'BLOCKED',
+  'IMPLEMENTED',
+  'FAILED_RETRYABLE',
+  'FAILED_FINAL',
+  'CANCELED',
+  'VERIFYING',
+  'REVIEW_PENDING',
+  'FIX_REQUIRED',
+  'DONE',
+]);
+
+export const taskCreateSchema = z.object({
+  projectId: z.string().uuid(),
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(10_000).default(''),
+  taskType: z.enum(['FRONTEND', 'BACKEND', 'DESIGN', 'TEST', 'DOCS', 'REVIEW']),
+  dependencies: z.array(z.string().uuid()).max(50).default([]),
+  writeScope: z.array(z.string().trim().min(1)).max(100).default([]),
+  estimatedCost: z.number().nonnegative().max(1_000_000).default(0),
+  priority: z.number().int().min(-100).max(100).default(0),
+});
+
+export const taskTransitionSchema = z.object({
+  state: taskStateSchema,
+});

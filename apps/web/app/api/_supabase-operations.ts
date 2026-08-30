@@ -1,4 +1,5 @@
 import { AuthorizationError, type DesignRecord, type OrganizationRole } from '@bunker-studio/core';
+import { canTransition, type TaskState } from '@bunker-studio/orchestration';
 import type {
   MemoryUnit,
   RegisteredWorker,
@@ -12,9 +13,27 @@ import type {
   NotificationRecord,
   PushSubscriptionRecord,
   RepositoryRecord,
+  TaskRecord,
 } from './_store';
 
 type MeetingMinutes = NonNullable<MeetingRecord['minutes']>;
+export type ActivityRecord = {
+  id: string;
+  eventType: string;
+  aggregateType: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type ProviderRecord = {
+  id: string;
+  providerType: string;
+  displayName: string;
+  status: string;
+  capabilities: string[];
+  models: string[];
+  lastVerifiedAt: string | undefined;
+};
 
 async function unwrap(result: PromiseLike<QueryResult>): Promise<unknown> {
   const response = await result;
@@ -165,6 +184,42 @@ function mapMemory(value: unknown): MemoryUnit {
   };
 }
 
+function mapActivity(value: unknown): ActivityRecord {
+  const item = object(value);
+  return {
+    id: stringValue(item.id, 'id'),
+    eventType: stringValue(item.event_type, 'event_type'),
+    aggregateType: stringValue(item.aggregate_type, 'aggregate_type'),
+    payload:
+      item.payload_json && typeof item.payload_json === 'object'
+        ? (item.payload_json as Record<string, unknown>)
+        : {},
+    createdAt: stringValue(item.created_at, 'created_at'),
+  };
+}
+
+function mapTask(value: unknown): TaskRecord {
+  const item = object(value);
+  const dependencies = Array.isArray(item.task_dependencies) ? item.task_dependencies : [];
+  const readScope = Array.isArray(item.write_scope_json) ? item.write_scope_json : [];
+  return {
+    id: stringValue(item.id, 'id'),
+    organizationId: stringValue(item.organization_id, 'organization_id'),
+    projectId: stringValue(item.project_id, 'project_id'),
+    title: stringValue(item.title, 'title'),
+    description: stringValue(item.description ?? '', 'description'),
+    taskType: item.task_type as TaskRecord['taskType'],
+    state: stringValue(item.state, 'state'),
+    dependencies: dependencies
+      .map((entry) => object(entry).depends_on_task_id)
+      .filter((entry): entry is string => typeof entry === 'string'),
+    writeScope: readScope.filter((entry): entry is string => typeof entry === 'string'),
+    estimatedCost: Number(object(item.definition_of_done_json ?? {}).estimated_cost ?? 0),
+    priority: typeof item.priority === 'number' ? item.priority : 0,
+    createdAt: stringValue(item.created_at, 'created_at'),
+  };
+}
+
 function mapDesign(value: unknown): DesignRecord {
   const item = object(value);
   const spec = item.spec_json;
@@ -203,6 +258,25 @@ function mapWorker(value: unknown): RegisteredWorker {
   };
 }
 
+function mapProvider(value: unknown): ProviderRecord {
+  const item = object(value);
+  const capabilities = object(item.capabilities_json ?? {});
+  const models = Array.isArray(item.model_catalog) ? item.model_catalog : [];
+  return {
+    id: stringValue(item.id, 'id'),
+    providerType: stringValue(item.provider_type, 'provider_type'),
+    displayName: stringValue(item.display_name, 'display_name'),
+    status: stringValue(item.status, 'status'),
+    capabilities: Array.isArray(capabilities.items)
+      ? capabilities.items.filter((entry): entry is string => typeof entry === 'string')
+      : [],
+    models: models
+      .map((entry) => object(entry).provider_model_id)
+      .filter((entry): entry is string => typeof entry === 'string'),
+    lastVerifiedAt: nullableString(item.last_verified_at),
+  };
+}
+
 export class SupabaseOperationalRepository {
   constructor(private readonly client: SupabaseDataClient) {}
 
@@ -217,6 +291,17 @@ export class SupabaseOperationalRepository {
     );
     const role = data && object(data).role;
     return typeof role === 'string' ? (role as OrganizationRole) : null;
+  }
+
+  async listProviders(organizationId: string, actorUserId: string): Promise<ProviderRecord[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('provider_connections')
+        .select('*, model_catalog(provider_model_id)')
+        .eq('organization_id', organizationId),
+    );
+    return Array.isArray(data) ? data.map(mapProvider) : [];
   }
 
   async listMeetings(organizationId: string, actorUserId: string): Promise<MeetingRecord[]> {
@@ -727,6 +812,14 @@ export class SupabaseOperationalRepository {
     return data ? mapWorker(data) : null;
   }
 
+  async listWorkers(organizationId: string, actorUserId: string): Promise<RegisteredWorker[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client.from('worker_nodes').select('*').eq('organization_id', organizationId),
+    );
+    return Array.isArray(data) ? data.map(mapWorker) : [];
+  }
+
   async heartbeatWorker(
     nodeId: string,
     organizationId: string,
@@ -807,6 +900,104 @@ export class SupabaseOperationalRepository {
         ])
         .select('*'),
     );
+  }
+
+  async listActivity(organizationId: string, actorUserId: string): Promise<ActivityRecord[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client.from('domain_events').select('*').eq('organization_id', organizationId),
+    );
+    return Array.isArray(data) ? data.map(mapActivity) : [];
+  }
+
+  async listTasks(organizationId: string, actorUserId: string): Promise<TaskRecord[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('tasks')
+        .select('*, task_dependencies(depends_on_task_id)')
+        .eq('organization_id', organizationId),
+    );
+    return Array.isArray(data) ? data.map(mapTask) : [];
+  }
+
+  async createTask(
+    input: Omit<TaskRecord, 'id' | 'state' | 'createdAt'>,
+    actorUserId: string,
+  ): Promise<TaskRecord> {
+    await this.requireMember(input.organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('tasks')
+        .insert({
+          organization_id: input.organizationId,
+          project_id: input.projectId,
+          title: input.title,
+          description: input.description,
+          task_type: input.taskType,
+          state: 'DRAFT',
+          priority: input.priority,
+          write_scope_json: input.writeScope,
+          definition_of_done_json: { estimated_cost: input.estimatedCost },
+        })
+        .select('*')
+        .single(),
+    );
+    const task = object(data);
+    if (input.dependencies.length) {
+      await unwrap(
+        this.client
+          .from('task_dependencies')
+          .insert(
+            input.dependencies.map((dependency) => ({
+              task_id: task.id,
+              depends_on_task_id: dependency,
+            })),
+          )
+          .select('*'),
+      );
+    }
+    return mapTask({
+      ...task,
+      task_dependencies: input.dependencies.map((dependency) => ({
+        depends_on_task_id: dependency,
+      })),
+    });
+  }
+
+  async transitionTask(
+    taskId: string,
+    organizationId: string,
+    state: TaskState,
+    actorUserId: string,
+  ): Promise<TaskRecord> {
+    await this.requireWrite(organizationId, actorUserId);
+    const current = await unwrap(
+      this.client
+        .from('tasks')
+        .select('*, task_dependencies(depends_on_task_id)')
+        .eq('id', taskId)
+        .eq('organization_id', organizationId)
+        .maybeSingle(),
+    );
+    if (!current) throw new AuthorizationError('Task not found.');
+    const task = mapTask(current);
+    if (!canTransition(task.state as TaskState, state)) throw new Error('Invalid task transition.');
+    const data = await unwrap(
+      this.client
+        .from('tasks')
+        .update({ state })
+        .eq('id', taskId)
+        .eq('organization_id', organizationId)
+        .select('*')
+        .single(),
+    );
+    return mapTask({
+      ...object(data),
+      task_dependencies: task.dependencies.map((dependency) => ({
+        depends_on_task_id: dependency,
+      })),
+    });
   }
 
   private async requireMember(organizationId: string, userId: string): Promise<OrganizationRole> {

@@ -14,6 +14,10 @@ alter table public.conversations add column if not exists external_session_id te
 create unique index if not exists conversations_external_session_idx
   on public.conversations(organization_id, primary_agent_id, external_session_id)
   where external_session_id is not null;
+alter table public.task_dependencies enable row level security;
+create policy task_dependency_tenant_isolation on public.task_dependencies
+  for all using (exists (select 1 from public.tasks t where t.id = task_id and public.is_organization_member(t.organization_id)))
+  with check (exists (select 1 from public.tasks t where t.id = task_id and public.is_organization_member(t.organization_id)));
 create unique index if not exists repo_connections_organization_project_idx
   on public.repo_connections(organization_id, project_id)
   where project_id is not null;

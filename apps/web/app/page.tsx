@@ -1,9 +1,4 @@
-const areas = [
-  { label: 'Lead', detail: 'Planning', tone: 'violet' },
-  { label: 'Development', detail: 'Ready for work', tone: 'blue' },
-  { label: 'Design', detail: 'No active proposal', tone: 'amber' },
-  { label: 'Review / QA', detail: 'Verification idle', tone: 'green' },
-];
+import { OfficeDashboard } from './_components/office-dashboard';
 
 export default function HomePage() {
   return (
@@ -21,6 +16,7 @@ export default function HomePage() {
           <a href="/agents">Agents</a>
           <a href="/approvals">Approvals</a>
           <a href="/meetings">Meetings</a>
+          <a href="/tasks">Tasks</a>
           <a href="/costs">Costs</a>
           <a href="/activity">Activity</a>
           <a href="/settings">Settings</a>
@@ -48,28 +44,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="office-grid" aria-label="Office areas">
-        {areas.map((area) => (
-          <article className={`office-area ${area.tone}`} key={area.label}>
-            <div className="area-heading">
-              <span className="area-icon" aria-hidden="true" />
-              <span>{area.label}</span>
-            </div>
-            <p>{area.detail}</p>
-            <div className="empty-state">No agents assigned yet</div>
-          </article>
-        ))}
-        <article className="meeting-area">
-          <div className="area-heading">
-            <span className="area-icon" aria-hidden="true" />
-            Meeting room
-          </div>
-          <p>Quiet until needed</p>
-          <button className="secondary-button" type="button">
-            Start a meeting
-          </button>
-        </article>
-      </section>
+      <OfficeDashboard />
 
       <section className="getting-started" id="projects">
         <div>

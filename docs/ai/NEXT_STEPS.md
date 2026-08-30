@@ -2,11 +2,11 @@
 
 ## Prossima attività
 
-Collegare il runtime provider configurato alla chat production e persistere conversazioni/messaggi con RLS; mantenere `FakeRuntime` solo per fixture locali e aggiungere contract test per il percorso provider-independent.
+Completare una UI task/workflow con creazione e transizioni controllate, quindi eseguire accessibility/performance smoke e chiudere la matrice quality esterna.
 
 ### Area interessata
 
-`packages/agent-runtime/src/`, `packages/config/src/`, `apps/web/app/api/`, `supabase/migrations/` e `docs/quality/ACCEPTANCE_MATRIX.md`.
+`apps/web/app/tasks/`, `apps/web/app/api/tasks/`, `packages/orchestration/`, `docs/quality/ACCEPTANCE_MATRIX.md` e `docs/DEPLOYMENT.md`.
 
 ### Comportamento atteso
 

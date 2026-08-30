@@ -1,3 +1,5 @@
+import { LivePanel } from '../_components/live-panel';
+
 export default function ApprovalsPage() {
   return (
     <main className="shell onboarding-shell">
@@ -7,12 +9,11 @@ export default function ApprovalsPage() {
         Cost, product, design, security, and protected actions pause here until an authorized owner
         resolves them.
       </p>
-      <div className="getting-started">
-        <div>
-          <h2>All clear</h2>
-          <p>No pending approvals.</p>
-        </div>
-      </div>
+      <LivePanel
+        resource="approvals"
+        title="Approval inbox"
+        description="Resolve only what is authorized, with an explicit audit trail."
+      />
     </main>
   );
 }

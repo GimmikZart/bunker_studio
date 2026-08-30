@@ -13,6 +13,7 @@ type WebRuntimeState = {
   notifications: Map<string, NotificationRecord[]>;
   pushSubscriptions: Map<string, PushSubscriptionRecord[]>;
   repositories: Map<string, RepositoryRecord>;
+  tasks: Map<string, TaskRecord[]>;
 };
 
 type GlobalWithRuntime = typeof globalThis & { __bunkerStudioRuntime?: WebRuntimeState };
@@ -28,6 +29,7 @@ const state = (globalRuntime.__bunkerStudioRuntime ??= {
   notifications: new Map<string, NotificationRecord[]>(),
   pushSubscriptions: new Map<string, PushSubscriptionRecord[]>(),
   repositories: new Map<string, RepositoryRecord>(),
+  tasks: new Map<string, TaskRecord[]>(),
 });
 
 export const tenantStore = state.tenantStore;
@@ -157,6 +159,21 @@ export type RepositoryRecord = {
   name: string;
   defaultBranch: string;
   status: 'CONNECTED' | 'REQUIRES_AUTH';
+};
+
+export type TaskRecord = {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  title: string;
+  description: string;
+  taskType: 'FRONTEND' | 'BACKEND' | 'DESIGN' | 'TEST' | 'DOCS' | 'REVIEW';
+  state: string;
+  dependencies: string[];
+  writeScope: string[];
+  estimatedCost: number;
+  priority: number;
+  createdAt: string;
 };
 
 export function createMeeting(
@@ -297,4 +314,27 @@ export function saveRepository(input: RepositoryRecord): RepositoryRecord {
 export function getRepository(projectId: string): RepositoryRecord | null {
   const repository = state.repositories.get(projectId);
   return repository ? structuredClone(repository) : null;
+}
+
+export function createTask(input: Omit<TaskRecord, 'id' | 'state' | 'createdAt'>): TaskRecord {
+  const task: TaskRecord = {
+    ...input,
+    id: crypto.randomUUID(),
+    state: 'DRAFT',
+    createdAt: new Date().toISOString(),
+  };
+  state.tasks.set(input.organizationId, [...(state.tasks.get(input.organizationId) ?? []), task]);
+  return structuredClone(task);
+}
+
+export function listTasks(organizationId: string): TaskRecord[] {
+  return structuredClone(state.tasks.get(organizationId) ?? []);
+}
+
+export function updateTask(organizationId: string, task: TaskRecord): TaskRecord {
+  const tasks = state.tasks.get(organizationId) ?? [];
+  const index = tasks.findIndex((item) => item.id === task.id);
+  if (index < 0) throw new Error('Task not found.');
+  tasks[index] = structuredClone(task);
+  return structuredClone(task);
 }

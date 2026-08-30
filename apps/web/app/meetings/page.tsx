@@ -1,3 +1,5 @@
+import { LivePanel } from '../_components/live-panel';
+
 export default function MeetingsPage() {
   return (
     <main className="shell onboarding-shell">
@@ -7,15 +9,11 @@ export default function MeetingsPage() {
         Bounded, agenda-led meetings turn scoped agent contributions into validated minutes and
         actions.
       </p>
-      <div className="getting-started">
-        <div>
-          <h2>Meeting room</h2>
-          <p>No active meetings.</p>
-        </div>
-        <button className="primary-button" type="button">
-          Start a meeting
-        </button>
-      </div>
+      <LivePanel
+        resource="meetings"
+        title="Meeting room"
+        description="Agenda-led meetings produce bounded contributions and persisted minutes."
+      />
     </main>
   );
 }
