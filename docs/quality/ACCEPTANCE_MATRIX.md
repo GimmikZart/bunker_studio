@@ -1,6 +1,6 @@
 # Bunker Studio V1 acceptance matrix
 
-Updated 2026-08-30. `PASS` means automated evidence is present in this repository. `PARTIAL` means the in-scope foundation is implemented but requires an external credential, device, provider or multi-process quality run.
+Updated 2026-08-30. `PASS` means automated evidence is present in this repository. `PARTIAL` means the in-scope foundation is implemented but requires an external credential, device, provider or multi-process quality run. The latest local release check also covers Settings/provider visibility and the task state-machine UI, without changing the external-quality statuses below.
 
 | Criterion | Status | Evidence / remaining verification |
 |---|---|---|
