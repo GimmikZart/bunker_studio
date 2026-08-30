@@ -326,7 +326,9 @@ export type TaskRecord = {
   taskType: 'FRONTEND' | 'BACKEND' | 'DESIGN' | 'TEST' | 'DOCS' | 'REVIEW';
   state: string;
   dependencies: string[];
+  readScope?: string[];
   writeScope: string[];
+  parallelGroupId?: string;
   definitionOfDone?: string[];
   estimatedCost: number;
   priority: number;

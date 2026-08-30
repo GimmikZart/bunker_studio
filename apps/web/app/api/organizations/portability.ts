@@ -29,6 +29,10 @@ function optionalStringArray(value: unknown): value is string[] | undefined {
   return value === undefined || stringArray(value);
 }
 
+function optionalString(value: unknown): value is string | undefined {
+  return value === undefined || string(value);
+}
+
 export function parseOrganizationExport(value: unknown): OrganizationExport | null {
   if (!record(value) || !record(value.manifest) || value.manifest.schemaVersion !== 1) return null;
   if (
@@ -99,7 +103,9 @@ export function parseOrganizationExport(value: unknown): OrganizationExport | nu
         ) &&
         string(item.state) &&
         stringArray(item.dependencies) &&
+        optionalStringArray(item.readScope) &&
         stringArray(item.writeScope) &&
+        optionalString(item.parallelGroupId) &&
         typeof item.estimatedCost === 'number' &&
         typeof item.priority === 'number',
     )

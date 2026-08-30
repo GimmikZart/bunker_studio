@@ -4,7 +4,7 @@
 
 ### Checkpoint 2026-08-31
 
-Sono stati completati e verificati gli assegnamenti agenti tenant-scoped (team/progetto/reporting line), il dettaglio agente, metriche deterministiche e la baseline activity append-only. Studio Labs ora dispone di inizializzazione Owner-only del progetto protetto, analisi deterministica, selezione task+approval e gate reviewer/CI/Owner/human con `productionDeploy: false`. Il Lead ora persiste il piano strutturato e materializza il DAG in task DRAFT con dipendenze rimappate, workflow link e Definition of Done. Il runner esegue batch concorrenti solo su scope disgiunti, serializza scope sovrapposti e usa il resume della sessione quando una quota interrompe un provider dopo l’avvio. Le migrazioni Supabase `00000000000012_domain_event_triggers.sql` e `00000000000013_workflow_plan.sql` registrano eventi e metadati del piano.
+Sono stati completati e verificati gli assegnamenti agenti tenant-scoped (team/progetto/reporting line), il dettaglio agente, metriche deterministiche e la baseline activity append-only. Studio Labs ora dispone di inizializzazione Owner-only del progetto protetto, analisi deterministica, selezione task+approval e gate reviewer/CI/Owner/human con `productionDeploy: false`. Il Lead ora persiste il piano strutturato e materializza il DAG in task DRAFT con dipendenze rimappate, read/write scope, parallel group, workflow link e Definition of Done; gli stessi metadati sono preservati dall'export/import. Il runner esegue batch concorrenti solo su scope disgiunti, serializza scope sovrapposti e usa il resume della sessione quando una quota interrompe un provider dopo l'avvio. Gli adapter HTTP conservano anche gli eventi SSE terminali di solo usage e normalizzano l'usage Anthropic distribuito tra eventi. Le migrazioni Supabase `00000000000012_domain_event_triggers.sql` e `00000000000013_workflow_plan.sql` registrano eventi e metadati del piano.
 
 Bootstrap, fondazioni domain e vertical slices principali sono implementati; il progetto non è ancora alla Definition of Done finale perché la matrice acceptance AC-001..AC-014 non è completamente verificata e alcune integrazioni richiedono credenziali quality.
 
@@ -34,6 +34,7 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 - `pnpm exec playwright test`: PASS, 10 test (health, onboarding, login/signup, PWA, tenancy/isolation, design/staffing/memory, worker, operations/review/portability, virgin template, smoke responsive/accessibility).
 - `pnpm audit --audit-level high`: PASS, nessuna vulnerabilità nota.
 - `supabase db reset --local`: PASS; migrations `00000000000000..00000000000013` applicate, inclusi RLS assignments, trigger domain events e metadati workflow plan.
+- Test mirati post-hardening: Lead workflow plan 2/2, AgentRuntime 6/6, Anthropic adapter 2/2, typecheck 15/15: PASS.
 
 ## Problemi aperti
 

@@ -2,6 +2,25 @@
 
 Storico append-only.
 
+## 2026-08-31 — Persistenza completa dei metadati Lead e usage SSE
+
+### Lavoro svolto
+
+- Persistiti `readScope` e `parallelGroupId` nei task locali/Supabase e nel percorso Lead; export/import mantiene i metadati con compatibilità per pacchetti precedenti.
+- Corretto il mapper Supabase che leggeva erroneamente `write_scope_json` come read scope.
+- Il runtime HTTP ora emette anche eventi SSE senza testo ma con usage; l’adapter Anthropic ricompone input/output usage provenienti da eventi distinti.
+
+### Verifiche
+
+- Test Lead workflow plan: 2/2 PASS.
+- AgentRuntime: 6/6 PASS.
+- Anthropic adapter: 2/2 PASS.
+- Typecheck: 15/15 task PASS.
+
+### Prossimo passo
+
+Completare gli smoke quality esterni ancora `PARTIAL` quando saranno disponibili Supabase cloud, secondo device, GitHub/CI, VAPID/Web Push, pg-boss multi-process e runtime Ollama/LM Studio.
+
 ## 2026-08-31 — OpenAI-compatible SSE contract
 
 ### Verifiche

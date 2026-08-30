@@ -44,6 +44,7 @@ describe('Lead workflow plan route', () => {
                 dependencies: ['schema'],
                 readScope: ['docs'],
                 writeScope: ['packages/service'],
+                parallelGroupId: 'backend',
                 definitionOfDone: ['API contract is covered.'],
                 estimatedCost: 2,
               },
@@ -75,6 +76,9 @@ describe('Lead workflow plan route', () => {
     expect(payload.tasks[0].workflowId).toBe(payload.workflow.id);
     expect(payload.tasks[0].definitionOfDone).toEqual(['Schema tests pass.']);
     expect(payload.tasks[0].title).toBe('Define schema');
+    expect(payload.tasks[0].readScope).toEqual([]);
+    expect(payload.tasks[1].readScope).toEqual(['docs']);
+    expect(payload.tasks[1].parallelGroupId).toBe('backend');
     expect(payload.tasks[1].dependencies).toEqual([payload.tasks[0].id]);
     expect(payload.workflow.taskIds).toEqual(payload.tasks.map((task: { id: string }) => task.id));
 

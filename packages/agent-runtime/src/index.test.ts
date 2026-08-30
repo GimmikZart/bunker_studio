@@ -66,6 +66,9 @@ describe('FakeRuntime', () => {
         controller.enqueue(
           encoder.encode('data: {"text":"lo","usage":{"inputTokens":2,"outputTokens":2}}\n\n'),
         );
+        controller.enqueue(
+          encoder.encode('data: {"usage":{"inputTokens":3,"outputTokens":4}}\n\n'),
+        );
         controller.enqueue(encoder.encode('data: [DONE]\n\n'));
         controller.close();
       },
@@ -86,7 +89,37 @@ describe('FakeRuntime', () => {
     });
 
     expect(result.text).toBe('hello');
-    expect(result.usage).toEqual({ inputTokens: 2, outputTokens: 2 });
+    expect(result.usage).toEqual({ inputTokens: 3, outputTokens: 4 });
     expect(await runtime.getCapabilities()).toMatchObject({ streaming: true });
+  });
+
+  it('keeps usage-only terminal streaming events', async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"text":"ok"}\n\n'));
+        controller.enqueue(
+          encoder.encode('data: {"usage":{"inputTokens":7,"outputTokens":8}}\n\n'),
+        );
+        controller.close();
+      },
+    });
+    const runtime = new HttpAgentRuntime({
+      provider: 'usage-provider',
+      endpoint: 'http://provider.test/stream',
+      fetchFn: async () =>
+        new Response(stream, { status: 200, headers: { 'content-type': 'text/event-stream' } }),
+      parseStreamChunk: (payload) =>
+        payload as { text?: string; usage?: { inputTokens: number; outputTokens: number } },
+    });
+
+    const result = await collectRun(runtime, {
+      agentId: 'agent',
+      prompt: 'stream',
+      correlationId: 'corr',
+    });
+
+    expect(result.text).toBe('ok');
+    expect(result.usage).toEqual({ inputTokens: 7, outputTokens: 8 });
   });
 });

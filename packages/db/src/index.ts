@@ -695,7 +695,9 @@ export type PortableOrganization = {
     taskType: string;
     state: string;
     dependencies: string[];
+    readScope?: string[];
     writeScope: string[];
+    parallelGroupId?: string;
     estimatedCost: number;
     priority: number;
   }[];

@@ -44,6 +44,7 @@ export const leadTaskSchema = z.object({
   dependencies: z.array(z.string()),
   readScope: z.array(z.string()),
   writeScope: z.array(z.string()),
+  parallelGroupId: z.string().min(1).optional(),
   definitionOfDone: z.array(z.string().min(1)),
   estimatedCost: z.number().nonnegative(),
 });
@@ -308,7 +309,9 @@ export const taskCreateSchema = z.object({
   description: z.string().trim().max(10_000).default(''),
   taskType: z.enum(['FRONTEND', 'BACKEND', 'DESIGN', 'TEST', 'DOCS', 'REVIEW']),
   dependencies: z.array(z.string().uuid()).max(50).default([]),
+  readScope: z.array(z.string().trim().min(1)).max(100).default([]),
   writeScope: z.array(z.string().trim().min(1)).max(100).default([]),
+  parallelGroupId: z.string().trim().min(1).max(120).optional(),
   estimatedCost: z.number().nonnegative().max(1_000_000).default(0),
   priority: z.number().int().min(-100).max(100).default(0),
 });

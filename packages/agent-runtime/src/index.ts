@@ -185,7 +185,7 @@ export class HttpAgentRuntime implements AgentRuntime {
       let sequence = 2;
       for await (const payload of parseServerSentEvents(response.body)) {
         const chunk = this.config.parseStreamChunk(payload);
-        if (chunk.text)
+        if (chunk.text !== undefined || chunk.usage !== undefined)
           yield {
             sequence,
             type: 'TEXT_DELTA',

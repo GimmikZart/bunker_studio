@@ -210,7 +210,8 @@ function mapActivity(value: unknown): ActivityRecord {
 function mapTask(value: unknown): TaskRecord {
   const item = object(value);
   const dependencies = Array.isArray(item.task_dependencies) ? item.task_dependencies : [];
-  const readScope = Array.isArray(item.write_scope_json) ? item.write_scope_json : [];
+  const readScope = Array.isArray(item.read_scope_json) ? item.read_scope_json : [];
+  const writeScope = Array.isArray(item.write_scope_json) ? item.write_scope_json : [];
   const definition = object(item.definition_of_done_json ?? {});
   const definitionItems = Array.isArray(definition.items) ? definition.items : [];
   return {
@@ -225,7 +226,11 @@ function mapTask(value: unknown): TaskRecord {
     dependencies: dependencies
       .map((entry) => object(entry).depends_on_task_id)
       .filter((entry): entry is string => typeof entry === 'string'),
-    writeScope: readScope.filter((entry): entry is string => typeof entry === 'string'),
+    readScope: readScope.filter((entry): entry is string => typeof entry === 'string'),
+    writeScope: writeScope.filter((entry): entry is string => typeof entry === 'string'),
+    ...(typeof item.parallel_group_id === 'string'
+      ? { parallelGroupId: item.parallel_group_id }
+      : {}),
     definitionOfDone: definitionItems.filter(
       (entry: unknown): entry is string => typeof entry === 'string',
     ),
@@ -1239,7 +1244,9 @@ export class SupabaseOperationalRepository {
           task_type: input.taskType,
           state: 'DRAFT',
           priority: input.priority,
+          read_scope_json: input.readScope ?? [],
           write_scope_json: input.writeScope,
+          ...(input.parallelGroupId ? { parallel_group_id: input.parallelGroupId } : {}),
           definition_of_done_json: {
             estimated_cost: input.estimatedCost,
             items: input.definitionOfDone ?? [],

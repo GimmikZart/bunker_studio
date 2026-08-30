@@ -2,13 +2,13 @@
 
 Updated 2026-08-31. `PASS` means automated evidence is present in this repository. `PARTIAL` means the in-scope foundation is implemented but requires an external credential, device, provider or multi-process quality run. The latest local release check also covers agent registry management, notification preferences, Settings/provider visibility and the task state-machine UI, without changing the external-quality statuses below.
 
-Checkpoint 2026-08-31: the local protected Studio Labs workflow now creates gated task/approval records and enforces reviewer, CI, Owner and human-actor requirements server-side; the Lead plan endpoint persists validated DAGs, task links and Definition of Done metadata; AC-009 remains `PARTIAL` until the GitHub/CI quality integration is exercised.
+Checkpoint 2026-08-31: the local protected Studio Labs workflow now creates gated task/approval records and enforces reviewer, CI, Owner and human-actor requirements server-side; the Lead plan endpoint persists validated DAGs, task links, Definition of Done, read/write scopes and parallel-group metadata, including export/import round-trip; provider streaming preserves terminal usage-only events; AC-009 remains `PARTIAL` until the GitHub/CI quality integration is exercised.
 
 | Criterion | Status | Evidence / remaining verification |
 |---|---|---|
 | AC-001 PC loss | PARTIAL | Supabase durable schema, tenant APIs and export state exist; second-device cloud session test requires quality Supabase credentials. |
-| AC-002 provider switch | PASS | Binding-preserving agent registry plus OpenAI, Anthropic and OpenAI-compatible adapter contract tests with native payload/header and normalized usage coverage. |
-| AC-003 parallel frontend/backend | PASS | `WorkflowRunner` executes disjoint scopes concurrently, serializes overlapping scopes, and Git artifact tests preserve isolated workspaces. |
+| AC-002 provider switch | PASS | Binding-preserving agent registry plus OpenAI, Anthropic and OpenAI-compatible adapter contract tests with native payload/header, SSE and normalized usage coverage. |
+| AC-003 parallel frontend/backend | PASS | `WorkflowRunner` executes disjoint scopes concurrently, serializes overlapping scopes, and persisted Lead tasks retain read/write scope and parallel-group metadata; Git artifact tests preserve isolated workspaces. |
 | AC-004 dependency serialization | PASS | `WorkflowRunner` DAG test proves dependent task waits for both prerequisites. |
 | AC-005 review loop | PASS | Reviewer finding creates a persisted review report, deterministic fix tasks and the package-level re-review loop blocks until pass. |
 | AC-006 quota interruption | PARTIAL | Fake quota resume, provider-session resume, lease reclaim and persistent composition are tested; multi-process pg-boss restart requires a configured client. |
