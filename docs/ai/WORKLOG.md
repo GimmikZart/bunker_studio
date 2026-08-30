@@ -2,6 +2,27 @@
 
 Storico append-only.
 
+## 2026-08-30 — Acceptance E2E e operational API slices
+
+### Lavoro svolto
+
+- Reso lo store fixture condiviso tra i route bundle Next tramite `globalThis`, mantenendo la separazione tenant.
+- Aggiunte API per meeting/minutes, approvals, cost ledger/report, notification inbox/subscription e repository metadata.
+- Aggiunti contratti Zod, E2E API per tenancy, design, staffing, memory, worker e operations.
+- Rafforzato il workflow con budget cumulativo sui task concorrenti.
+- Aggiunti trigger Supabase per profilo utente e membership Owner, contesto Docker workspace e runbook quality/production.
+
+### Verifiche
+
+- `pnpm verify`: PASS; formatter, lint, typecheck, 21 task di test, build e audit.
+- `pnpm test:e2e`: PASS, 8 scenari.
+- `supabase db reset --local`: PASS; migration trigger applicata.
+- Query locale: 45 policy pubbliche, 38 tabelle RLS-enabled, trigger tenancy e funzione claim outbox presenti.
+
+### Stato finale della sessione
+
+Acceptance locale stabilizzata. Prossimo passo: eseguire in quality le righe `PARTIAL` della matrice con credenziali/device/runtime espliciti.
+
 ## 2026-08-30 — Sessione 1 — Product & architecture definition
 
 ### Lavoro svolto

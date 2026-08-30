@@ -11,13 +11,13 @@ Updated 2026-08-30. `PASS` means automated evidence is present in this repositor
 | AC-005 review loop | PASS | Reviewer finding creates fix title and re-review loop blocks until pass. |
 | AC-006 quota interruption | PARTIAL | Fake quota resume, lease reclaim and persistent composition are tested; multi-process pg-boss restart requires a configured client. |
 | AC-007 budget hard stop | PASS | Workflow budget test confirms provider handler is not invoked when estimate exceeds remaining budget. |
-| AC-008 design gate | PASS | Design submission/owner approval API test and immutable version policy. |
+| AC-008 design gate | PASS | Design submission/owner approval API test and immutable version policy; exercised by `tests/e2e/api-acceptance.spec.ts`. |
 | AC-009 protected self-improvement | PARTIAL | Protected core policy and owner gate are deterministic; GitHub/CI quality integration needs credentials. |
-| AC-010 memory scaling | PASS | Bounded relevance retrieval/provenance test; full archive is not passed to context. |
+| AC-010 memory scaling | PASS | Bounded relevance retrieval/provenance test; full archive is not passed to context; API search exercised by `tests/e2e/api-acceptance.spec.ts`. |
 | AC-011 push notification | PARTIAL | Payload/deep-link/service-worker tests pass; VAPID delivery and background-device test need quality credentials/device. |
 | AC-012 export/import | PASS | Secrets excluded, IDs remapped and provider connections marked reauth in DB tests. |
-| AC-013 local worker | PARTIAL | Registry, heartbeat, capability and concurrency tests pass; Ollama/LM Studio network smoke requires a local runtime. |
-| AC-014 multiuser isolation | PASS | API cross-organization tests plus Supabase RLS migration verification. |
+| AC-013 local worker | PARTIAL | Registry, heartbeat, capability and concurrency tests pass; API registration/heartbeat is exercised by `tests/e2e/api-acceptance.spec.ts`; Ollama/LM Studio network smoke requires a local runtime. |
+| AC-014 multiuser isolation | PASS | API cross-organization tests plus Supabase RLS migration verification; exercised by `tests/e2e/api-acceptance.spec.ts`. |
 
 ## Release blockers
 

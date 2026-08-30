@@ -7,7 +7,7 @@ WORKDIR /app
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/web/package.json apps/web/package.json
-COPY packages/config/package.json packages/config/package.json
+COPY packages packages
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS builder

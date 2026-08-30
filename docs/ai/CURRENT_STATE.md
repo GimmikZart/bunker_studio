@@ -11,11 +11,12 @@ Bootstrap, fondazioni domain e vertical slices principali sono implementati; il 
 - M4: state machine task, dependency DAG, parallel scope grouping, lease/reclaim, `DurableQueue`, adapter `PgBossQueue`, outbox dispatcher in-memory e Supabase con claim atomico, workflow runner, budget gate e quota resume.
 - M5-M6: Lead/verification/review contracts, workspace/artifact Git, safe parallelism e reviewer fix loop con limite cicli.
 - M7-M14 verticali: design submission/owner approval, staffing proposal/confirmation, bounded meetings, bounded memory/search con provenance e delete, PWA/push adapter, worker registry/API, export/import ID remap, AES-256-GCM secrets e protected Studio policy.
-- UI/API: login/signup/onboarding, PWA manifest/service worker, design/staffing/memory/worker endpoints e CRUD tenancy.
+- UI/API: login/signup/onboarding, PWA manifest/service worker, CRUD tenancy, design/staffing/memory/worker, meetings/minutes, approvals, cost ledger/report, notification inbox/subscription e repository metadata endpoints.
+- Hardening release: singleton runtime per route bundle in sviluppo, budget cumulativo sui batch concorrenti, trigger Supabase per profilo e membership Owner, Docker context workspace e runbook quality/production.
 
 ## Lavoro in corso
 
-Completare la matrice acceptance AC-001..AC-014 con fixture E2E/integration per workflow persistente, quota/budget, design gate, push, export/import, local worker e isolamento multiutente.
+Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC loss cloud, restart multi-process pg-boss, GitHub/CI protetto, VAPID/device e runtime Ollama/LM Studio) e registrare gli esiti nella matrice.
 
 ## Verifiche
 
@@ -23,15 +24,15 @@ Completare la matrice acceptance AC-001..AC-014 con fixture E2E/integration per 
 - `pnpm lint`: PASS, 15 package task.
 - `pnpm typecheck`: PASS, 15 package task.
 - `pnpm test`: PASS, 21 task Turborepo.
-- `pnpm build`: PASS, 15 package task; Next genera 28 route/pagine.
-- `pnpm exec playwright test`: PASS, 4 test (health, onboarding, login/signup, PWA).
+- `pnpm build`: PASS, 15 package task; Next genera 33 route/pagine.
+- `pnpm exec playwright test`: PASS, 8 test (health, onboarding, login/signup, PWA, tenancy/isolation, design/staffing/memory, worker, operations).
 - `pnpm audit --audit-level high`: PASS, nessuna vulnerabilità nota.
 - `supabase db reset --local`: PASS; 45 policy pubbliche e 38 tabelle RLS-enabled verificate sul database locale.
 
 ## Problemi aperti
 
 - Provider reali, Supabase cloud, GitHub, VAPID/Web Push e client pg-boss concreto richiedono configurazione/credenziali quality; fake e adapter contract-first sono disponibili.
-- Mancano ancora la matrice E2E completa AC-001..AC-014, UI operative per tutti i flussi task/meeting/cost/approval e drill backup/restore quality.
+- Mancano ancora le verifiche quality esterne dei criteri `PARTIAL`, una UI task/workflow più ricca rispetto agli endpoint verticali e il drill backup/restore su un progetto quality.
 - I check gitleaks/semgrep/osv-scanner non sono installati nell'host; audit pnpm è verde.
 
 ## Ultimo aggiornamento

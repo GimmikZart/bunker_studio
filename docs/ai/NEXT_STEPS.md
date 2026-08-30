@@ -2,15 +2,15 @@
 
 ## Prossima attività
 
-Completare la matrice acceptance AC-001..AC-014 con fixture E2E/integration per workflow persistente, quota/budget, design gate, push, export/import, local worker e isolamento multiutente.
+Eseguire in quality la verifica degli scenari ancora `PARTIAL`: sessione cloud da secondo device, restart multi-process pg-boss, integrazione GitHub/CI protetta, Web Push su device in background e smoke Ollama/LM Studio.
 
 ### Area interessata
 
-`tests/e2e/`, `packages/*/src/*.test.ts`, API task/approval/cost/meeting e integrazione quality worker.
+`docs/quality/ACCEPTANCE_MATRIX.md`, `docs/quality/BACKUP_RESTORE_DRILL.md`, `docs/DEPLOYMENT.md` e configurazione quality isolata.
 
 ### Comportamento atteso
 
-Ogni scenario AC deve avere una verifica automatizzata quando possibile, oppure una procedura manuale ripetibile documentata quando dipende da provider/browser/device esterni; nessun test deve bypassare autorizzazioni, budget o approval gate.
+Ogni scenario `PARTIAL` deve avere una verifica manuale ripetibile con credenziali e budget espliciti; nessun test deve bypassare autorizzazioni, budget o approval gate.
 
 ### Definition of Done locale
 

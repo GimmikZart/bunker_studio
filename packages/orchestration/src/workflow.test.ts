@@ -60,4 +60,34 @@ describe('workflow runner', () => {
     expect(result.blockedTaskIds).toEqual(['expensive']);
     expect(result.tasks[0]?.state).toBe('READY');
   });
+
+  it('never queues a parallel batch above the remaining hard budget', async () => {
+    const invoked: string[] = [];
+    const tasks: WorkflowTask[] = [
+      {
+        id: 'first',
+        title: 'First',
+        state: 'DRAFT',
+        dependencies: [],
+        writeScope: ['one'],
+        estimatedCost: 2,
+        payload: {},
+      },
+      {
+        id: 'second',
+        title: 'Second',
+        state: 'DRAFT',
+        dependencies: [],
+        writeScope: ['two'],
+        estimatedCost: 2,
+        payload: {},
+      },
+    ];
+    const result = await new WorkflowRunner(new DurableQueue(), (task) => {
+      invoked.push(task.id);
+    }).run(tasks, 2);
+    expect(invoked).toEqual(['first']);
+    expect(result.tasks.find((task) => task.id === 'second')?.state).toBe('READY');
+    expect(result.blockedTaskIds).toEqual(['second']);
+  });
 });

@@ -169,3 +169,62 @@ export const chatMessageSchema = z.object({
   content: z.string().trim().min(1).max(20_000),
   sessionId: z.string().optional(),
 });
+
+export const meetingCreateSchema = z.object({
+  projectId: z.string().uuid(),
+  title: z.string().trim().min(1).max(160),
+  meetingType: z.string().trim().min(1).max(80),
+  agenda: z.array(z.string().trim().min(1).max(500)).min(1).max(20),
+  agentIds: z.array(z.string().uuid()).min(1).max(12),
+  maxRounds: z.number().int().min(1).max(3).default(2),
+});
+
+export const approvalCreateSchema = z.object({
+  approvalType: z.string().trim().min(1).max(80),
+  subjectType: z.string().trim().min(1).max(80),
+  subjectId: z.string().min(1),
+  title: z.string().trim().min(1).max(200),
+  risk: z.enum(['LOW', 'HIGH', 'CRITICAL']).default('HIGH'),
+});
+
+export const approvalResolutionSchema = z.object({
+  status: z.enum(['APPROVED', 'REJECTED']),
+  resolutionNote: z.string().trim().max(2_000).optional(),
+});
+
+export const costEntrySchema = z.object({
+  amount: z.number().nonnegative(),
+  occurredAt: z.string().datetime().optional(),
+  provider: z.string().min(1).max(80),
+  model: z.string().min(1).max(160),
+  projectId: z.string().optional(),
+  taskId: z.string().optional(),
+  agentId: z.string().optional(),
+});
+
+export const notificationCreateSchema = z.object({
+  userId: z.string().min(1),
+  category: z.enum(['APPROVAL', 'SECURITY', 'BUDGET', 'QUOTA', 'WORKFLOW']),
+  severity: z.enum(['LOW', 'HIGH', 'CRITICAL']),
+  title: z.string().trim().min(1).max(160),
+  body: z.string().trim().min(1).max(2_000),
+  deepLink: z.string().startsWith('/').max(500),
+});
+
+export const notificationReadSchema = z.object({
+  notificationId: z.string().min(1),
+});
+
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.string().url(),
+  p256dh: z.string().min(1),
+  auth: z.string().min(1),
+});
+
+export const repositoryConnectionSchema = z.object({
+  projectId: z.string().uuid(),
+  providerType: z.enum(['GITHUB', 'GITLAB', 'BITBUCKET']),
+  owner: z.string().trim().min(1).max(120),
+  name: z.string().trim().min(1).max(200),
+  defaultBranch: z.string().trim().min(1).max(120).default('main'),
+});

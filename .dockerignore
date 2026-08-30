@@ -1,0 +1,12 @@
+node_modules
+.next
+dist
+coverage
+playwright-report
+test-results
+.turbo
+.git
+.env
+.env.*
+supabase/.temp
+supabase/.branches

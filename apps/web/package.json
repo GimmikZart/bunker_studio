@@ -17,6 +17,7 @@
     "@bunker-studio/config": "workspace:*",
     "@bunker-studio/contracts": "workspace:*",
     "@bunker-studio/db": "workspace:*",
+    "@bunker-studio/orchestration": "workspace:*",
     "next": "^15.5.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"

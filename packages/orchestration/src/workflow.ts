@@ -54,7 +54,13 @@ export class WorkflowRunner {
         }
       }
 
+      let batchBudget = 0;
       const eligible = eligibleTasks(state, remainingBudget)
+        .filter((candidate) => {
+          if (batchBudget + candidate.estimatedCost > remainingBudget) return false;
+          batchBudget += candidate.estimatedCost;
+          return true;
+        })
         .map((candidate) => state.find((task) => task.id === candidate.id))
         .filter((task): task is WorkflowTask => Boolean(task));
       for (const task of eligible) {
