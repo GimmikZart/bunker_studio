@@ -74,6 +74,16 @@ export async function POST(request: Request) {
         },
         { status: 409 },
       );
+    const verificationRuns = input.taskId
+      ? await Promise.all(
+          input.report.verificationRuns.map((run) =>
+            operations.addVerificationRun(
+              { ...run, organizationId, taskId: input.taskId! },
+              actorId,
+            ),
+          ),
+        )
+      : [];
     const review = await operations.addReview(
       {
         organizationId,
@@ -110,7 +120,7 @@ export async function POST(request: Request) {
               ),
           )
         : [];
-    return NextResponse.json({ review, fixTasks }, { status: 201 });
+    return NextResponse.json({ review, verificationRuns, fixTasks }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.name === 'AuthorizationError')
       return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });

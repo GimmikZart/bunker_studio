@@ -102,13 +102,23 @@ describe('verification and review routes', () => {
                 confidence: 0.95,
               },
             ],
-            verificationRuns: [],
+            verificationRuns: [
+              {
+                kind: 'SECURITY',
+                commandOrCheck: 'pnpm audit --audit-level high',
+                status: 'PASS',
+                artifactId: crypto.randomUUID(),
+                durationMs: 80,
+              },
+            ],
           },
         }),
       }),
     );
     expect(review.status).toBe(201);
-    expect((await review.json()).fixTasks).toHaveLength(1);
+    const reviewPayload = await review.json();
+    expect(reviewPayload.verificationRuns).toHaveLength(1);
+    expect(reviewPayload.fixTasks).toHaveLength(1);
 
     const reviews = await GET(new Request('http://localhost', { headers }));
     expect((await reviews.json()).reviews).toHaveLength(1);

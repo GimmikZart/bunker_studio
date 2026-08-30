@@ -261,3 +261,19 @@ Checkpoint stabile nei commit `4e1a5b3`, `65884f7` e `9853717`. Restano i cinque
 ### Stato finale della sessione
 
 Checkpoint stabile nei commit `0ab5f46` e `2de5113`. Restano le verifiche quality `PARTIAL` dipendenti da Supabase/GitHub/VAPID/provider/multiprocess e il backup/restore drill con accessi esterni.
+
+## 2026-08-30 — Virgin template and verification evidence completion
+
+### Lavoro svolto
+
+- Aggiunto endpoint pubblico di virgin template export con manifest versionato, configurazione supportata e role templates, senza tenant data o secret.
+- I verification runs inclusi nei review report vengono ora persistiti insieme al report; gli artifact ID sono validati come UUID coerenti con lo schema Supabase.
+
+### Verifiche
+
+- Test route review e template: PASS.
+- `pnpm verify`: PASS; format, lint, typecheck, 21 task di test, build Next a 41 route e audit sicurezza.
+
+### Stato finale della sessione
+
+Restano le verifiche quality `PARTIAL` dipendenti da accessi esterni e il backup/restore drill.

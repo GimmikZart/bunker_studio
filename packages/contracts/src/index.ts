@@ -61,7 +61,7 @@ export const verificationRunSchema = z.object({
   kind: z.enum(['FORMAT', 'LINT', 'TYPECHECK', 'UNIT', 'INTEGRATION', 'E2E', 'SECURITY', 'BUILD']),
   commandOrCheck: z.string().min(1),
   status: z.enum(['PASS', 'FAIL', 'SKIPPED']),
-  artifactId: z.string().optional(),
+  artifactId: z.string().uuid().optional(),
   durationMs: z.number().int().nonnegative(),
   output: z.string().optional(),
 });
