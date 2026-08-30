@@ -440,3 +440,14 @@ Checkpoint stabile nei commit `0ab5f46`, `2de5113`, `322acb2`, `79967bf` e `26b4
 ### Stato finale della sessione
 
 Restano le verifiche quality `PARTIAL` dipendenti da accessi esterni e il backup/restore drill.
+
+## 2026-08-31 — Re-verifica schema Supabase locale
+
+### Verifiche
+
+- `supabase db reset --local`: PASS.
+- Migration `00000000000000..00000000000013`, seed e restart dei container locali completati senza errori.
+
+### Stato
+
+- Nessuna variazione sui blocker: AC-001, AC-006, AC-009, AC-011 e AC-013 richiedono rispettivamente quality cloud/device, pg-boss multi-processo, GitHub/CI, VAPID/device e runtime Ollama/LM Studio.
