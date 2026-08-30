@@ -1,5 +1,6 @@
 import { TenantStore, WorkerRegistry } from '@bunker-studio/db';
 import type { CostEntry, DesignRecord } from '@bunker-studio/core';
+import type { ReviewFinding, VerificationRun } from '@bunker-studio/contracts';
 import type { MemoryUnit } from '@bunker-studio/db';
 
 type WebRuntimeState = {
@@ -13,6 +14,8 @@ type WebRuntimeState = {
   notifications: Map<string, NotificationRecord[]>;
   notificationPreferences: Map<string, NotificationPreferences>;
   conversations: Map<string, ConversationRecord[]>;
+  verificationRuns: Map<string, VerificationRunRecord[]>;
+  reviews: Map<string, ReviewRecord[]>;
   pushSubscriptions: Map<string, PushSubscriptionRecord[]>;
   repositories: Map<string, RepositoryRecord>;
   tasks: Map<string, TaskRecord[]>;
@@ -31,12 +34,16 @@ const state = (globalRuntime.__bunkerStudioRuntime ??= {
   notifications: new Map<string, NotificationRecord[]>(),
   notificationPreferences: new Map<string, NotificationPreferences>(),
   conversations: new Map<string, ConversationRecord[]>(),
+  verificationRuns: new Map<string, VerificationRunRecord[]>(),
+  reviews: new Map<string, ReviewRecord[]>(),
   pushSubscriptions: new Map<string, PushSubscriptionRecord[]>(),
   repositories: new Map<string, RepositoryRecord>(),
   tasks: new Map<string, TaskRecord[]>(),
 });
 state.notificationPreferences ??= new Map<string, NotificationPreferences>();
 state.conversations ??= new Map<string, ConversationRecord[]>();
+state.verificationRuns ??= new Map<string, VerificationRunRecord[]>();
+state.reviews ??= new Map<string, ReviewRecord[]>();
 
 export const tenantStore = state.tenantStore;
 export const workerRegistry = state.workerRegistry;
@@ -222,6 +229,27 @@ export type TaskRecord = {
   estimatedCost: number;
   priority: number;
   createdAt: string;
+};
+
+export type VerificationRunRecord = VerificationRun & {
+  id: string;
+  organizationId: string;
+  taskId: string;
+  executedAt: string;
+};
+
+export type ReviewRecord = {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  taskId?: string;
+  reviewerAgentId: string;
+  candidateSha: string;
+  status: 'PASS' | 'FIX_REQUIRED';
+  summary: string;
+  findings: ReviewFinding[];
+  createdAt: string;
+  completedAt: string;
 };
 
 export function createMeeting(
@@ -416,4 +444,55 @@ export function updateTask(organizationId: string, task: TaskRecord): TaskRecord
   if (index < 0) throw new Error('Task not found.');
   tasks[index] = structuredClone(task);
   return structuredClone(task);
+}
+
+export function addVerificationRun(
+  input: Omit<VerificationRunRecord, 'id' | 'executedAt'>,
+): VerificationRunRecord {
+  const run: VerificationRunRecord = {
+    ...input,
+    id: crypto.randomUUID(),
+    executedAt: new Date().toISOString(),
+  };
+  state.verificationRuns.set(input.organizationId, [
+    ...(state.verificationRuns.get(input.organizationId) ?? []),
+    run,
+  ]);
+  return structuredClone(run);
+}
+
+export function listVerificationRuns(
+  organizationId: string,
+  taskId?: string,
+): VerificationRunRecord[] {
+  return structuredClone(
+    (state.verificationRuns.get(organizationId) ?? []).filter(
+      (run) => !taskId || run.taskId === taskId,
+    ),
+  );
+}
+
+export function addReview(
+  input: Omit<ReviewRecord, 'id' | 'createdAt' | 'completedAt'>,
+): ReviewRecord {
+  const now = new Date().toISOString();
+  const review: ReviewRecord = {
+    ...input,
+    id: crypto.randomUUID(),
+    createdAt: now,
+    completedAt: now,
+  };
+  state.reviews.set(input.organizationId, [
+    ...(state.reviews.get(input.organizationId) ?? []),
+    review,
+  ]);
+  return structuredClone(review);
+}
+
+export function listReviews(organizationId: string, taskId?: string): ReviewRecord[] {
+  return structuredClone(
+    (state.reviews.get(organizationId) ?? []).filter(
+      (review) => !taskId || review.taskId === taskId,
+    ),
+  );
 }

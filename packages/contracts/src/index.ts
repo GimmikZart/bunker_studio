@@ -76,6 +76,14 @@ export const reviewReportSchema = z.object({
 });
 export type ReviewReport = z.infer<typeof reviewReportSchema>;
 
+export const reviewSubmissionSchema = z.object({
+  projectId: z.string().uuid(),
+  taskId: z.string().uuid().optional(),
+  reviewerAgentId: z.string().uuid(),
+  report: reviewReportSchema,
+});
+export type ReviewSubmission = z.infer<typeof reviewSubmissionSchema>;
+
 export const designVersionSchema = z.object({
   versionNumber: z.number().int().positive().max(3),
   status: z.enum(['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'SUPERSEDED']),

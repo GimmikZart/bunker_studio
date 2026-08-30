@@ -16,7 +16,10 @@ import type {
   PushSubscriptionRecord,
   RepositoryRecord,
   TaskRecord,
+  ReviewRecord,
+  VerificationRunRecord,
 } from './_store';
+import type { ReviewFinding } from '@bunker-studio/contracts';
 
 type MeetingMinutes = NonNullable<MeetingRecord['minutes']>;
 export type ActivityRecord = {
@@ -227,6 +230,57 @@ function mapTask(value: unknown): TaskRecord {
     estimatedCost: Number(object(item.definition_of_done_json ?? {}).estimated_cost ?? 0),
     priority: typeof item.priority === 'number' ? item.priority : 0,
     createdAt: stringValue(item.created_at, 'created_at'),
+  };
+}
+
+function mapVerificationRun(value: unknown): VerificationRunRecord {
+  const item = object(value);
+  return {
+    id: stringValue(item.id, 'id'),
+    organizationId: stringValue(item.organization_id, 'organization_id'),
+    taskId: stringValue(item.task_id, 'task_id'),
+    kind: item.kind as VerificationRunRecord['kind'],
+    commandOrCheck: stringValue(item.command_or_check, 'command_or_check'),
+    status: item.status as VerificationRunRecord['status'],
+    artifactId: nullableString(item.artifact_id),
+    durationMs: Number(item.duration_ms ?? 0),
+    executedAt: stringValue(item.executed_at, 'executed_at'),
+  };
+}
+
+function mapReviewFinding(value: unknown): ReviewFinding {
+  const item = object(value);
+  return {
+    severity: item.severity as ReviewFinding['severity'],
+    category: item.category as ReviewFinding['category'],
+    title: stringValue(item.title, 'review_findings.title'),
+    description: stringValue(item.description, 'review_findings.description'),
+    evidence: stringValue(item.evidence, 'review_findings.evidence'),
+    filePath: nullableString(item.file_path),
+    symbol: nullableString(item.symbol),
+    recommendation: stringValue(item.recommendation, 'review_findings.recommendation'),
+    blocking: item.blocking === true,
+    confidence: Number(item.confidence ?? 0),
+  };
+}
+
+function mapReview(value: unknown): ReviewRecord {
+  const item = object(value);
+  const findings = Array.isArray(item.review_findings)
+    ? item.review_findings.map(mapReviewFinding)
+    : [];
+  return {
+    id: stringValue(item.id, 'id'),
+    organizationId: stringValue(item.organization_id, 'organization_id'),
+    projectId: stringValue(item.project_id, 'project_id'),
+    taskId: nullableString(item.task_id),
+    reviewerAgentId: stringValue(item.reviewer_agent_id, 'reviewer_agent_id'),
+    candidateSha: stringValue(item.candidate_sha, 'candidate_sha'),
+    status: item.status === 'PASS' ? 'PASS' : 'FIX_REQUIRED',
+    summary: stringValue(item.summary ?? '', 'summary'),
+    findings,
+    createdAt: stringValue(item.created_at, 'created_at'),
+    completedAt: stringValue(item.completed_at ?? item.created_at, 'completed_at'),
   };
 }
 
@@ -1138,6 +1192,107 @@ export class SupabaseOperationalRepository {
         depends_on_task_id: dependency,
       })),
     });
+  }
+
+  async listVerificationRuns(
+    organizationId: string,
+    actorUserId: string,
+    taskId?: string,
+  ): Promise<VerificationRunRecord[]> {
+    await this.requireMember(organizationId, actorUserId);
+    let query = this.client
+      .from('verification_runs')
+      .select('*')
+      .eq('organization_id', organizationId);
+    if (taskId) query = query.eq('task_id', taskId);
+    const data = await unwrap(query);
+    return Array.isArray(data) ? data.map(mapVerificationRun) : [];
+  }
+
+  async addVerificationRun(
+    input: Omit<VerificationRunRecord, 'id' | 'executedAt'>,
+    actorUserId: string,
+  ): Promise<VerificationRunRecord> {
+    await this.requireWrite(input.organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('verification_runs')
+        .insert({
+          organization_id: input.organizationId,
+          task_id: input.taskId,
+          kind: input.kind,
+          command_or_check: input.commandOrCheck,
+          status: input.status,
+          artifact_id: input.artifactId ?? null,
+          duration_ms: input.durationMs,
+        })
+        .select('*')
+        .single(),
+    );
+    return mapVerificationRun(data);
+  }
+
+  async listReviews(
+    organizationId: string,
+    actorUserId: string,
+    taskId?: string,
+  ): Promise<ReviewRecord[]> {
+    await this.requireMember(organizationId, actorUserId);
+    let query = this.client
+      .from('reviews')
+      .select('*, review_findings(*)')
+      .eq('organization_id', organizationId);
+    if (taskId) query = query.eq('task_id', taskId);
+    const data = await unwrap(query);
+    return Array.isArray(data) ? data.map(mapReview) : [];
+  }
+
+  async addReview(
+    input: Omit<ReviewRecord, 'id' | 'createdAt' | 'completedAt'>,
+    actorUserId: string,
+  ): Promise<ReviewRecord> {
+    await this.requireWrite(input.organizationId, actorUserId);
+    const now = new Date().toISOString();
+    const data = await unwrap(
+      this.client
+        .from('reviews')
+        .insert({
+          organization_id: input.organizationId,
+          project_id: input.projectId,
+          task_id: input.taskId ?? null,
+          reviewer_agent_id: input.reviewerAgentId,
+          candidate_sha: input.candidateSha,
+          status: input.status,
+          summary: input.summary,
+          completed_at: now,
+        })
+        .select('*')
+        .single(),
+    );
+    const review = object(data);
+    if (input.findings.length) {
+      await unwrap(
+        this.client
+          .from('review_findings')
+          .insert(
+            input.findings.map((finding) => ({
+              review_id: review.id,
+              severity: finding.severity,
+              category: finding.category,
+              title: finding.title,
+              description: finding.description,
+              evidence: finding.evidence,
+              file_path: finding.filePath ?? null,
+              symbol: finding.symbol ?? null,
+              recommendation: finding.recommendation,
+              blocking: finding.blocking,
+              confidence: finding.confidence,
+            })),
+          )
+          .select('*'),
+      );
+    }
+    return mapReview({ ...review, review_findings: input.findings });
   }
 
   private async requireMember(organizationId: string, userId: string): Promise<OrganizationRole> {

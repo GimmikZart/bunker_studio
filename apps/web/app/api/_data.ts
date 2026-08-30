@@ -14,6 +14,8 @@ import {
   addCost,
   addMemory,
   addNotification,
+  addReview,
+  addVerificationRun,
   createApproval,
   createMeeting,
   deleteMemory,
@@ -29,6 +31,8 @@ import {
   saveNotificationPreferences,
   importConversation,
   listConversations,
+  listReviews,
+  listVerificationRuns,
   recordConversation,
   markNotificationRead,
   savePushSubscription,
@@ -48,6 +52,8 @@ import {
   type NotificationRecord,
   type NotificationPreferences,
   type ConversationRecord,
+  type ReviewRecord,
+  type VerificationRunRecord,
   type PushSubscriptionRecord,
   type RepositoryRecord,
   type TaskRecord,
@@ -197,6 +203,20 @@ type LocalOperationalRepository = {
     input: Omit<ConversationRecord, 'id'>,
     actorUserId: string,
   ) => ConversationRecord;
+  listVerificationRuns: (
+    organizationId: string,
+    actorUserId: string,
+    taskId?: string,
+  ) => VerificationRunRecord[];
+  addVerificationRun: (
+    input: Omit<VerificationRunRecord, 'id' | 'executedAt'>,
+    actorUserId: string,
+  ) => VerificationRunRecord;
+  listReviews: (organizationId: string, actorUserId: string, taskId?: string) => ReviewRecord[];
+  addReview: (
+    input: Omit<ReviewRecord, 'id' | 'createdAt' | 'completedAt'>,
+    actorUserId: string,
+  ) => ReviewRecord;
   listActivity: (organizationId: string, actorUserId: string) => ActivityRecord[];
   listWorkers: (organizationId: string, actorUserId: string) => RegisteredWorker[];
   listTasks: (organizationId: string, actorUserId: string) => TaskRecord[];
@@ -277,6 +297,11 @@ const localOperationalRepository: LocalOperationalRepository = {
     }),
   listConversations: (organizationId) => listConversations(organizationId),
   importConversation: (input) => importConversation(input),
+  listVerificationRuns: (organizationId, _actorUserId, taskId) =>
+    listVerificationRuns(organizationId, taskId),
+  addVerificationRun: (input) => addVerificationRun(input),
+  listReviews: (organizationId, _actorUserId, taskId) => listReviews(organizationId, taskId),
+  addReview: (input) => addReview(input),
   listActivity: () => [],
   listWorkers: (organizationId) => workerRegistry.list(organizationId),
   listTasks: (organizationId) => listTasks(organizationId),
