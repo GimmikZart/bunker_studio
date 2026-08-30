@@ -2,6 +2,23 @@
 
 Storico append-only.
 
+## 2026-08-31 — Runner concorrente e resume sessione provider
+
+### Lavoro svolto
+
+- `WorkflowRunner` ora esegue in parallelo i task con scope disgiunti, applica il limite di concorrenza e serializza automaticamente i gruppi con scope sovrapposti.
+- Gli errori quota che arrivano dopo `SESSION_STARTED` conservano il `sessionId`; il resume usa `AgentRuntime.resume`, con fallback a `start` quando la quota fallisce prima dell’apertura della sessione.
+- Aggiunti test di concorrenza/scope e test di resume post-sessione.
+
+### Verifiche
+
+- `@bunker-studio/orchestration`: 19 test PASS.
+- `@bunker-studio/agent-runtime`: typecheck, lint e test PASS.
+
+### Prossimo passo
+
+Eseguire AC-001 in quality con Supabase cloud e secondo dispositivo; i cinque scenari `PARTIAL` restano vincolati a risorse esterne.
+
 ## 2026-08-31 — Lead workflow plan persistito
 
 ### Lavoro svolto

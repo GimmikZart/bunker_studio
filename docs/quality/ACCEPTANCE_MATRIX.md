@@ -8,10 +8,10 @@ Checkpoint 2026-08-31: the local protected Studio Labs workflow now creates gate
 |---|---|---|
 | AC-001 PC loss | PARTIAL | Supabase durable schema, tenant APIs and export state exist; second-device cloud session test requires quality Supabase credentials. |
 | AC-002 provider switch | PASS | Binding-preserving agent registry and provider adapter contract tests. |
-| AC-003 parallel frontend/backend | PASS | Scope grouping, workspace isolation and Git artifact contract tests. |
+| AC-003 parallel frontend/backend | PASS | `WorkflowRunner` executes disjoint scopes concurrently, serializes overlapping scopes, and Git artifact tests preserve isolated workspaces. |
 | AC-004 dependency serialization | PASS | `WorkflowRunner` DAG test proves dependent task waits for both prerequisites. |
 | AC-005 review loop | PASS | Reviewer finding creates a persisted review report, deterministic fix tasks and the package-level re-review loop blocks until pass. |
-| AC-006 quota interruption | PARTIAL | Fake quota resume, lease reclaim and persistent composition are tested; multi-process pg-boss restart requires a configured client. |
+| AC-006 quota interruption | PARTIAL | Fake quota resume, provider-session resume, lease reclaim and persistent composition are tested; multi-process pg-boss restart requires a configured client. |
 | AC-007 budget hard stop | PASS | Workflow budget test confirms provider handler is not invoked when estimate exceeds remaining budget. |
 | AC-008 design gate | PASS | Design submission/owner approval API test and immutable version policy; exercised by `tests/e2e/api-acceptance.spec.ts`. |
 | AC-009 protected self-improvement | PARTIAL | Studio Labs UI/API creates protected task+Owner approval and the server gate requires reviewer, CI, Owner and human actor; GitHub/CI quality integration still needs credentials. |

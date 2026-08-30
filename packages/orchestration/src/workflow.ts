@@ -2,6 +2,7 @@ import { DurableQueue, type QueueJob } from './queue.js';
 import {
   canTransition,
   eligibleTasks,
+  groupParallelTasks,
   transitionTask,
   type TaskDefinition,
   type TaskState,
@@ -32,6 +33,7 @@ export class WorkflowRunner {
   constructor(
     private readonly queue: DurableQueue,
     private readonly handler: WorkflowTaskHandler,
+    private readonly options: { maxParallelism?: number } = {},
   ) {}
 
   async run(tasks: WorkflowTask[], remainingBudget: number): Promise<WorkflowRunResult> {
@@ -54,15 +56,20 @@ export class WorkflowRunner {
         }
       }
 
+      const maxParallelism = Math.max(1, this.options.maxParallelism ?? 2);
+      const safeGroups = groupParallelTasks(eligibleTasks(state, remainingBudget), maxParallelism);
+      const eligible: WorkflowTask[] = [];
       let batchBudget = 0;
-      const eligible = eligibleTasks(state, remainingBudget)
-        .filter((candidate) => {
-          if (batchBudget + candidate.estimatedCost > remainingBudget) return false;
+      for (const group of safeGroups) {
+        for (const candidate of group) {
+          if (batchBudget + candidate.estimatedCost > remainingBudget) continue;
+          const task = state.find((item) => item.id === candidate.id);
+          if (!task) continue;
+          eligible.push(task);
           batchBudget += candidate.estimatedCost;
-          return true;
-        })
-        .map((candidate) => state.find((task) => task.id === candidate.id))
-        .filter((task): task is WorkflowTask => Boolean(task));
+        }
+        if (eligible.length) break;
+      }
       for (const task of eligible) {
         task.state = move(task, 'QUEUED').state;
         this.queue.enqueue({
@@ -73,27 +80,39 @@ export class WorkflowRunner {
         });
       }
 
-      const job = this.queue.claim(0);
-      if (!job) break;
-      const taskId = String(job.payload.taskId);
-      const task = state.find((candidate) => candidate.id === taskId);
-      if (!task) throw new Error(`Task ${taskId} is not part of this workflow.`);
-
-      task.state = move(task, 'RUNNING').state;
-      try {
-        await this.handler(task, job);
-        task.state = move(task, 'IMPLEMENTED').state;
-        task.state = move(task, 'VERIFYING').state;
-        task.state = move(task, 'DONE').state;
+      const claimed = eligible
+        .map((task) => {
+          const job = this.queue.claim(0);
+          return job ? { task, job } : null;
+        })
+        .filter((entry): entry is { task: WorkflowTask; job: QueueJob } => Boolean(entry));
+      if (!claimed.length) break;
+      claimed.forEach(({ task }) => {
+        task.state = move(task, 'RUNNING').state;
+      });
+      const results = await Promise.all(
+        claimed.map(async ({ task, job }) => {
+          try {
+            await this.handler(task, job);
+            task.state = move(task, 'IMPLEMENTED').state;
+            task.state = move(task, 'VERIFYING').state;
+            task.state = move(task, 'DONE').state;
+            this.queue.complete(job.id);
+            return { task, completed: true };
+          } catch {
+            task.state = canTransition(task.state, 'FAILED_RETRYABLE')
+              ? move(task, 'FAILED_RETRYABLE').state
+              : 'FAILED_FINAL';
+            blockedTaskIds.push(task.id);
+            this.queue.complete(job.id);
+            return { task, completed: false };
+          }
+        }),
+      );
+      for (const { task, completed } of results) {
+        if (!completed) continue;
         remainingBudget -= task.estimatedCost;
         executedTaskIds.push(task.id);
-        this.queue.complete(job.id);
-      } catch {
-        task.state = canTransition(task.state, 'FAILED_RETRYABLE')
-          ? move(task, 'FAILED_RETRYABLE').state
-          : 'FAILED_FINAL';
-        blockedTaskIds.push(task.id);
-        this.queue.complete(job.id);
       }
     }
 

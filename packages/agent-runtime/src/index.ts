@@ -41,6 +41,7 @@ export class RuntimeError extends Error {
     public readonly code: RuntimeErrorCode,
     message: string,
     public readonly retryAfterMs?: number,
+    public readonly sessionId?: string,
   ) {
     super(message);
     this.name = 'RuntimeError';
@@ -173,14 +174,27 @@ function normalizeHttpError(status: number, statusText: string): RuntimeError {
   return new RuntimeError('UNKNOWN_PROVIDER_ERROR', statusText || `Provider returned ${status}.`);
 }
 
-export async function collectRun(runtime: AgentRuntime, input: RunRequest): Promise<RunResult> {
+async function collectRuntimeStream(
+  runtime: AgentRuntime,
+  input: RunRequest,
+  resume: boolean,
+): Promise<RunResult> {
   let text = '';
   let sessionId = input.sessionId ?? '';
   let provider = 'normalized';
-  for await (const event of runtime.start(input)) {
-    sessionId = event.sessionId;
-    provider = event.provider ?? provider;
-    if (event.type === 'TEXT_DELTA') text += event.text ?? '';
+  try {
+    const events = resume
+      ? runtime.resume({ ...input, sessionId: input.sessionId ?? sessionId })
+      : runtime.start(input);
+    for await (const event of events) {
+      sessionId = event.sessionId;
+      provider = event.provider ?? provider;
+      if (event.type === 'TEXT_DELTA') text += event.text ?? '';
+    }
+  } catch (error) {
+    if (error instanceof RuntimeError && sessionId && !error.sessionId)
+      throw new RuntimeError(error.code, error.message, error.retryAfterMs, sessionId);
+    throw error;
   }
   return {
     sessionId,
@@ -188,4 +202,12 @@ export async function collectRun(runtime: AgentRuntime, input: RunRequest): Prom
     usage: { inputTokens: input.prompt.length, outputTokens: text.length },
     provider,
   };
+}
+
+export async function collectRun(runtime: AgentRuntime, input: RunRequest): Promise<RunResult> {
+  return collectRuntimeStream(runtime, input, false);
+}
+
+export async function resumeRun(runtime: AgentRuntime, input: RunRequest): Promise<RunResult> {
+  return collectRuntimeStream(runtime, input, true);
 }

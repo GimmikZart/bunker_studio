@@ -4,7 +4,7 @@
 
 ### Checkpoint 2026-08-31
 
-Sono stati completati e verificati gli assegnamenti agenti tenant-scoped (team/progetto/reporting line), il dettaglio agente, metriche deterministiche e la baseline activity append-only. Studio Labs ora dispone di inizializzazione Owner-only del progetto protetto, analisi deterministica, selezione task+approval e gate reviewer/CI/Owner/human con `productionDeploy: false`. Il Lead ora persiste il piano strutturato e materializza il DAG in task DRAFT con dipendenze rimappate, workflow link e Definition of Done. Le migrazioni Supabase `00000000000012_domain_event_triggers.sql` e `00000000000013_workflow_plan.sql` registrano eventi e metadati del piano.
+Sono stati completati e verificati gli assegnamenti agenti tenant-scoped (team/progetto/reporting line), il dettaglio agente, metriche deterministiche e la baseline activity append-only. Studio Labs ora dispone di inizializzazione Owner-only del progetto protetto, analisi deterministica, selezione task+approval e gate reviewer/CI/Owner/human con `productionDeploy: false`. Il Lead ora persiste il piano strutturato e materializza il DAG in task DRAFT con dipendenze rimappate, workflow link e Definition of Done. Il runner esegue batch concorrenti solo su scope disgiunti, serializza scope sovrapposti e usa il resume della sessione quando una quota interrompe un provider dopo l’avvio. Le migrazioni Supabase `00000000000012_domain_event_triggers.sql` e `00000000000013_workflow_plan.sql` registrano eventi e metadati del piano.
 
 Bootstrap, fondazioni domain e vertical slices principali sono implementati; il progetto non è ancora alla Definition of Done finale perché la matrice acceptance AC-001..AC-014 non è completamente verificata e alcune integrazioni richiedono credenziali quality.
 
@@ -12,7 +12,7 @@ Bootstrap, fondazioni domain e vertical slices principali sono implementati; il 
 
 - M0: monorepo pnpm/Turborepo, web/worker, package condivisi, strict TypeScript, ESLint, Prettier, Vitest, Playwright, env Zod, Dockerfile, CI, Supabase locale e shell Office responsive.
 - M1-M3: tenancy con ruoli/RLS, auth API fail-closed, CRUD organizzazioni/team/progetti/agenti/membri, progetti assegnabili a più team tramite `project_teams`, agent registry, binding-preserving identity, runtime fake/HTTP e adapters OpenAI/Anthropic/OpenAI-compatible.
-- M4: state machine task, dependency DAG, parallel scope grouping, lease/reclaim, `DurableQueue`, adapter `PgBossQueue`, outbox dispatcher in-memory e Supabase con claim atomico, workflow runner, budget gate e quota resume.
+- M4: state machine task, dependency DAG, parallel scope grouping, lease/reclaim, `DurableQueue`, adapter `PgBossQueue`, outbox dispatcher in-memory e Supabase con claim atomico, workflow runner concorrente con serializzazione degli scope, budget gate e quota resume con session preservation.
 - M5-M6: Lead/verification/review contracts, workspace/artifact Git, safe parallelism, risultati di verifica persistiti, report review tenant-scoped e reviewer fix loop con limite cicli.
 - M7-M14 verticali: design submission/owner approval, staffing proposal/confirmation, bounded meetings, bounded memory/search con provenance e delete, PWA/push adapter, worker registry/API, export/import ID remap di task e dipendenze, AES-256-GCM secrets e protected Studio policy.
 - M2 capability envelope: avatar statici, skills/tools/permissions persistiti e trasferiti al runtime senza esporre segreti; migrazione compatibile per i record agent esistenti.

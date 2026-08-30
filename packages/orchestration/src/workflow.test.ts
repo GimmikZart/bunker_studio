@@ -90,4 +90,54 @@ describe('workflow runner', () => {
     expect(result.tasks.find((task) => task.id === 'second')?.state).toBe('READY');
     expect(result.blockedTaskIds).toEqual(['second']);
   });
+
+  it('runs disjoint tasks concurrently and serializes overlapping scopes', async () => {
+    let active = 0;
+    let maximumActive = 0;
+    const activeTaskIds = new Set<string>();
+    let sharedOverlapped = false;
+    const tasks: WorkflowTask[] = [
+      {
+        id: 'frontend',
+        title: 'Frontend',
+        state: 'DRAFT',
+        dependencies: [],
+        writeScope: ['src/ui'],
+        estimatedCost: 1,
+        payload: {},
+      },
+      {
+        id: 'backend',
+        title: 'Backend',
+        state: 'DRAFT',
+        dependencies: [],
+        writeScope: ['src/api'],
+        estimatedCost: 1,
+        payload: {},
+      },
+      {
+        id: 'shared',
+        title: 'Shared',
+        state: 'DRAFT',
+        dependencies: [],
+        writeScope: ['src'],
+        estimatedCost: 1,
+        payload: {},
+      },
+    ];
+    const result = await new WorkflowRunner(new DurableQueue(), async (task) => {
+      active += 1;
+      maximumActive = Math.max(maximumActive, active);
+      activeTaskIds.add(task.id);
+      if (task.id === 'shared' && activeTaskIds.size > 1) sharedOverlapped = true;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      activeTaskIds.delete(task.id);
+      active -= 1;
+    }).run(tasks, 3);
+
+    expect(maximumActive).toBe(2);
+    expect(sharedOverlapped).toBe(false);
+    expect(result.executedTaskIds).toEqual(['frontend', 'backend', 'shared']);
+    expect(result.tasks.every((task) => task.state === 'DONE')).toBe(true);
+  });
 });

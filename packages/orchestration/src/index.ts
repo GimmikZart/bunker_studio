@@ -1,6 +1,7 @@
 import {
   type AgentRuntime,
   collectRun,
+  resumeRun,
   RuntimeError,
   type RunRequest,
   type RunResult,
@@ -165,7 +166,9 @@ export async function runWithAutomaticQuotaResume(
     retryCount += 1;
     await waitForProbe();
     while ((await runtime.probeAvailability()) === 'WAITING') await waitForProbe();
-    const result = await collectRun(runtime, input);
+    const result = error.sessionId
+      ? await resumeRun(runtime, { ...input, sessionId: error.sessionId })
+      : await collectRun(runtime, input);
     return { result, trace: { state: 'COMPLETED', retryCount, nextRetryAt } };
   }
 }
