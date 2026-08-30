@@ -285,6 +285,21 @@ h2 {
 .settings-grid .live-panel-card {
   min-height: 100%;
 }
+.preference-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+.preference-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.preference-list input {
+  accent-color: var(--accent);
+}
 .approval-actions {
   display: flex;
   gap: 6px;
@@ -316,6 +331,11 @@ h2 {
 }
 .resource-form .action-row {
   margin-top: 8px;
+}
+.field-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 .task-create-form {
   display: grid;

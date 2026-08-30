@@ -11,6 +11,7 @@ import type {
   CostRecord,
   MeetingRecord,
   NotificationRecord,
+  NotificationPreferences,
   PushSubscriptionRecord,
   RepositoryRecord,
   TaskRecord,
@@ -33,6 +34,14 @@ export type ProviderRecord = {
   capabilities: string[];
   models: string[];
   lastVerifiedAt: string | undefined;
+};
+
+const defaultNotificationPreferences: NotificationPreferences = {
+  APPROVAL: true,
+  SECURITY: true,
+  BUDGET: true,
+  QUOTA: true,
+  WORKFLOW: true,
 };
 
 async function unwrap(result: PromiseLike<QueryResult>): Promise<unknown> {
@@ -561,6 +570,58 @@ export class SupabaseOperationalRepository {
         .single(),
     );
     return mapNotification(data);
+  }
+
+  async getNotificationPreferences(
+    organizationId: string,
+    userId: string,
+    actorUserId: string,
+  ): Promise<NotificationPreferences> {
+    await this.requireMember(organizationId, actorUserId);
+    if (userId !== actorUserId) throw new AuthorizationError();
+    const data = await unwrap(
+      this.client
+        .from('notification_preferences')
+        .select('category, enabled')
+        .eq('organization_id', organizationId)
+        .eq('user_id', userId),
+    );
+    const preferences = { ...defaultNotificationPreferences };
+    if (Array.isArray(data)) {
+      for (const value of data) {
+        const item = object(value);
+        const category = item.category;
+        if (typeof category === 'string' && category in preferences)
+          preferences[category as keyof NotificationPreferences] = item.enabled === true;
+      }
+    }
+    return preferences;
+  }
+
+  async saveNotificationPreferences(
+    organizationId: string,
+    userId: string,
+    preferences: NotificationPreferences,
+    actorUserId: string,
+  ): Promise<NotificationPreferences> {
+    await this.requireMember(organizationId, actorUserId);
+    if (userId !== actorUserId) throw new AuthorizationError();
+    await unwrap(
+      this.client
+        .from('notification_preferences')
+        .upsert(
+          Object.entries(preferences).map(([category, enabled]) => ({
+            organization_id: organizationId,
+            user_id: userId,
+            category,
+            enabled,
+            updated_at: new Date().toISOString(),
+          })),
+          { onConflict: 'organization_id,user_id,category' },
+        )
+        .select('*'),
+    );
+    return this.getNotificationPreferences(organizationId, userId, actorUserId);
   }
 
   async markNotificationRead(userId: string, notificationId: string): Promise<boolean> {

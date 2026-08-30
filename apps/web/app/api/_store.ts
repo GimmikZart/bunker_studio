@@ -11,6 +11,7 @@ type WebRuntimeState = {
   approvals: Map<string, ApprovalRecord[]>;
   costs: Map<string, CostRecord[]>;
   notifications: Map<string, NotificationRecord[]>;
+  notificationPreferences: Map<string, NotificationPreferences>;
   pushSubscriptions: Map<string, PushSubscriptionRecord[]>;
   repositories: Map<string, RepositoryRecord>;
   tasks: Map<string, TaskRecord[]>;
@@ -27,10 +28,12 @@ const state = (globalRuntime.__bunkerStudioRuntime ??= {
   approvals: new Map<string, ApprovalRecord[]>(),
   costs: new Map<string, CostRecord[]>(),
   notifications: new Map<string, NotificationRecord[]>(),
+  notificationPreferences: new Map<string, NotificationPreferences>(),
   pushSubscriptions: new Map<string, PushSubscriptionRecord[]>(),
   repositories: new Map<string, RepositoryRecord>(),
   tasks: new Map<string, TaskRecord[]>(),
 });
+state.notificationPreferences ??= new Map<string, NotificationPreferences>();
 
 export const tenantStore = state.tenantStore;
 export const workerRegistry = state.workerRegistry;
@@ -142,6 +145,40 @@ export type NotificationRecord = {
   readAt: string | null;
   createdAt: string;
 };
+
+export type NotificationPreferences = Record<NotificationRecord['category'], boolean>;
+
+export const defaultNotificationPreferences: NotificationPreferences = {
+  APPROVAL: true,
+  SECURITY: true,
+  BUDGET: true,
+  QUOTA: true,
+  WORKFLOW: true,
+};
+
+function notificationPreferencesKey(organizationId: string, userId: string): string {
+  return `${organizationId}:${userId}`;
+}
+
+export function getNotificationPreferences(
+  organizationId: string,
+  userId: string,
+): NotificationPreferences {
+  return structuredClone(
+    state.notificationPreferences.get(notificationPreferencesKey(organizationId, userId)) ??
+      defaultNotificationPreferences,
+  );
+}
+
+export function saveNotificationPreferences(
+  organizationId: string,
+  userId: string,
+  preferences: NotificationPreferences,
+): NotificationPreferences {
+  const next = { ...defaultNotificationPreferences, ...preferences };
+  state.notificationPreferences.set(notificationPreferencesKey(organizationId, userId), next);
+  return structuredClone(next);
+}
 
 export type PushSubscriptionRecord = {
   endpoint: string;

@@ -4,6 +4,15 @@ import { dedupeKey, deliverPush, shouldPush } from './index';
 describe('notification policy', () => {
   it('pushes only critical categories and deduplicates by deep link', () => {
     expect(shouldPush('APPROVAL', 'HIGH')).toBe(true);
+    expect(
+      shouldPush('APPROVAL', 'HIGH', {
+        APPROVAL: false,
+        SECURITY: true,
+        BUDGET: true,
+        QUOTA: true,
+        WORKFLOW: true,
+      }),
+    ).toBe(false);
     expect(shouldPush('WORKFLOW', 'HIGH')).toBe(false);
     expect(dedupeKey({ category: 'APPROVAL', deepLink: '/approvals/1' })).toBe(
       'APPROVAL:/approvals/1',

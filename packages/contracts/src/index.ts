@@ -221,6 +221,15 @@ export const pushSubscriptionSchema = z.object({
   auth: z.string().min(1),
 });
 
+export const notificationPreferencesSchema = z.object({
+  APPROVAL: z.boolean(),
+  SECURITY: z.boolean(),
+  BUDGET: z.boolean(),
+  QUOTA: z.boolean(),
+  WORKFLOW: z.boolean(),
+});
+export type NotificationPreferences = z.infer<typeof notificationPreferencesSchema>;
+
 export const repositoryConnectionSchema = z.object({
   projectId: z.string().uuid(),
   providerType: z.enum(['GITHUB', 'GITLAB', 'BITBUCKET']),

@@ -25,6 +25,8 @@ import {
   listCosts,
   listMeetings,
   listNotifications,
+  getNotificationPreferences,
+  saveNotificationPreferences,
   markNotificationRead,
   savePushSubscription,
   saveRepository,
@@ -41,6 +43,7 @@ import {
   type CostRecord,
   type MeetingRecord,
   type NotificationRecord,
+  type NotificationPreferences,
   type PushSubscriptionRecord,
   type RepositoryRecord,
   type TaskRecord,
@@ -114,6 +117,17 @@ type LocalOperationalRepository = {
     actorUserId: string,
   ) => NotificationRecord;
   markNotificationRead: (userId: string, notificationId: string) => boolean;
+  getNotificationPreferences: (
+    organizationId: string,
+    userId: string,
+    actorUserId: string,
+  ) => NotificationPreferences;
+  saveNotificationPreferences: (
+    organizationId: string,
+    userId: string,
+    preferences: NotificationPreferences,
+    actorUserId: string,
+  ) => NotificationPreferences;
   savePushSubscription: (
     userId: string,
     input: Omit<PushSubscriptionRecord, 'createdAt'>,
@@ -215,6 +229,10 @@ const localOperationalRepository: LocalOperationalRepository = {
   listNotifications: (userId, organizationId) => listNotifications(userId, organizationId),
   addNotification: (input) => addNotification(input),
   markNotificationRead: (userId, notificationId) => markNotificationRead(userId, notificationId),
+  getNotificationPreferences: (organizationId, userId) =>
+    getNotificationPreferences(organizationId, userId),
+  saveNotificationPreferences: (organizationId, userId, preferences) =>
+    saveNotificationPreferences(organizationId, userId, preferences),
   savePushSubscription: (userId, input) => savePushSubscription(userId, input),
   getRepository: (projectId) => getRepository(projectId),
   saveRepository: (input) => saveRepository(input),

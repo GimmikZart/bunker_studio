@@ -10,11 +10,18 @@ export type Notification = {
   readAt: string | null;
 };
 
+export type NotificationPreferences = Record<NotificationCategory, boolean>;
+
 export function shouldPush(
   category: NotificationCategory,
   severity: 'LOW' | 'HIGH' | 'CRITICAL',
+  preferences?: NotificationPreferences,
 ): boolean {
-  return severity !== 'LOW' && ['APPROVAL', 'SECURITY', 'BUDGET', 'QUOTA'].includes(category);
+  return (
+    severity !== 'LOW' &&
+    ['APPROVAL', 'SECURITY', 'BUDGET', 'QUOTA'].includes(category) &&
+    (preferences?.[category] ?? true)
+  );
 }
 
 export function dedupeKey(notification: Pick<Notification, 'category' | 'deepLink'>): string {
@@ -44,8 +51,9 @@ export async function deliverPush(
   subscription: PushSubscription,
   notification: Notification,
   severity: 'LOW' | 'HIGH' | 'CRITICAL',
+  preferences?: NotificationPreferences,
 ): Promise<boolean> {
-  if (!shouldPush(notification.category, severity)) return false;
+  if (!shouldPush(notification.category, severity, preferences)) return false;
   await client.send(subscription, notificationPayload(notification));
   return true;
 }

@@ -31,6 +31,11 @@ type SettingsPayload = {
   };
 };
 
+type NotificationPreferences = Record<
+  'APPROVAL' | 'SECURITY' | 'BUDGET' | 'QUOTA' | 'WORKFLOW',
+  boolean
+>;
+
 function formatHeartbeat(timestamp: number) {
   return timestamp ? new Date(timestamp).toLocaleString() : 'Not reported';
 }
@@ -39,18 +44,30 @@ export function SettingsPanel() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationId, setOrganizationId] = useState('');
   const [settings, setSettings] = useState<SettingsPayload | null>(null);
+  const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   async function load(nextOrganizationId: string) {
     if (!nextOrganizationId) return;
     setError('');
-    const response = await fetch('/api/settings', { headers: apiHeaders(nextOrganizationId) });
-    if (!response.ok) {
+    setNotice('');
+    const headers = apiHeaders(nextOrganizationId);
+    const [response, preferencesResponse] = await Promise.all([
+      fetch('/api/settings', { headers }),
+      fetch('/api/notifications/preferences', { headers }),
+    ]);
+    if (!response.ok || !preferencesResponse.ok) {
       setSettings(null);
+      setPreferences(null);
       setError('Could not load settings for this organization.');
       return;
     }
     setSettings((await response.json()) as SettingsPayload);
+    setPreferences(
+      ((await preferencesResponse.json()) as { preferences?: NotificationPreferences })
+        .preferences ?? null,
+    );
   }
 
   useEffect(() => {
@@ -73,6 +90,24 @@ export function SettingsPanel() {
     setOrganizationId(value);
     window.localStorage.setItem('bunker-organization-id', value);
     void load(value);
+  }
+
+  async function updatePreference(category: keyof NotificationPreferences, enabled: boolean) {
+    if (!organizationId || !preferences) return;
+    setError('');
+    setNotice('');
+    const next = { ...preferences, [category]: enabled };
+    const response = await fetch('/api/notifications/preferences', {
+      method: 'PATCH',
+      headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
+      body: JSON.stringify(next),
+    });
+    if (!response.ok) {
+      setError('Notification preferences could not be saved.');
+      return;
+    }
+    setPreferences(next);
+    setNotice('Notification preferences saved.');
   }
 
   return (
@@ -160,7 +195,36 @@ export function SettingsPanel() {
               </div>
             </div>
           </div>
+          {preferences && (
+            <div className="getting-started live-panel-card">
+              <div>
+                <h2>Notification preferences</h2>
+                <p>Choose which categories can notify this user in the selected organization.</p>
+                <div className="preference-list">
+                  {(Object.keys(preferences) as (keyof NotificationPreferences)[]).map(
+                    (category) => (
+                      <label key={category}>
+                        <input
+                          type="checkbox"
+                          checked={preferences[category]}
+                          onChange={(event) =>
+                            void updatePreference(category, event.target.checked)
+                          }
+                        />
+                        {category}
+                      </label>
+                    ),
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+      )}
+      {notice && (
+        <p className="live-summary" role="status">
+          {notice}
+        </p>
       )}
     </section>
   );
