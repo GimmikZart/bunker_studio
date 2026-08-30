@@ -2,7 +2,7 @@
 
 ## Prossima attività
 
-Cablate il repository Supabase autenticato negli endpoint web, mantenendo lo store in-memory solo come fixture locale, quindi verificare la persistenza dopo riavvio multi-processo.
+Estendere il repository Supabase autenticato a agenti e record operativi (design, memory, meetings, approvals, costs, notifications, workers), mantenendo lo store in-memory solo come fixture locale, quindi verificare la persistenza dopo riavvio multi-processo.
 
 ### Area interessata
 

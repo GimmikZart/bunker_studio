@@ -11,6 +11,7 @@ Storico append-only.
 - Aggiunti contratti Zod, E2E API per tenancy, design, staffing, memory, worker e operations.
 - Rafforzato il workflow con budget cumulativo sui task concorrenti.
 - Aggiunti trigger Supabase per profilo utente e membership Owner, contesto Docker workspace e runbook quality/production.
+- Aggiunto `SupabaseTenancyRepository` con client SSR/RLS-aware e fallback fixture limitato a non-production per organizzazioni, team, progetti e membri.
 
 ### Verifiche
 

@@ -1,6 +1,7 @@
 import { projectCreateSchema, projectUpdateSchema } from '@bunker-studio/contracts';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../../_auth';
+import { getWebTenancyRepository } from '../../../_data';
 import { tenantStore } from '../../../_store';
 
 export async function POST(
@@ -9,12 +10,15 @@ export async function POST(
 ) {
   const { organizationId } = await context.params;
   const actorUserId = await resolveActorId(request);
+  const store = await getWebTenancyRepository();
   if (!actorUserId)
     return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+  if (!store)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
     const input = projectCreateSchema.parse(await request.json());
     return NextResponse.json(
-      { project: tenantStore.createProject({ ...input, organizationId, actorUserId }) },
+      { project: await store.createProject({ ...input, organizationId, actorUserId }) },
       { status: 201 },
     );
   } catch (error) {
@@ -30,10 +34,13 @@ export async function GET(
 ) {
   const actorUserId = await resolveActorId(request);
   const { organizationId } = await context.params;
+  const store = await getWebTenancyRepository();
   if (!actorUserId)
     return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+  if (!store)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
-    return NextResponse.json({ projects: tenantStore.listProjects(organizationId, actorUserId) });
+    return NextResponse.json({ projects: await store.listProjects(organizationId, actorUserId) });
   } catch {
     return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
   }

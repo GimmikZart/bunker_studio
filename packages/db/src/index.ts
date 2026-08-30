@@ -15,6 +15,7 @@ export const PACKAGE_NAME = '@bunker-studio/db';
 export * from './secrets.js';
 export * from './supabase.js';
 export * from './outbox.js';
+export * from './tenant-repository.js';
 
 export type TenantStoreState = {
   organizations: Organization[];
