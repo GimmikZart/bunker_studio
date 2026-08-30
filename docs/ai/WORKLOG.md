@@ -2,6 +2,20 @@
 
 Storico append-only.
 
+## 2026-08-31 — Quality smoke responsive/accessibility
+
+### Lavoro svolto
+
+- Aggiunto `tests/e2e/quality-smoke.spec.ts` per verificare rendering, controlli interattivi nominati, assenza di errori pagina e overflow alle viewport desktop/mobile sulle pagine core.
+
+### Verifiche
+
+- `pnpm exec playwright test tests/e2e/quality-smoke.spec.ts`: PASS, 1/1.
+
+### Prossimo passo
+
+Eseguire l’audit manuale WCAG/device e gli scenari quality esterni quando saranno disponibili le risorse richieste.
+
 ## 2026-08-31 — Runner concorrente e resume sessione provider
 
 ### Lavoro svolto

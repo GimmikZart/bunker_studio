@@ -31,7 +31,7 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 - `pnpm typecheck`: PASS, 15 package task.
 - `pnpm test`: PASS, 21 task Turborepo.
 - `pnpm build`: PASS, 15 package task; Next genera 45 route/pagine.
-- `pnpm exec playwright test`: PASS, 9 test (health, onboarding, login/signup, PWA, tenancy/isolation, design/staffing/memory, worker, operations/review/portability, virgin template).
+- `pnpm exec playwright test`: PASS, 10 test (health, onboarding, login/signup, PWA, tenancy/isolation, design/staffing/memory, worker, operations/review/portability, virgin template, smoke responsive/accessibility).
 - `pnpm audit --audit-level high`: PASS, nessuna vulnerabilità nota.
 - `supabase db reset --local`: PASS; migrations `00000000000000..00000000000013` applicate, inclusi RLS assignments, trigger domain events e metadati workflow plan.
 
