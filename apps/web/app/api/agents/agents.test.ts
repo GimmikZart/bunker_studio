@@ -26,23 +26,36 @@ describe('agent registry routes', () => {
           roleKey: 'backend',
           title: 'Backend Engineer',
           personality: { tone: 'precise' },
+          avatarAssetId: '00000000-0000-0000-0000-000000000001',
+          skills: ['backend'],
+          tools: ['repository workspace'],
+          permissions: ['repo.read', 'repo.write'],
           providerBindingId: 'local-ollama',
         }),
       }),
     );
     expect(created.status).toBe(201);
-    const agentId = (await created.json()).agent.id;
+    const createdAgent = (await created.json()).agent;
+    const agentId = createdAgent.id;
+    expect(createdAgent.skills).toEqual(['backend']);
+    expect(createdAgent.permissions).toEqual(['repo.read', 'repo.write']);
 
     const updated = await updateAgent(
       new Request(`http://localhost/api/agents/${agentId}`, {
         method: 'PATCH',
         headers,
-        body: JSON.stringify({ title: 'Senior Backend Engineer' }),
+        body: JSON.stringify({
+          title: 'Senior Backend Engineer',
+          tools: ['repository workspace', 'CI'],
+        }),
       }),
       { params: Promise.resolve({ agentId }) },
     );
     expect(updated.status).toBe(200);
-    expect((await updated.json()).agent.title).toBe('Senior Backend Engineer');
+    expect((await updated.json()).agent).toMatchObject({
+      title: 'Senior Backend Engineer',
+      tools: ['repository workspace', 'CI'],
+    });
 
     const listed = await listAgents(new Request('http://localhost/api/agents', { headers }));
     expect((await listed.json()).agents).toHaveLength(1);

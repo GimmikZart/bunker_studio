@@ -33,21 +33,36 @@ describe('tenancy CRUD routes', () => {
     );
     expect(teamResponse.status).toBe(201);
     const team = (await teamResponse.json()).team;
+    const secondTeamResponse = await createTeam(
+      new Request('http://localhost', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name: 'Web' }),
+      }),
+      { params: Promise.resolve({ organizationId: organization.id }) },
+    );
+    const secondTeam = (await secondTeamResponse.json()).team;
     const projectResponse = await createProject(
       new Request('http://localhost', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ name: 'API', teamId: team.id }),
+        body: JSON.stringify({ name: 'API', teamId: team.id, teamIds: [team.id, secondTeam.id] }),
       }),
       { params: Promise.resolve({ organizationId: organization.id }) },
     );
     expect(projectResponse.status).toBe(201);
     const project = (await projectResponse.json()).project;
+    expect(project.teamIds).toEqual([team.id, secondTeam.id]);
     const archivedTeamResponse = await archiveTeam(
       new Request(`http://localhost?teamId=${team.id}`, { method: 'DELETE', headers }),
       { params: Promise.resolve({ organizationId: organization.id }) },
     );
     expect(archivedTeamResponse.status).toBe(204);
+    const archivedSecondTeamResponse = await archiveTeam(
+      new Request(`http://localhost?teamId=${secondTeam.id}`, { method: 'DELETE', headers }),
+      { params: Promise.resolve({ organizationId: organization.id }) },
+    );
+    expect(archivedSecondTeamResponse.status).toBe(204);
     const archivedProjectResponse = await archiveProject(
       new Request(`http://localhost?projectId=${project.id}`, { method: 'DELETE', headers }),
       { params: Promise.resolve({ organizationId: organization.id }) },

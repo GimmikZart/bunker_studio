@@ -3,7 +3,10 @@ import { loadEnv } from './index';
 
 describe('environment configuration', () => {
   it('provides safe local defaults', () => {
-    expect(loadEnv({}).DATABASE_URL).toContain('127.0.0.1');
+    expect(loadEnv({})).toMatchObject({
+      SUPABASE_URL: 'http://127.0.0.1:55421',
+      DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:55422/postgres',
+    });
   });
 
   it('requires the application encryption key in production', () => {

@@ -123,6 +123,10 @@ export const agentCreateSchema = z.object({
   roleKey: z.string().min(1),
   title: z.string().min(1),
   personality: z.record(z.unknown()).default({}),
+  avatarAssetId: z.string().uuid().nullable().optional(),
+  skills: z.array(z.string().trim().min(1)).max(50).default([]),
+  tools: z.array(z.string().trim().min(1)).max(50).default([]),
+  permissions: z.array(z.string().trim().min(1)).max(50).default([]),
   providerBindingId: z.string().min(1),
 });
 export type AgentCreateInput = z.infer<typeof agentCreateSchema>;
@@ -150,6 +154,7 @@ export const projectCreateSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(2_000).optional(),
   teamId: z.string().uuid().optional(),
+  teamIds: z.array(z.string().uuid()).max(20).optional(),
 });
 export const projectUpdateSchema = projectCreateSchema.partial();
 

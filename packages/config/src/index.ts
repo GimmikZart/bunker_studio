@@ -4,13 +4,13 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
   STUDIO_MASTER_KEY: z.string().min(1).optional(),
-  SUPABASE_URL: z.string().url().default('http://127.0.0.1:54321'),
+  SUPABASE_URL: z.string().url().default('http://127.0.0.1:55421'),
   SUPABASE_ANON_KEY: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   DATABASE_URL: z
     .string()
     .min(1)
-    .default('postgresql://postgres:postgres@127.0.0.1:54322/postgres'),
+    .default('postgresql://postgres:postgres@127.0.0.1:55422/postgres'),
   WEB_PORT: z.coerce.number().int().positive().default(3000),
   WORKER_HEARTBEAT_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   AGENT_PROVIDER_TYPE: z

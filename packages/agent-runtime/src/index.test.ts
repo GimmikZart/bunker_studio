@@ -20,4 +20,15 @@ describe('FakeRuntime', () => {
     ).rejects.toMatchObject({ code: 'QUOTA_EXHAUSTED_RESETTABLE' });
     expect(await runtime.probeAvailability()).toBe('AVAILABLE');
   });
+
+  it('keeps the capability envelope explicit at the runtime boundary', async () => {
+    const runtime = new FakeRuntime({ response: 'scoped' });
+    const result = await collectRun(runtime, {
+      agentId: 'agent',
+      prompt: 'inspect',
+      correlationId: 'corr',
+      capabilities: { skills: ['backend'], tools: ['repository'], permissions: ['repo.read'] },
+    });
+    expect(result.text).toBe('scoped');
+  });
 });

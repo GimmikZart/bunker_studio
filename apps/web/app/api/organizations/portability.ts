@@ -24,6 +24,10 @@ function stringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
+function optionalStringArray(value: unknown): value is string[] | undefined {
+  return value === undefined || stringArray(value);
+}
+
 export function parseOrganizationExport(value: unknown): OrganizationExport | null {
   if (!record(value) || !record(value.manifest) || value.manifest.schemaVersion !== 1) return null;
   if (
@@ -45,8 +49,22 @@ export function parseOrganizationExport(value: unknown): OrganizationExport | nu
     return null;
   if (
     !teams.every((item) => record(item) && string(item.id) && string(item.name)) ||
-    !projects.every((item) => record(item) && string(item.id) && string(item.name)) ||
-    !agents.every((item) => record(item) && string(item.id) && string(item.name)) ||
+    !projects.every(
+      (item) =>
+        record(item) &&
+        string(item.id) &&
+        string(item.name) &&
+        (item.teamIds === undefined || stringArray(item.teamIds)),
+    ) ||
+    !agents.every(
+      (item) =>
+        record(item) &&
+        string(item.id) &&
+        string(item.name) &&
+        optionalStringArray(item.skills) &&
+        optionalStringArray(item.tools) &&
+        optionalStringArray(item.permissions),
+    ) ||
     !memories.every(
       (item) =>
         record(item) &&

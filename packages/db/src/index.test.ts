@@ -32,9 +32,19 @@ describe('TenantStore', () => {
       roleKey: 'frontend',
       title: 'Frontend Engineer',
       providerBindingId: 'binding-v1',
+      avatarAssetId: '00000000-0000-0000-0000-000000000001',
+      skills: ['frontend'],
+      tools: ['repository workspace'],
+      permissions: ['repo.read'],
     });
     expect(store.listAgents(organization.id, 'owner')[0]?.id).toBe(agent.id);
     expect(store.listAgents(organization.id, 'owner')[0]?.providerBindingId).toBe('binding-v1');
+    expect(store.listAgents(organization.id, 'owner')[0]).toMatchObject({
+      avatarAssetId: '00000000-0000-0000-0000-000000000001',
+      skills: ['frontend'],
+      tools: ['repository workspace'],
+      permissions: ['repo.read'],
+    });
     store.changeAgentBinding(agent.id, organization.id, 'owner', 'binding-v2');
     expect(store.listAgents(organization.id, 'owner')[0]?.id).toBe(agent.id);
     expect(store.listAgents(organization.id, 'owner')[0]?.providerBindingId).toBe('binding-v2');

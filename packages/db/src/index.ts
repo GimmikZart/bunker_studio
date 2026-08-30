@@ -95,15 +95,22 @@ export class TenantStore {
     name: string;
     description?: string;
     teamId?: string;
+    teamIds?: string[];
   }): Project {
     this.requireWrite(input.organizationId, input.actorUserId);
-    if (input.teamId) {
-      const team = this.state.teams.find(
-        (candidate) =>
-          candidate.id === input.teamId && candidate.organizationId === input.organizationId,
-      );
-      if (!team)
-        throw new AuthorizationError('The selected team does not belong to this organization.');
+    const teamIds = [
+      ...new Set([...(input.teamIds ?? []), ...(input.teamId ? [input.teamId] : [])]),
+    ];
+    if (
+      teamIds.some(
+        (teamId) =>
+          !this.state.teams.some(
+            (candidate) =>
+              candidate.id === teamId && candidate.organizationId === input.organizationId,
+          ),
+      )
+    ) {
+      throw new AuthorizationError('The selected team does not belong to this organization.');
     }
     const project: Project = {
       id: crypto.randomUUID(),
@@ -114,7 +121,8 @@ export class TenantStore {
       autonomyMode: 'AUTONOMOUS',
       status: 'ACTIVE',
       isStudioCore: false,
-      defaultTeamId: input.teamId ?? null,
+      defaultTeamId: teamIds[0] ?? null,
+      teamIds,
       defaultBranch: 'main',
       archivedAt: null,
       createdAt: new Date().toISOString(),
@@ -169,6 +177,7 @@ export class TenantStore {
     patch: Partial<
       Pick<Project, 'name' | 'description' | 'autonomyMode' | 'status' | 'defaultBranch'> & {
         defaultTeamId: string | null;
+        teamIds?: string[];
       }
     >,
   ): Project {
@@ -186,6 +195,7 @@ export class TenantStore {
     if (patch.status !== undefined) project.status = patch.status;
     if (patch.defaultBranch !== undefined) project.defaultBranch = patch.defaultBranch.trim();
     if (patch.defaultTeamId !== undefined) project.defaultTeamId = patch.defaultTeamId;
+    if (patch.teamIds !== undefined) project.teamIds = [...new Set(patch.teamIds)];
     return structuredClone(project);
   }
 
@@ -217,6 +227,10 @@ export class TenantStore {
     title: string;
     providerBindingId: string;
     personality?: Record<string, unknown>;
+    avatarAssetId?: string | null;
+    skills?: string[];
+    tools?: string[];
+    permissions?: string[];
   }): Agent {
     this.requireWrite(input.organizationId, input.actorUserId);
     const agent: Agent = {
@@ -226,6 +240,10 @@ export class TenantStore {
       roleKey: input.roleKey,
       title: input.title,
       personality: input.personality ?? {},
+      avatarAssetId: input.avatarAssetId ?? null,
+      skills: [...(input.skills ?? [])],
+      tools: [...(input.tools ?? [])],
+      permissions: [...(input.permissions ?? [])],
       providerBindingId: input.providerBindingId,
       archivedAt: null,
     };
@@ -271,7 +289,20 @@ export class TenantStore {
     agentId: string,
     organizationId: string,
     actorUserId: string,
-    patch: Partial<Pick<Agent, 'name' | 'roleKey' | 'title' | 'personality' | 'providerBindingId'>>,
+    patch: Partial<
+      Pick<
+        Agent,
+        | 'name'
+        | 'roleKey'
+        | 'title'
+        | 'personality'
+        | 'avatarAssetId'
+        | 'skills'
+        | 'tools'
+        | 'permissions'
+        | 'providerBindingId'
+      >
+    >,
   ): Agent {
     this.requireWrite(organizationId, actorUserId);
     const agent = this.state.agents.find(
@@ -515,13 +546,17 @@ export class WorkerRegistry {
 export type PortableOrganization = {
   organization: { id: string; name: string };
   teams: { id: string; name: string }[];
-  projects: { id: string; name: string; teamId?: string }[];
+  projects: { id: string; name: string; teamId?: string; teamIds?: string[] }[];
   agents: {
     id: string;
     name: string;
     roleKey?: string;
     title?: string;
     personality?: Record<string, unknown>;
+    avatarAssetId?: string | null;
+    skills?: string[];
+    tools?: string[];
+    permissions?: string[];
     providerBindingId?: string;
   }[];
   memories: MemoryUnit[];

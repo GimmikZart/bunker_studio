@@ -24,6 +24,35 @@ export async function POST(request: Request) {
   }
   if (!pack) return NextResponse.json({ error: 'Invalid organization export.' }, { status: 400 });
   try {
+    const projectIdsInPack = new Set(pack.projects.map((project) => project.id));
+    const teamIdsInPack = new Set(pack.teams.map((team) => team.id));
+    const taskIdsInPack = new Set(pack.tasks.map((task) => task.id));
+    if (
+      pack.projects.some(
+        (project) =>
+          (project.teamId !== undefined && !teamIdsInPack.has(project.teamId)) ||
+          (project.teamIds ?? []).some((teamId) => !teamIdsInPack.has(teamId)),
+      ) ||
+      pack.tasks.some(
+        (task) =>
+          !projectIdsInPack.has(task.projectId) ||
+          task.dependencies.some((dependency) => !taskIdsInPack.has(dependency)),
+      )
+    )
+      throw new Error('Task dependency graph references missing entities.');
+    const pendingTaskIds = new Set(taskIdsInPack);
+    while (pendingTaskIds.size) {
+      const completedBefore = pendingTaskIds.size;
+      for (const task of pack.tasks) {
+        if (
+          pendingTaskIds.has(task.id) &&
+          task.dependencies.every((dependency) => !pendingTaskIds.has(dependency))
+        )
+          pendingTaskIds.delete(task.id);
+      }
+      if (pendingTaskIds.size === completedBefore)
+        throw new Error('Task dependency graph contains a cycle.');
+    }
     const remapped = importOrganization(pack);
     const organization = await tenancy.createOrganization({
       name: `${pack.organization.name} (imported)`,
@@ -45,11 +74,21 @@ export async function POST(request: Request) {
         actorUserId: actorId,
         name: project.name,
         teamId: project.teamId ? teamIds.get(project.teamId) : undefined,
+        teamIds: project.teamIds
+          ?.map((teamId) => teamIds.get(teamId))
+          .filter((id): id is string => Boolean(id)),
       });
       projectIds.set(project.id, created.id);
     }
     let tasksImported = 0;
-    for (const task of pack.tasks) {
+    const pendingTasks = [...pack.tasks];
+    const importedTaskIds = new Set<string>();
+    while (pendingTasks.length) {
+      const taskIndex = pendingTasks.findIndex((candidate) =>
+        candidate.dependencies.every((dependency) => importedTaskIds.has(dependency)),
+      );
+      if (taskIndex < 0) throw new Error('Task dependency graph cannot be remapped.');
+      const task = pendingTasks.splice(taskIndex, 1)[0]!;
       const projectId = projectIds.get(task.projectId);
       const id = remapped.idMap.get(task.id);
       const dependencies = task.dependencies.map((dependency) => remapped.idMap.get(dependency));
@@ -70,6 +109,7 @@ export async function POST(request: Request) {
         },
         actorId,
       );
+      importedTaskIds.add(task.id);
       tasksImported += 1;
     }
     const agentIds = new Map<string, string>();
@@ -81,6 +121,10 @@ export async function POST(request: Request) {
         roleKey: agent.roleKey ?? 'imported',
         title: agent.title ?? agent.name,
         personality: agent.personality ?? {},
+        avatarAssetId: agent.avatarAssetId ?? null,
+        skills: agent.skills ?? [],
+        tools: agent.tools ?? [],
+        permissions: agent.permissions ?? [],
         providerBindingId: 'REQUIRES_REAUTH',
       });
       agentIds.set(agent.id, created.id);

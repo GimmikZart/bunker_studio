@@ -31,6 +31,16 @@ function mapAgent(value: unknown): Agent {
     roleKey: stringValue(item.role_key, 'role_key'),
     title: stringValue(item.title ?? '', 'title'),
     personality: (item.personality_json ?? {}) as Record<string, unknown>,
+    avatarAssetId: typeof item.avatar_asset_id === 'string' ? item.avatar_asset_id : null,
+    skills: Array.isArray(item.skills_json)
+      ? item.skills_json.filter((value): value is string => typeof value === 'string')
+      : [],
+    tools: Array.isArray(item.tools_json)
+      ? item.tools_json.filter((value): value is string => typeof value === 'string')
+      : [],
+    permissions: Array.isArray(item.permissions_json)
+      ? item.permissions_json.filter((value): value is string => typeof value === 'string')
+      : [],
     providerBindingId: binding ? stringValue(object(binding).id, 'agent_bindings.id') : 'unbound',
     archivedAt: typeof item.archived_at === 'string' ? item.archived_at : null,
   };
@@ -74,6 +84,10 @@ export class SupabaseAgentRepository {
     title: string;
     providerBindingId: string;
     personality?: Record<string, unknown>;
+    avatarAssetId?: string | null;
+    skills?: string[];
+    tools?: string[];
+    permissions?: string[];
   }): Promise<Agent> {
     await this.requireWrite(input.organizationId, input.actorUserId);
     const data = await unwrap(
@@ -88,8 +102,24 @@ export class SupabaseAgentRepository {
     );
     const result = Array.isArray(data) ? data[0] : data;
     if (!result) throw new Error('Agent creation returned no row.');
+    const capabilities = {
+      avatar_asset_id: input.avatarAssetId ?? null,
+      skills_json: input.skills ?? [],
+      tools_json: input.tools ?? [],
+      permissions_json: input.permissions ?? [],
+    };
+    if (input.avatarAssetId !== undefined || input.skills || input.tools || input.permissions) {
+      await unwrap(
+        this.client
+          .from('agents')
+          .update(capabilities)
+          .eq('id', object(result).id)
+          .eq('organization_id', input.organizationId),
+      );
+    }
     return mapAgent({
       ...object(result),
+      ...capabilities,
       agent_bindings: [{ id: object(result).provider_binding_id }],
     });
   }
@@ -98,7 +128,20 @@ export class SupabaseAgentRepository {
     agentId: string,
     organizationId: string,
     actorUserId: string,
-    patch: Partial<Pick<Agent, 'name' | 'roleKey' | 'title' | 'personality' | 'providerBindingId'>>,
+    patch: Partial<
+      Pick<
+        Agent,
+        | 'name'
+        | 'roleKey'
+        | 'title'
+        | 'personality'
+        | 'avatarAssetId'
+        | 'skills'
+        | 'tools'
+        | 'permissions'
+        | 'providerBindingId'
+      >
+    >,
   ): Promise<Agent> {
     await this.requireWrite(organizationId, actorUserId);
     const values: Record<string, unknown> = {};
@@ -106,6 +149,10 @@ export class SupabaseAgentRepository {
     if (patch.roleKey !== undefined) values.role_key = patch.roleKey;
     if (patch.title !== undefined) values.title = patch.title;
     if (patch.personality !== undefined) values.personality_json = patch.personality;
+    if (patch.avatarAssetId !== undefined) values.avatar_asset_id = patch.avatarAssetId;
+    if (patch.skills !== undefined) values.skills_json = patch.skills;
+    if (patch.tools !== undefined) values.tools_json = patch.tools;
+    if (patch.permissions !== undefined) values.permissions_json = patch.permissions;
     if (Object.keys(values).length) {
       await unwrap(
         this.client

@@ -32,6 +32,11 @@ export async function POST(request: Request, context: { params: Promise<{ agentI
       prompt: `${agent.title}: ${input.content}`,
       sessionId: input.sessionId,
       correlationId: crypto.randomUUID(),
+      capabilities: {
+        skills: agent.skills,
+        tools: agent.tools,
+        permissions: agent.permissions,
+      },
     });
     await operations.recordChat(
       {

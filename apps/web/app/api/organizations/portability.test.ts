@@ -87,6 +87,7 @@ describe('organization portability routes', () => {
     expect(pack.projects).toHaveLength(1);
     expect(pack.agents).toHaveLength(1);
     expect(pack.tasks).toHaveLength(2);
+    pack.tasks.reverse();
 
     const imported = await importOrganization(
       new Request('http://localhost/api/organizations/import', {

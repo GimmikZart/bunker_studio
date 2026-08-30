@@ -2,6 +2,24 @@
 
 Storico append-only.
 
+## 2026-08-30 — Capability envelope e progetti multi-team
+
+### Lavoro svolto
+
+- Estesa l’identità persistita degli agenti con avatar, skills, tools e permissions; la chat inoltra al runtime solo il capability envelope autorizzato e la portabilità conserva questi metadati senza provider secrets.
+- Aggiunta la migrazione Supabase `00000000000009_agent_capabilities.sql`, con default e vincoli JSON compatibili con i record esistenti.
+- Completato il supporto a progetti associati a più team tramite `teamIds`/`project_teams`, validazione tenant-aware e import/export; aggiunta la migrazione RLS `00000000000010_project_team_rls.sql` per impedire relazioni cross-organization.
+- Aggiornati UI e test del registry agenti e tenancy.
+
+### Verifiche
+
+- `pnpm verify`: PASS dopo l’incremento multi-team; lint/typecheck 15 package task, test 21 task, build Next 41 route e audit verde.
+- `pnpm test:e2e`: PASS dopo l’incremento multi-team, 9 scenari; reset Supabase locale PASS fino alla migration 10.
+
+### Prossimo passo
+
+Ripetere la verifica monorepo/E2E dopo il consolidamento del supporto multi-team, poi mantenere aperte soltanto le verifiche quality esterne già registrate come `PARTIAL`.
+
 ## 2026-08-30 — Persistenza production dei verticali
 
 ### Lavoro svolto

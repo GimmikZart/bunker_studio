@@ -66,6 +66,7 @@ export async function PATCH(
       project: await store.updateProject(projectId, organizationId, actorUserId, {
         ...input,
         defaultTeamId: input.teamId,
+        teamIds: input.teamIds,
       }),
     });
   } catch (error) {

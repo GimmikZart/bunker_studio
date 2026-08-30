@@ -16,6 +16,11 @@ export type RunRequest = {
   prompt: string;
   sessionId?: string;
   correlationId: string;
+  capabilities?: {
+    skills: string[];
+    tools: string[];
+    permissions: string[];
+  };
 };
 export type RunEvent = {
   sequence: number;
@@ -134,6 +139,7 @@ export class HttpAgentRuntime implements AgentRuntime {
       body: JSON.stringify({
         model: this.config.model,
         messages: [{ role: 'user', content: input.prompt }],
+        capabilities: input.capabilities ?? { skills: [], tools: [], permissions: [] },
       }),
     });
     if (!response.ok) throw normalizeHttpError(response.status, response.statusText);

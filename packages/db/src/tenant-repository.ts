@@ -80,6 +80,13 @@ function mapProject(value: unknown): Project {
     status: (item.status ?? 'ACTIVE') as Project['status'],
     isStudioCore: item.is_studio_core === true,
     defaultTeamId: typeof item.default_team_id === 'string' ? item.default_team_id : null,
+    teamIds: Array.isArray(item.project_teams)
+      ? item.project_teams
+          .map((value) => row(value).team_id)
+          .filter((value): value is string => typeof value === 'string')
+      : typeof item.default_team_id === 'string'
+        ? [item.default_team_id]
+        : [],
     defaultBranch: requiredString(item.default_branch ?? 'main', 'default_branch'),
     archivedAt: typeof item.archived_at === 'string' ? item.archived_at : null,
     createdAt: requiredString(item.created_at, 'created_at'),
@@ -227,8 +234,25 @@ export class SupabaseTenancyRepository {
     name: string;
     description?: string;
     teamId?: string;
+    teamIds?: string[];
   }): Promise<Project> {
     await this.requireWrite(input.organizationId, input.actorUserId);
+    const teamIds = [
+      ...new Set([...(input.teamIds ?? []), ...(input.teamId ? [input.teamId] : [])]),
+    ];
+    for (const teamId of teamIds) {
+      const team = await unwrap(
+        this.client
+          .from('teams')
+          .select('id')
+          .eq('id', teamId)
+          .eq('organization_id', input.organizationId)
+          .is('archived_at', null)
+          .maybeSingle(),
+      );
+      if (!team)
+        throw new AuthorizationError('The selected team does not belong to this organization.');
+    }
     const data = await unwrap(
       this.client
         .from('projects')
@@ -237,18 +261,31 @@ export class SupabaseTenancyRepository {
           name: input.name.trim(),
           slug: slugify(input.name),
           description: input.description?.trim() ?? '',
-          default_team_id: input.teamId ?? null,
+          default_team_id: teamIds[0] ?? null,
         })
         .select('*')
         .single(),
     );
-    return mapProject(data);
+    const project = mapProject(data);
+    if (teamIds.length) {
+      await unwrap(
+        this.client
+          .from('project_teams')
+          .insert(teamIds.map((teamId) => ({ project_id: project.id, team_id: teamId })))
+          .select('project_id'),
+      );
+      project.teamIds = teamIds;
+    }
+    return project;
   }
 
   async listProjects(organizationId: string, actorUserId: string): Promise<Project[]> {
     await this.requireMember(organizationId, actorUserId);
     const data = await unwrap(
-      this.client.from('projects').select('*').eq('organization_id', organizationId),
+      this.client
+        .from('projects')
+        .select('*, project_teams(team_id)')
+        .eq('organization_id', organizationId),
     );
     return Array.isArray(data) ? data.map(mapProject).filter((item) => !item.archivedAt) : [];
   }

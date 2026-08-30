@@ -10,8 +10,30 @@ type Agent = {
   name: string;
   roleKey: string;
   title: string;
+  avatarAssetId: string | null;
+  skills: string[];
+  tools: string[];
+  permissions: string[];
   providerBindingId: string;
 };
+
+const AVATARS = [
+  { id: '', label: 'Default' },
+  { id: '00000000-0000-0000-0000-000000000001', label: 'Amber' },
+  { id: '00000000-0000-0000-0000-000000000002', label: 'Cobalt' },
+  { id: '00000000-0000-0000-0000-000000000003', label: 'Mint' },
+];
+
+function splitCapabilities(value: string): string[] {
+  return [
+    ...new Set(
+      value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
+}
 
 export function AgentCrudPanel() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -21,6 +43,10 @@ export function AgentCrudPanel() {
   const [name, setName] = useState('');
   const [roleKey, setRoleKey] = useState('');
   const [title, setTitle] = useState('');
+  const [avatarAssetId, setAvatarAssetId] = useState('');
+  const [skills, setSkills] = useState('');
+  const [tools, setTools] = useState('');
+  const [permissions, setPermissions] = useState('');
   const [providerBindingId, setProviderBindingId] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -56,6 +82,10 @@ export function AgentCrudPanel() {
     setName('');
     setRoleKey('');
     setTitle('');
+    setAvatarAssetId('');
+    setSkills('');
+    setTools('');
+    setPermissions('');
     setProviderBindingId('');
   }
 
@@ -71,6 +101,10 @@ export function AgentCrudPanel() {
     setName(agent.name);
     setRoleKey(agent.roleKey);
     setTitle(agent.title);
+    setAvatarAssetId(agent.avatarAssetId ?? '');
+    setSkills(agent.skills.join(', '));
+    setTools(agent.tools.join(', '));
+    setPermissions(agent.permissions.join(', '));
     setProviderBindingId(agent.providerBindingId);
     setNotice('');
   }
@@ -83,7 +117,17 @@ export function AgentCrudPanel() {
     const response = await fetch(editingId ? `/api/agents/${editingId}` : '/api/agents', {
       method: editingId ? 'PATCH' : 'POST',
       headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
-      body: JSON.stringify({ name, roleKey, title, providerBindingId, personality: {} }),
+      body: JSON.stringify({
+        name,
+        roleKey,
+        title,
+        avatarAssetId: avatarAssetId || null,
+        skills: splitCapabilities(skills),
+        tools: splitCapabilities(tools),
+        permissions: splitCapabilities(permissions),
+        providerBindingId,
+        personality: {},
+      }),
     });
     if (!response.ok) {
       setError('The agent could not be saved.');
@@ -160,6 +204,42 @@ export function AgentCrudPanel() {
         />
         <p className="field-help">
           Use a binding label; API keys remain server-side and are never shown here.
+        </p>
+        <label htmlFor="agent-avatar">Avatar</label>
+        <select
+          id="agent-avatar"
+          value={avatarAssetId}
+          onChange={(event) => setAvatarAssetId(event.target.value)}
+        >
+          {AVATARS.map((avatar) => (
+            <option key={avatar.id} value={avatar.id}>
+              {avatar.label}
+            </option>
+          ))}
+        </select>
+        <label htmlFor="agent-skills">Skills</label>
+        <input
+          id="agent-skills"
+          value={skills}
+          onChange={(event) => setSkills(event.target.value)}
+          placeholder="frontend, accessibility"
+        />
+        <label htmlFor="agent-tools">Tools</label>
+        <input
+          id="agent-tools"
+          value={tools}
+          onChange={(event) => setTools(event.target.value)}
+          placeholder="repository workspace, CI"
+        />
+        <label htmlFor="agent-permissions">Permissions</label>
+        <input
+          id="agent-permissions"
+          value={permissions}
+          onChange={(event) => setPermissions(event.target.value)}
+          placeholder="repo.read, artifact.write"
+        />
+        <p className="field-help">
+          Comma-separated capability identifiers. Only these values are sent to the runtime.
         </p>
         <div className="action-row">
           <button className="primary-button" type="submit" disabled={!organizationId}>

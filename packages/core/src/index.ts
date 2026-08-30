@@ -42,6 +42,7 @@ export type Project = {
   status: ProjectStatus;
   isStudioCore: boolean;
   defaultTeamId: string | null;
+  teamIds: string[];
   defaultBranch: string;
   archivedAt: string | null;
   createdAt: string;
@@ -59,6 +60,11 @@ export type AgentPresence =
   | 'WAITING_QUOTA'
   | 'BLOCKED'
   | 'OFFLINE';
+export type AgentCapabilities = {
+  skills: string[];
+  tools: string[];
+  permissions: string[];
+};
 export type Agent = {
   id: string;
   organizationId: string;
@@ -66,6 +72,10 @@ export type Agent = {
   roleKey: string;
   title: string;
   personality: Readonly<Record<string, unknown>>;
+  avatarAssetId: string | null;
+  skills: string[];
+  tools: string[];
+  permissions: string[];
   providerBindingId: string;
   archivedAt: string | null;
 };

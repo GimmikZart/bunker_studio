@@ -36,10 +36,11 @@ export async function GET(
     const pack = exportOrganization({
       organization: { id: organization.id, name: organization.name },
       teams: teams.map(({ id, name }) => ({ id, name })),
-      projects: projects.map(({ id, name, defaultTeamId }) => ({
+      projects: projects.map(({ id, name, defaultTeamId, teamIds }) => ({
         id,
         name,
         ...(defaultTeamId ? { teamId: defaultTeamId } : {}),
+        ...(teamIds.length ? { teamIds } : {}),
       })),
       agents: registeredAgents.map((agent) => ({
         id: agent.id,
@@ -47,6 +48,10 @@ export async function GET(
         roleKey: agent.roleKey,
         title: agent.title,
         personality: agent.personality,
+        avatarAssetId: agent.avatarAssetId,
+        skills: agent.skills,
+        tools: agent.tools,
+        permissions: agent.permissions,
         providerBindingId: agent.providerBindingId,
       })),
       memories,
