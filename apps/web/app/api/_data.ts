@@ -66,7 +66,10 @@ import type { MemoryUnit, RegisteredWorker } from '@bunker-studio/db';
 import type { LeadPlan } from '@bunker-studio/contracts';
 import { approveDesignVersion as applyDesignApproval } from '@bunker-studio/core';
 import type { DesignRecord } from '@bunker-studio/core';
-import { FakeRuntime, HttpAgentRuntime, type AgentRuntime } from '@bunker-studio/agent-runtime';
+import { FakeRuntime, type AgentRuntime } from '@bunker-studio/agent-runtime';
+import { createAnthropicRuntime } from '@bunker-studio/provider-anthropic';
+import { createOpenAIRuntime } from '@bunker-studio/provider-openai';
+import { createCompatibleRuntime } from '@bunker-studio/provider-openai-compatible';
 import { canTransition, type TaskState } from '@bunker-studio/orchestration';
 
 export type WebTenancyRepository = TenantStore | SupabaseTenancyRepository;
@@ -357,10 +360,13 @@ export function getWebAgentRuntime(providerBindingId?: string): AgentRuntime | n
   if (process.env.NODE_ENV !== 'production') return new FakeRuntime({});
   const endpoint = process.env.AGENT_PROVIDER_ENDPOINT;
   if (!endpoint) return null;
-  return new HttpAgentRuntime({
-    provider: process.env.AGENT_PROVIDER_TYPE ?? 'openai-compatible',
+  const options = {
     endpoint,
     apiKey: process.env.AGENT_PROVIDER_API_KEY,
     model: process.env.AGENT_PROVIDER_MODEL || providerBindingId,
-  });
+  };
+  const provider = process.env.AGENT_PROVIDER_TYPE ?? 'openai-compatible';
+  if (provider === 'openai') return createOpenAIRuntime(options);
+  if (provider === 'anthropic') return createAnthropicRuntime(options);
+  return createCompatibleRuntime(options);
 }

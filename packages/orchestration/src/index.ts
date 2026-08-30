@@ -166,9 +166,11 @@ export async function runWithAutomaticQuotaResume(
     retryCount += 1;
     await waitForProbe();
     while ((await runtime.probeAvailability()) === 'WAITING') await waitForProbe();
-    const result = error.sessionId
-      ? await resumeRun(runtime, { ...input, sessionId: error.sessionId })
-      : await collectRun(runtime, input);
+    const capabilities = await runtime.getCapabilities();
+    const result =
+      error.sessionId && capabilities.resume
+        ? await resumeRun(runtime, { ...input, sessionId: error.sessionId })
+        : await collectRun(runtime, input);
     return { result, trace: { state: 'COMPLETED', retryCount, nextRetryAt } };
   }
 }

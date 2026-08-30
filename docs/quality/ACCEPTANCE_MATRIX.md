@@ -7,7 +7,7 @@ Checkpoint 2026-08-31: the local protected Studio Labs workflow now creates gate
 | Criterion | Status | Evidence / remaining verification |
 |---|---|---|
 | AC-001 PC loss | PARTIAL | Supabase durable schema, tenant APIs and export state exist; second-device cloud session test requires quality Supabase credentials. |
-| AC-002 provider switch | PASS | Binding-preserving agent registry and provider adapter contract tests. |
+| AC-002 provider switch | PASS | Binding-preserving agent registry plus OpenAI, Anthropic and OpenAI-compatible adapter contract tests with native payload/header and normalized usage coverage. |
 | AC-003 parallel frontend/backend | PASS | `WorkflowRunner` executes disjoint scopes concurrently, serializes overlapping scopes, and Git artifact tests preserve isolated workspaces. |
 | AC-004 dependency serialization | PASS | `WorkflowRunner` DAG test proves dependent task waits for both prerequisites. |
 | AC-005 review loop | PASS | Reviewer finding creates a persisted review report, deterministic fix tasks and the package-level re-review loop blocks until pass. |

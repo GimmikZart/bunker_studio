@@ -57,4 +57,36 @@ describe('FakeRuntime', () => {
       permissions: ['repo.read'],
     });
   });
+
+  it('normalizes server-sent streaming chunks and provider usage', async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"text":"hel"}\n\n'));
+        controller.enqueue(
+          encoder.encode('data: {"text":"lo","usage":{"inputTokens":2,"outputTokens":2}}\n\n'),
+        );
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        controller.close();
+      },
+    });
+    const runtime = new HttpAgentRuntime({
+      provider: 'stream-provider',
+      endpoint: 'http://provider.test/stream',
+      fetchFn: async () =>
+        new Response(stream, { status: 200, headers: { 'content-type': 'text/event-stream' } }),
+      parseStreamChunk: (payload) =>
+        payload as { text?: string; usage?: { inputTokens: number; outputTokens: number } },
+    });
+
+    const result = await collectRun(runtime, {
+      agentId: 'agent',
+      prompt: 'stream',
+      correlationId: 'corr',
+    });
+
+    expect(result.text).toBe('hello');
+    expect(result.usage).toEqual({ inputTokens: 2, outputTokens: 2 });
+    expect(await runtime.getCapabilities()).toMatchObject({ streaming: true });
+  });
 });

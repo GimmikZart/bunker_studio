@@ -18,6 +18,9 @@
     "@bunker-studio/contracts": "workspace:*",
     "@bunker-studio/db": "workspace:*",
     "@bunker-studio/orchestration": "workspace:*",
+    "@bunker-studio/provider-anthropic": "workspace:*",
+    "@bunker-studio/provider-openai": "workspace:*",
+    "@bunker-studio/provider-openai-compatible": "workspace:*",
     "next": "^15.5.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"

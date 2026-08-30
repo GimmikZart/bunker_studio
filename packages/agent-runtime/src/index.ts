@@ -28,6 +28,7 @@ export type RunEvent = {
   text?: string;
   sessionId: string;
   provider?: string;
+  usage?: { inputTokens: number; outputTokens: number };
 };
 export type RunResult = {
   sessionId: string;
@@ -121,17 +122,47 @@ export class HttpAgentRuntime implements AgentRuntime {
       apiKey?: string;
       model?: string;
       fetchFn?: typeof fetch;
+      buildRequest?: (
+        input: RunRequest,
+        context: { apiKey?: string; model?: string; resume: boolean },
+      ) => RequestInit;
+      parseResponse?: (payload: unknown) => {
+        text: string;
+        usage?: { inputTokens: number; outputTokens: number };
+      };
+      parseStreamChunk?: (payload: unknown) => {
+        text?: string;
+        done?: boolean;
+        usage?: { inputTokens: number; outputTokens: number };
+      };
+      capabilities?: { resume?: boolean; streaming?: boolean };
     },
   ) {}
 
   async getCapabilities() {
-    return { text: true, resume: false, streaming: false };
+    return {
+      text: true,
+      resume: this.config.capabilities?.resume ?? false,
+      streaming: this.config.capabilities?.streaming ?? Boolean(this.config.parseStreamChunk),
+    };
   }
 
   async *start(input: RunRequest): AsyncIterable<RunEvent> {
+    yield* this.execute(input, false);
+  }
+
+  async *resume(input: RunRequest & { sessionId: string }): AsyncIterable<RunEvent> {
+    yield* this.execute(input, true);
+  }
+
+  private async *execute(input: RunRequest, resume: boolean): AsyncIterable<RunEvent> {
     const sessionId = input.sessionId ?? `http-session-${crypto.randomUUID()}`;
     yield { sequence: 1, type: 'SESSION_STARTED', sessionId, provider: this.config.provider };
-    const response = await (this.config.fetchFn ?? fetch)(this.config.endpoint, {
+    const request = this.config.buildRequest?.(input, {
+      apiKey: this.config.apiKey,
+      model: this.config.model,
+      resume,
+    }) ?? {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -142,25 +173,92 @@ export class HttpAgentRuntime implements AgentRuntime {
         messages: [{ role: 'user', content: input.prompt }],
         capabilities: input.capabilities ?? { skills: [], tools: [], permissions: [] },
       }),
-    });
-    if (!response.ok) throw normalizeHttpError(response.status, response.statusText);
-    const payload = (await response.json()) as {
-      choices?: { message?: { content?: string } }[];
-      content?: { text?: string }[];
     };
-    const text = payload.choices?.[0]?.message?.content ?? payload.content?.[0]?.text ?? '';
-    yield { sequence: 2, type: 'TEXT_DELTA', text, sessionId, provider: this.config.provider };
+    const response = await (this.config.fetchFn ?? fetch)(this.config.endpoint, request);
+    if (!response.ok) throw normalizeHttpError(response.status, response.statusText);
+    const contentType = response.headers.get('content-type') ?? '';
+    if (
+      contentType.includes('text/event-stream') &&
+      response.body &&
+      this.config.parseStreamChunk
+    ) {
+      let sequence = 2;
+      for await (const payload of parseServerSentEvents(response.body)) {
+        const chunk = this.config.parseStreamChunk(payload);
+        if (chunk.text)
+          yield {
+            sequence,
+            type: 'TEXT_DELTA',
+            text: chunk.text,
+            sessionId,
+            provider: this.config.provider,
+            usage: chunk.usage,
+          };
+        sequence += 1;
+      }
+      yield { sequence, type: 'COMPLETED', sessionId, provider: this.config.provider };
+      return;
+    }
+    const parsed = this.config.parseResponse
+      ? this.config.parseResponse(await response.json())
+      : defaultResponseParser(await response.json());
+    yield {
+      sequence: 2,
+      type: 'TEXT_DELTA',
+      text: parsed.text,
+      sessionId,
+      provider: this.config.provider,
+      usage: parsed.usage,
+    };
     yield { sequence: 3, type: 'COMPLETED', sessionId, provider: this.config.provider };
-  }
-
-  resume(input: RunRequest & { sessionId: string }): AsyncIterable<RunEvent> {
-    return this.start(input);
   }
   async cancel() {
     return undefined;
   }
   async probeAvailability() {
     return 'AVAILABLE' as const;
+  }
+}
+
+function defaultResponseParser(payload: unknown): {
+  text: string;
+  usage?: { inputTokens: number; outputTokens: number };
+} {
+  const item = payload as {
+    choices?: { message?: { content?: string } }[];
+    content?: { text?: string }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+  return {
+    text: item.choices?.[0]?.message?.content ?? item.content?.[0]?.text ?? '',
+    usage:
+      typeof item.usage?.prompt_tokens === 'number' &&
+      typeof item.usage?.completion_tokens === 'number'
+        ? { inputTokens: item.usage.prompt_tokens, outputTokens: item.usage.completion_tokens }
+        : undefined,
+  };
+}
+
+async function* parseServerSentEvents(body: ReadableStream<Uint8Array>): AsyncIterable<unknown> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    const lines = buffer.split(/\r?\n/);
+    buffer = done ? '' : (lines.pop() ?? '');
+    for (const line of lines) {
+      if (!line.startsWith('data:')) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === '[DONE]') continue;
+      try {
+        yield JSON.parse(data) as unknown;
+      } catch {
+        throw new RuntimeError('UNKNOWN_PROVIDER_ERROR', 'Provider returned invalid SSE data.');
+      }
+    }
+    if (done) break;
   }
 }
 
@@ -182,6 +280,7 @@ async function collectRuntimeStream(
   let text = '';
   let sessionId = input.sessionId ?? '';
   let provider = 'normalized';
+  let reportedUsage: { inputTokens: number; outputTokens: number } | undefined;
   try {
     const events = resume
       ? runtime.resume({ ...input, sessionId: input.sessionId ?? sessionId })
@@ -190,6 +289,7 @@ async function collectRuntimeStream(
       sessionId = event.sessionId;
       provider = event.provider ?? provider;
       if (event.type === 'TEXT_DELTA') text += event.text ?? '';
+      if (event.usage) reportedUsage = event.usage;
     }
   } catch (error) {
     if (error instanceof RuntimeError && sessionId && !error.sessionId)
@@ -199,7 +299,7 @@ async function collectRuntimeStream(
   return {
     sessionId,
     text,
-    usage: { inputTokens: input.prompt.length, outputTokens: text.length },
+    usage: reportedUsage ?? { inputTokens: input.prompt.length, outputTokens: text.length },
     provider,
   };
 }

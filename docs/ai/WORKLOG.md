@@ -2,6 +2,24 @@
 
 Storico append-only.
 
+## 2026-08-31 — Adapter provider nativi e streaming normalizzato
+
+### Lavoro svolto
+
+- Collegati al runtime web gli adapter OpenAI, Anthropic e OpenAI-compatible in base a `AGENT_PROVIDER_TYPE`.
+- Implementati payload/header nativi, parsing delle risposte e stream SSE normalizzato in `AgentRuntime`, con usage provider-reported quando disponibile.
+- Mantenuta la capability `resume` esplicita: il resume nativo viene usato solo quando l’adapter lo dichiara supportato; altrimenti il percorso quota riparte con una nuova sessione.
+
+### Verifiche
+
+- Contract test OpenAI, Anthropic e OpenAI-compatible: PASS.
+- Test SSE/usage runtime: PASS.
+- `pnpm verify`: PASS, lint/typecheck/test/build/audit; 24 task Turborepo.
+
+### Prossimo passo
+
+Eseguire gli smoke reali con credenziali provider e runtime quality; gli scenari `PARTIAL` restano vincolati a risorse esterne.
+
 ## 2026-08-31 — Verifica E2E completa aggiornata
 
 ### Verifiche
