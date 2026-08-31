@@ -1,5 +1,11 @@
 # Development Worklog
 
+## 2026-08-31 — Outbox transazionale per task accodati
+
+- Aggiunta migration `00000000000017_task_outbox_trigger.sql`: ogni transizione Supabase verso `QUEUED` crea nello stesso commit un evento `task.run` con task/organization/project/retry metadata.
+- Il trigger è limitato alla transizione di stato, non duplica update non pertinenti e non modifica i gate RLS; il dispatcher asincrono può inoltrare l’evento al queue adapter già esistente.
+- `supabase db reset --local`, `supabase db lint --local` e smoke SQL transazionale con rollback (prima coda, update non di stato, retry `RUNNING → QUEUED`): PASS; nessun handler worker implicito o no-op è stato introdotto.
+
 ## 2026-08-31 — Recovery pg-boss dopo crash di processo
 
 - Corretto `startPgBoss`: i job mantengono retry broker-side per timeout/crash; i retry applicativi restano espliciti perché `PgBossQueue.release()` rimuove il job attivo prima di crearne uno deterministico.
