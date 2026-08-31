@@ -99,4 +99,34 @@ describe('durable queue contract', () => {
     });
     expect((await queue.claim())?.operationKey).toBe('task-2');
   });
+
+  it('uses one explicit retry operation after a failed pg-boss claim', async () => {
+    const sent: Record<string, unknown>[] = [];
+    const failed: string[] = [];
+    const queue = new PgBossQueue({
+      send: async (_name, data) => {
+        sent.push(data);
+        return sent.length === 1 ? 'pg-job-3' : 'pg-job-4';
+      },
+      fetch: async () => ({
+        id: 'pg-job-3',
+        name: 'bunker-studio.tasks',
+        data: { operationKey: 'task-3', type: 'task.run', payload: {}, availableAt: 0 },
+      }),
+      complete: async () => undefined,
+      fail: async (_name, id) => {
+        failed.push(id);
+      },
+    });
+    await queue.enqueue({
+      operationKey: 'task-3',
+      type: 'task.run',
+      payload: {},
+      availableAt: 0,
+    });
+    const claimed = await queue.claim();
+    await queue.release(claimed!, 10, 'temporary');
+    expect(failed).toEqual(['pg-job-3']);
+    expect(sent.map((item) => item.operationKey)).toEqual(['task-3', 'task-3:retry:1']);
+  });
 });

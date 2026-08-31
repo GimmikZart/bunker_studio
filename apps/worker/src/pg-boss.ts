@@ -45,6 +45,7 @@ export async function startPgBoss(
 ): Promise<StartedPgBoss> {
   if (!connectionString.trim()) throw new Error('DATABASE_URL is required for pg-boss.');
   const boss = await new PgBoss(connectionString).start();
-  if (!(await boss.getQueue(queueName))) await boss.createQueue(queueName);
+  if (await boss.getQueue(queueName)) await boss.updateQueue(queueName, { retryLimit: 0 });
+  else await boss.createQueue(queueName, { retryLimit: 0 });
   return { client: createPgBossClient(boss), stop: () => boss.stop() };
 }

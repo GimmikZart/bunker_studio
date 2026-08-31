@@ -481,3 +481,15 @@ Restano le verifiche quality `PARTIAL` dipendenti da accessi esterni e il backup
 ### Stato
 
 - La prova conferma l’integrazione single-process locale; non sostituisce il test di restart multi-processo su quality richiesto da AC-006.
+
+## 2026-08-31 — Retry pg-boss senza duplicazioni
+
+### Lavoro svolto
+
+- Configurato il queue bootstrap con `retryLimit: 0` per evitare il doppio retry implicito + esplicito.
+- Mantenuto il retry esplicito Bunker con operation key derivata dal tentativo e relativa copertura nel contratto orchestration.
+
+### Verifiche
+
+- Queue orchestration: 21/21 test PASS.
+- Smoke PostgreSQL locale ripetuto dopo l’inizializzazione queue: PASS.
