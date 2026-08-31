@@ -39,7 +39,7 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 - Smoke SQL local worker: PASS; claim con capability/scope/dependency, capacity gate, completion e reassignment su lease scaduta sono stati verificati su PostgreSQL Supabase locale con rollback finale.
 - Smoke SQL outbox: PASS; la transizione `QUEUED` crea un evento `task.run`, gli update non di stato non duplicano eventi e un nuovo passaggio `RUNNING → QUEUED` crea il retry event, con rollback finale.
 - Smoke pg-boss v12 su PostgreSQL Supabase locale (queue init, send/fetch batch, complete): PASS; `pnpm quality:pg-boss-restart` verifica anche il recupero dello stesso job con due processi dopo timeout: PASS. Il restart sul database multi-processo quality resta da eseguire.
-- Seed Supabase locale: PASS; `supabase db reset --local` carica il dataset demo (1 utente, 1 organizzazione, 3 agenti, 2 task, 1 memoria) senza credential o secret provider. Web route suite: 17 file / 29 test PASS, inclusi budget/report, design resolution e escalation review.
+- Seed Supabase locale: PASS; `supabase db reset --local` carica il dataset demo (1 utente, 1 organizzazione, 3 agenti, 2 task, 1 memoria) senza credential o secret provider. Web route suite: 19 file / 33 test PASS, inclusi archivio conversazioni, budget/report, design resolution, escalation review e gate task/design.
 
 ## Problemi aperti
 
