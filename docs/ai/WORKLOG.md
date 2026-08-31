@@ -1,5 +1,11 @@
 # Development Worklog
 
+## 2026-08-31 — Budget gate persistito e soglia soft
+
+- Corretto il gate di `PATCH /api/tasks`: `HARD_STOP` persiste il task in `BLOCKED`, `WAITING_BUDGET_APPROVAL` persiste lo stato omonimo; entrambi emettono una notifica tenant-scoped e non invocano il provider.
+- Aggiunta notifica informativa quando una task supera la soglia soft ma resta autorizzata all’avvio; il comportamento è coperto da test route insieme al caso hard-stop.
+- Verifiche: test mirati orchestration/web, suite E2E 11/11 e `pnpm verify` completo PASS; working tree pulito.
+
 ## 2026-08-31 - Cost Center, design resolution ed escalation
 
 - Aggiunte budget policy tenant-scoped per run/task/daily/monthly con hard/soft limit, azioni deterministic, fallback consent ed escalation threshold; Settings espone policy e report weekly configurabile.
