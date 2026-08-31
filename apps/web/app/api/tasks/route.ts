@@ -132,6 +132,22 @@ export async function PATCH(request: Request) {
           { status: 409 },
         );
       }
+      if (budget.softLimitExceeded.length > 0) {
+        await Promise.resolve(
+          operations.addNotification(
+            {
+              organizationId,
+              userId: actorId,
+              category: 'BUDGET',
+              severity: 'LOW',
+              title: 'Budget soft threshold reached',
+              body: `Task "${task.title}" will start above a configured soft budget threshold.`,
+              deepLink: `/tasks?taskId=${task.id}`,
+            },
+            actorId,
+          ),
+        ).catch(() => undefined);
+      }
     }
     return NextResponse.json({
       task: await operations.transitionTask(taskId, organizationId, state, actorId),

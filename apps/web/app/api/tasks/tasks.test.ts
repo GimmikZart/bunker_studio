@@ -112,6 +112,42 @@ describe('task design reference policy', () => {
       }),
     );
     expect(policyResponse.status).toBe(201);
+    const softTaskResponse = await POST(
+      new Request('http://localhost/api/tasks', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          projectId,
+          title: 'Soft threshold task',
+          taskType: 'BACKEND',
+          estimatedCost: 4.5,
+        }),
+      }),
+    );
+    const softTask = (await softTaskResponse.json()).task;
+    await PATCH(
+      new Request(`http://localhost/api/tasks?taskId=${softTask.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ state: 'READY' }),
+      }),
+    );
+    const softQueued = await PATCH(
+      new Request(`http://localhost/api/tasks?taskId=${softTask.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ state: 'QUEUED' }),
+      }),
+    );
+    expect(softQueued.status).toBe(200);
+    const softNotifications = await listNotifications(
+      new Request('http://localhost/api/notifications', { headers }),
+    );
+    expect((await softNotifications.json()).notifications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ category: 'BUDGET', deepLink: `/tasks?taskId=${softTask.id}` }),
+      ]),
+    );
     const taskResponse = await POST(
       new Request('http://localhost/api/tasks', {
         method: 'POST',
