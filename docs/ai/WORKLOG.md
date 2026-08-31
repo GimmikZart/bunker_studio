@@ -1,5 +1,11 @@
 # Development Worklog
 
+## 2026-08-31 — Recovery pg-boss dopo crash di processo
+
+- Corretto `startPgBoss`: i job mantengono retry broker-side per timeout/crash; i retry applicativi restano espliciti perché `PgBossQueue.release()` rimuove il job attivo prima di crearne uno deterministico.
+- Aggiunto `pnpm quality:pg-boss-restart`, smoke con due processi Node separati, timeout reale e completamento del job recuperato.
+- Verifica locale: PASS su PostgreSQL Supabase locale; `supabase db lint --local`: PASS; `pnpm verify`: PASS; `pnpm test:e2e`: 10/10 PASS. Il test quality multi-processo con database isolato resta richiesto da AC-006.
+
 ## 2026-08-31 — Verifica completa del checkpoint locale
 
 - `pnpm verify`: PASS sul commit `6acf82d`; formatting, lint 15/15, typecheck 15/15, test 25/25, build 15/15 con 50 route/pagine e `pnpm audit --audit-level high` senza vulnerabilità note.

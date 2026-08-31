@@ -102,7 +102,7 @@ describe('durable queue contract', () => {
 
   it('uses one explicit retry operation after a failed pg-boss claim', async () => {
     const sent: Record<string, unknown>[] = [];
-    const failed: string[] = [];
+    const deleted: string[] = [];
     const queue = new PgBossQueue({
       send: async (_name, data) => {
         sent.push(data);
@@ -114,8 +114,8 @@ describe('durable queue contract', () => {
         data: { operationKey: 'task-3', type: 'task.run', payload: {}, availableAt: 0 },
       }),
       complete: async () => undefined,
-      fail: async (_name, id) => {
-        failed.push(id);
+      deleteJob: async (_name, id) => {
+        deleted.push(id);
       },
     });
     await queue.enqueue({
@@ -126,7 +126,31 @@ describe('durable queue contract', () => {
     });
     const claimed = await queue.claim();
     await queue.release(claimed!, 10, 'temporary');
-    expect(failed).toEqual(['pg-job-3']);
+    expect(deleted).toEqual(['pg-job-3']);
     expect(sent.map((item) => item.operationKey)).toEqual(['task-3', 'task-3:retry:1']);
+  });
+
+  it('falls back to broker fail for minimal test clients', async () => {
+    const failed: string[] = [];
+    const queue = new PgBossQueue({
+      send: async () => 'pg-job-5',
+      fetch: async () => ({
+        id: 'pg-job-5',
+        name: 'bunker-studio.tasks',
+        data: { operationKey: 'task-5', type: 'task.run', payload: {}, availableAt: 0 },
+      }),
+      complete: async () => undefined,
+      fail: async (_name, id) => {
+        failed.push(id);
+      },
+    });
+    await queue.enqueue({
+      operationKey: 'task-5',
+      type: 'task.run',
+      payload: {},
+      availableAt: 0,
+    });
+    await queue.release((await queue.claim())!, 10, 'temporary');
+    expect(failed).toEqual(['pg-job-5']);
   });
 });

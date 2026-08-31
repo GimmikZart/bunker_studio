@@ -14,6 +14,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:e2e": "pnpm --filter @bunker-studio/contracts build && pnpm --filter @bunker-studio/db build && pnpm --filter @bunker-studio/agent-runtime build && pnpm --filter @bunker-studio/orchestration build && playwright test",
+    "quality:pg-boss-restart": "pnpm --filter @bunker-studio/worker build && node apps/worker/dist/pg-boss-restart-smoke.js",
     "security": "pnpm audit --audit-level high",
     "test:watch": "turbo run test:watch",
     "typecheck": "turbo run typecheck",

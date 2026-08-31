@@ -95,6 +95,7 @@ export type PgBossClient = {
     options?: Record<string, unknown>,
   ) => Promise<PgBossFetchedJob | PgBossFetchedJob[] | null>;
   complete: (name: string, id: string) => Promise<void>;
+  deleteJob?: (name: string, id: string) => Promise<void>;
   fail?: (name: string, id: string, error?: string) => Promise<void>;
 };
 
@@ -155,7 +156,8 @@ export class PgBossQueue {
   async release(jobOrId: string | QueueJob, availableAt: number, error?: string): Promise<void> {
     const job = typeof jobOrId === 'string' ? this.claimedJobs.get(jobOrId) : jobOrId;
     if (!job) throw new Error('pg-boss job is not known to this worker.');
-    if (this.boss.fail) await this.boss.fail(this.queueName, job.id, error);
+    if (this.boss.deleteJob) await this.boss.deleteJob(this.queueName, job.id);
+    else if (this.boss.fail) await this.boss.fail(this.queueName, job.id, error);
     await this.enqueue({
       operationKey: `${job.operationKey}:retry:${job.attempts}`,
       type: job.type,

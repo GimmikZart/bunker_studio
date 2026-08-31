@@ -36,7 +36,7 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 - `supabase db reset --local`: PASS; migrations `00000000000000..00000000000016` applicate, inclusi RLS assignments, trigger domain events, metadati workflow plan, worker registration RPC, stato delivery push e task claim/lease locali.
 - Test mirati post-hardening: Lead workflow plan 2/2, AgentRuntime 6/6, Anthropic adapter 2/2, Git 7/7, Notifications 4/4, Worker 10/10, Web routes 25/25, DB worker scheduler 3/3, typecheck 15/15: PASS.
 - Smoke SQL local worker: PASS; claim con capability/scope/dependency, capacity gate, completion e reassignment su lease scaduta sono stati verificati su PostgreSQL Supabase locale con rollback finale.
-- Smoke pg-boss v12 su PostgreSQL Supabase locale (queue init, send/fetch batch, complete): PASS; il restart multi-processo quality resta da eseguire.
+- Smoke pg-boss v12 su PostgreSQL Supabase locale (queue init, send/fetch batch, complete): PASS; `pnpm quality:pg-boss-restart` verifica anche il recupero dello stesso job con due processi dopo timeout: PASS. Il restart sul database multi-processo quality resta da eseguire.
 
 ## Problemi aperti
 
