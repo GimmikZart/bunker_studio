@@ -645,3 +645,15 @@ Prossimo passo: eseguire gli scenari quality esterni `PARTIAL` con credenziali, 
 ### Stato finale
 
 Checkpoint locale stabile. Restano soltanto le verifiche quality esterne già tracciate in `ACCEPTANCE_MATRIX.md`.
+
+## 2026-08-31 — Verifica infrastrutturale del checkpoint finale locale
+
+### Verifiche
+
+- `supabase db reset --local`: PASS con tutte le migration `00000000000000..00000000000018` e seed demo idempotente.
+- `supabase db lint --local`: PASS, nessun errore di schema.
+- `pnpm quality:pg-boss-restart`: PASS; il job `d6212dc1-7ec9-416d-b6d0-966933b012f1` è stato recuperato e completato dopo il crash/restart simulato di due processi.
+
+### Stato finale
+
+Working tree pulito. La Definition of Done resta aperta esclusivamente per AC-001, AC-006, AC-009, AC-011 e AC-013 in quality esterna, come indicato nella matrice acceptance.
