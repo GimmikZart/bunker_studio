@@ -78,6 +78,9 @@ export async function POST(request: Request) {
           dependencies: dependencies as string[],
           readScope: planTask.readScope,
           writeScope: planTask.writeScope,
+          ...(planTask.requiredCapability
+            ? { requiredCapability: planTask.requiredCapability }
+            : {}),
           ...(planTask.parallelGroupId ? { parallelGroupId: planTask.parallelGroupId } : {}),
           definitionOfDone: planTask.definitionOfDone,
           estimatedCost: planTask.estimatedCost,

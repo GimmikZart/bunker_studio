@@ -62,6 +62,12 @@ describe('deterministic orchestration', () => {
         'QUEUED',
       ).state,
     ).toBe('QUEUED');
+    expect(
+      transitionTask(
+        { id: 'x', state: 'RUNNING', dependencies: [], writeScope: [], estimatedCost: 0 },
+        'QUEUED',
+      ).state,
+    ).toBe('QUEUED');
     expect(() =>
       transitionTask(
         { id: 'x', state: 'DONE', dependencies: [], writeScope: [], estimatedCost: 0 },

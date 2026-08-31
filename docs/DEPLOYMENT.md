@@ -54,7 +54,10 @@ Local worker bootstrap:
    starts as `WORKER_NODE_ID` and `WORKER_CREDENTIAL`.
 3. The daemon calls the authenticated runtime heartbeat endpoint. A revoked or
    invalid credential never falls back to the user-authenticated administrative
-   endpoint.
+   endpoint. To execute compatible local tasks, also configure
+   `LOCAL_PROVIDER_ENDPOINT`, `LOCAL_PROVIDER_MODEL` (and, if required,
+   `LOCAL_PROVIDER_API_KEY`); the daemon then pulls scoped `QUEUED` tasks and
+   reports their result through the authenticated lease endpoint.
 
 Required production checks:
 

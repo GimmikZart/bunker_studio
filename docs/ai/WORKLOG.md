@@ -11,6 +11,25 @@
 
 Prossimo passo: eseguire gli scenari quality esterni `PARTIAL` con credenziali, device e runtime dedicati.
 
+## 2026-08-31 — Local worker task pull, lease e completion
+
+### Lavoro svolto
+
+- Aggiunta migration `00000000000016_local_worker_tasks.sql` con `required_capability`, tabella lease server-side, claim atomico autenticato, reclaim delle lease scadute e completion con retry/failure state.
+- Aggiunti endpoint control-plane per claim/completion, client daemon, loop di esecuzione verso runtime OpenAI-compatible configurato localmente e configurazione env dedicata.
+- Preservato il gate di stato: il worker può reclamare solo task `QUEUED`, verifica capability, scope, dipendenze completate e concurrency; una lease scaduta riporta il task a `QUEUED`.
+- Esteso export/import e Lead/task contract per conservare la capability richiesta.
+
+### Verifiche
+
+- `supabase db reset --local`: PASS fino alla migration 16.
+- Smoke SQL con rollback: PASS per claim/capacity/completion e reassignment dopo scadenza lease.
+- Worker: 10/10 test PASS; contracts: 4/4 test PASS; typecheck worker/web: PASS.
+
+### Stato
+
+AC-013 resta `PARTIAL` solo per lo smoke con runtime Ollama/LM Studio e quality node reale; il protocollo locale di pull/lease è ora implementato e verificato.
+
 ## 2026-08-31 — Secret scan sul checkpoint corrente
 
 - Gitleaks Docker: PASS, 41 commit e circa 884 KB scansionati, nessun leak trovato.

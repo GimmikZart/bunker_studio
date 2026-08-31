@@ -44,6 +44,7 @@ export const leadTaskSchema = z.object({
   dependencies: z.array(z.string()),
   readScope: z.array(z.string()),
   writeScope: z.array(z.string()),
+  requiredCapability: z.string().min(1).max(80).optional(),
   parallelGroupId: z.string().min(1).optional(),
   definitionOfDone: z.array(z.string().min(1)),
   estimatedCost: z.number().nonnegative(),
@@ -210,6 +211,13 @@ export const workerRegistrationTokenCreateSchema = z.object({
 export const workerRuntimeRegistrationSchema = workerRegistrationSchema.extend({
   registrationToken: z.string().trim().min(32).max(256),
 });
+export const workerTaskCompletionSchema = z.object({
+  nodeId: z.string().uuid(),
+  leaseId: z.string().uuid(),
+  success: z.boolean(),
+  result: z.record(z.unknown()).default({}),
+  error: z.string().trim().max(2_000).optional(),
+});
 
 export const memoryCreateSchema = z.object({
   content: z.string().min(1).max(20_000),
@@ -319,6 +327,7 @@ export const taskCreateSchema = z.object({
   dependencies: z.array(z.string().uuid()).max(50).default([]),
   readScope: z.array(z.string().trim().min(1)).max(100).default([]),
   writeScope: z.array(z.string().trim().min(1)).max(100).default([]),
+  requiredCapability: z.string().trim().min(1).max(80).optional(),
   parallelGroupId: z.string().trim().min(1).max(120).optional(),
   estimatedCost: z.number().nonnegative().max(1_000_000).default(0),
   priority: z.number().int().min(-100).max(100).default(0),

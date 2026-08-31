@@ -6,6 +6,7 @@ import {
   verificationRunSchema,
   workerRegistrationTokenCreateSchema,
   workerRuntimeRegistrationSchema,
+  workerTaskCompletionSchema,
 } from './index';
 
 describe('contracts', () => {
@@ -76,5 +77,12 @@ describe('contracts', () => {
         registrationToken: 'a'.repeat(64),
       }).registrationToken,
     ).toHaveLength(64);
+    expect(
+      workerTaskCompletionSchema.parse({
+        nodeId: '55555555-5555-4555-8555-555555555555',
+        leaseId: '11111111-1111-4111-8111-111111111111',
+        success: true,
+      }),
+    ).toMatchObject({ success: true, result: {} });
   });
 });

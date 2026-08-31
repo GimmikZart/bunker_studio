@@ -747,6 +747,7 @@ export type PortableOrganization = {
     dependencies: string[];
     readScope?: string[];
     writeScope: string[];
+    requiredCapability?: string;
     parallelGroupId?: string;
     estimatedCost: number;
     priority: number;

@@ -30,7 +30,11 @@ const envSchema = z.object({
   WORKER_CREDENTIAL: z.union([z.string().min(1), z.literal('')]).optional(),
   WORKER_NAME: z.union([z.string().min(1), z.literal('')]).optional(),
   WORKER_CAPABILITIES: z.union([z.string().min(1), z.literal('')]).optional(),
+  WORKER_TASK_POLL_INTERVAL_MS: z.coerce.number().int().positive().optional(),
   WORKER_PUSH_POLL_INTERVAL_MS: z.coerce.number().int().positive().optional(),
+  LOCAL_PROVIDER_ENDPOINT: z.union([z.string().url(), z.literal('')]).optional(),
+  LOCAL_PROVIDER_API_KEY: z.union([z.string().min(1), z.literal('')]).optional(),
+  LOCAL_PROVIDER_MODEL: z.union([z.string().min(1), z.literal('')]).optional(),
 });
 
 export type StudioEnv = z.infer<typeof envSchema>;

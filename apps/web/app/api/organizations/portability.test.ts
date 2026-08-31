@@ -71,6 +71,7 @@ describe('organization portability routes', () => {
           projectId: project.id,
           title: 'Schema task',
           taskType: 'BACKEND',
+          requiredCapability: 'ollama',
         }),
       }),
     );
@@ -134,6 +135,9 @@ describe('organization portability routes', () => {
         (task: { dependencies: string[] }) => task.dependencies.length,
       ),
     ).toMatchObject({ state: 'DRAFT' });
+    expect(
+      importedTaskPayload.tasks.find((task: { title: string }) => task.title === 'Schema task'),
+    ).toMatchObject({ requiredCapability: 'ollama' });
   });
 
   it('does not export an organization the actor cannot access', async () => {

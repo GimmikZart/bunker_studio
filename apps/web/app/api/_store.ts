@@ -328,6 +328,7 @@ export type TaskRecord = {
   dependencies: string[];
   readScope?: string[];
   writeScope: string[];
+  requiredCapability?: string;
   parallelGroupId?: string;
   definitionOfDone?: string[];
   estimatedCost: number;

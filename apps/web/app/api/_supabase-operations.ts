@@ -228,6 +228,9 @@ function mapTask(value: unknown): TaskRecord {
       .filter((entry): entry is string => typeof entry === 'string'),
     readScope: readScope.filter((entry): entry is string => typeof entry === 'string'),
     writeScope: writeScope.filter((entry): entry is string => typeof entry === 'string'),
+    ...(typeof item.required_capability === 'string'
+      ? { requiredCapability: item.required_capability }
+      : {}),
     ...(typeof item.parallel_group_id === 'string'
       ? { parallelGroupId: item.parallel_group_id }
       : {}),
@@ -1246,6 +1249,7 @@ export class SupabaseOperationalRepository {
           priority: input.priority,
           read_scope_json: input.readScope ?? [],
           write_scope_json: input.writeScope,
+          ...(input.requiredCapability ? { required_capability: input.requiredCapability } : {}),
           ...(input.parallelGroupId ? { parallel_group_id: input.parallelGroupId } : {}),
           definition_of_done_json: {
             estimated_cost: input.estimatedCost,

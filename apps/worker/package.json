@@ -13,10 +13,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@bunker-studio/agent-runtime": "workspace:*",
     "@bunker-studio/config": "workspace:*",
     "@bunker-studio/db": "workspace:*",
     "@bunker-studio/notifications": "workspace:*",
     "@bunker-studio/orchestration": "workspace:*",
+    "@bunker-studio/provider-openai-compatible": "workspace:*",
     "@supabase/supabase-js": "^2.57.0",
     "pg-boss": "^12.29.0"
   },

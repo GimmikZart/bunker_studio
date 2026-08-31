@@ -105,6 +105,7 @@ export function parseOrganizationExport(value: unknown): OrganizationExport | nu
         stringArray(item.dependencies) &&
         optionalStringArray(item.readScope) &&
         stringArray(item.writeScope) &&
+        optionalString(item.requiredCapability) &&
         optionalString(item.parallelGroupId) &&
         typeof item.estimatedCost === 'number' &&
         typeof item.priority === 'number',

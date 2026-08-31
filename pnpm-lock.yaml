@@ -90,6 +90,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@bunker-studio/agent-runtime':
+        specifier: workspace:*
+        version: link:../../packages/agent-runtime
       '@bunker-studio/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -102,6 +105,9 @@ importers:
       '@bunker-studio/orchestration':
         specifier: workspace:*
         version: link:../../packages/orchestration
+      '@bunker-studio/provider-openai-compatible':
+        specifier: workspace:*
+        version: link:../../packages/provider-openai-compatible
       '@supabase/supabase-js':
         specifier: ^2.57.0
         version: 2.112.4

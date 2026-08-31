@@ -45,6 +45,7 @@ const transitions: Record<TaskState, TaskState[]> = {
   READY: ['QUEUED', 'WAITING_DEPENDENCY', 'CANCELED'],
   QUEUED: ['RUNNING', 'CANCELED'],
   RUNNING: [
+    'QUEUED',
     'WAITING_APPROVAL',
     'WAITING_PROVIDER_QUOTA',
     'WAITING_BUDGET_APPROVAL',

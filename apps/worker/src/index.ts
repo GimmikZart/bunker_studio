@@ -1,10 +1,12 @@
 import { getWorkerHealth } from './health.js';
+import { createCompatibleRuntime } from '@bunker-studio/provider-openai-compatible';
 import { createStudioServiceClient } from '@bunker-studio/db';
 import {
   createVapidPushClient,
   dispatchPendingPushNotifications,
 } from '@bunker-studio/notifications';
 import { createSupabaseNotificationSource } from './notification-source.js';
+import { LocalWorkerTaskLoop, createRuntimeTaskExecutor } from './local-task.js';
 import { createRuntimeWorkerClient } from './runtime-client.js';
 
 const intervalMs = Number(process.env.WORKER_HEARTBEAT_INTERVAL_MS ?? 60_000);
@@ -17,9 +19,11 @@ const capabilities = (process.env.WORKER_CAPABILITIES ?? 'chat')
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean);
+const taskPollIntervalMs = Number(process.env.WORKER_TASK_POLL_INTERVAL_MS ?? 2_000);
 
 let heartbeat: ReturnType<typeof setInterval> | null = null;
 let notificationTimer: ReturnType<typeof setInterval> | null = null;
+let taskTimer: ReturnType<typeof setInterval> | null = null;
 let runtimeIdentity = nodeId && credential ? { nodeId, credential } : null;
 
 function stopHeartbeat() {
@@ -27,6 +31,8 @@ function stopHeartbeat() {
   heartbeat = null;
   if (notificationTimer) clearInterval(notificationTimer);
   notificationTimer = null;
+  if (taskTimer) clearInterval(taskTimer);
+  taskTimer = null;
 }
 
 function startNotificationDispatcher() {
@@ -60,6 +66,34 @@ function startNotificationDispatcher() {
   notificationTimer = setInterval(dispatch, pollIntervalMs);
 }
 
+function startTaskLoop(client: ReturnType<typeof createRuntimeWorkerClient>) {
+  const endpoint = process.env.LOCAL_PROVIDER_ENDPOINT?.trim();
+  if (!endpoint || !runtimeIdentity) return;
+  const runtime = createCompatibleRuntime({
+    endpoint,
+    apiKey: process.env.LOCAL_PROVIDER_API_KEY,
+    model: process.env.LOCAL_PROVIDER_MODEL,
+  });
+  const loop = new LocalWorkerTaskLoop(client, runtimeIdentity, createRuntimeTaskExecutor(runtime));
+  const poll = () => {
+    void loop
+      .runOnce()
+      .then((status) => {
+        if (status !== 'IDLE') console.log(JSON.stringify({ event: 'worker.task', status }));
+      })
+      .catch((error) => {
+        console.error(
+          JSON.stringify({
+            event: 'worker.task_failed',
+            message: error instanceof Error ? error.message : String(error),
+          }),
+        );
+      });
+  };
+  poll();
+  taskTimer = setInterval(poll, taskPollIntervalMs);
+}
+
 async function start() {
   console.log(JSON.stringify({ event: 'worker.started', ...getWorkerHealth(), intervalMs }));
   startNotificationDispatcher();
@@ -91,6 +125,7 @@ async function start() {
       }
     };
     await beat();
+    startTaskLoop(client);
     heartbeat = setInterval(() => void beat(), intervalMs);
   } catch (error) {
     console.error(
