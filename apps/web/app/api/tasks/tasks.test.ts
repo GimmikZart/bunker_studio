@@ -5,6 +5,7 @@ import { POST as submitDesign } from '../designs/route';
 import { POST as approveDesign } from '../designs/[versionId]/approve/route';
 import { PATCH, POST } from './route';
 import { POST as createPolicy } from '../budgets/policies/route';
+import { GET as listNotifications } from '../notifications/route';
 
 describe('task design reference policy', () => {
   it('requires and accepts an approved design for frontend tasks', async () => {
@@ -140,6 +141,16 @@ describe('task design reference policy', () => {
       }),
     );
     expect(queued.status).toBe(409);
-    expect((await queued.json()).budget.decision).toBe('HARD_STOP');
+    const queuedPayload = await queued.json();
+    expect(queuedPayload.budget.decision).toBe('HARD_STOP');
+    expect(queuedPayload.task.state).toBe('BLOCKED');
+    const notifications = await listNotifications(
+      new Request('http://localhost/api/notifications', { headers }),
+    );
+    expect((await notifications.json()).notifications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ category: 'BUDGET', deepLink: `/tasks?taskId=${task.id}` }),
+      ]),
+    );
   });
 });

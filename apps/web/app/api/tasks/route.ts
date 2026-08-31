@@ -102,11 +102,36 @@ export async function PATCH(request: Request) {
         estimatedCost: task.estimatedCost,
         context: { projectId: task.projectId, taskId: task.id },
       });
-      if (budget.decision !== 'ALLOW')
+      if (budget.decision !== 'ALLOW') {
+        const nextState = budget.decision === 'HARD_STOP' ? 'BLOCKED' : 'WAITING_BUDGET_APPROVAL';
+        const gatedTask = await operations.transitionTask(
+          taskId,
+          organizationId,
+          nextState,
+          actorId,
+        );
+        await Promise.resolve(
+          operations.addNotification(
+            {
+              organizationId,
+              userId: actorId,
+              category: 'BUDGET',
+              severity: budget.decision === 'HARD_STOP' ? 'CRITICAL' : 'HIGH',
+              title:
+                budget.decision === 'HARD_STOP'
+                  ? 'Task blocked by hard budget'
+                  : 'Budget approval required',
+              body: `Task "${task.title}" cannot start until the budget policy is resolved.`,
+              deepLink: `/tasks?taskId=${task.id}`,
+            },
+            actorId,
+          ),
+        ).catch(() => undefined);
         return NextResponse.json(
-          { error: 'Budget policy prevents starting this task.', budget },
+          { error: 'Budget policy prevents starting this task.', task: gatedTask, budget },
           { status: 409 },
         );
+      }
     }
     return NextResponse.json({
       task: await operations.transitionTask(taskId, organizationId, state, actorId),

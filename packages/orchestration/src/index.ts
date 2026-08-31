@@ -42,7 +42,7 @@ export type TaskDefinition = {
 
 const transitions: Record<TaskState, TaskState[]> = {
   DRAFT: ['READY', 'CANCELED'],
-  READY: ['QUEUED', 'WAITING_DEPENDENCY', 'CANCELED'],
+  READY: ['QUEUED', 'WAITING_DEPENDENCY', 'WAITING_BUDGET_APPROVAL', 'BLOCKED', 'CANCELED'],
   QUEUED: ['RUNNING', 'CANCELED'],
   RUNNING: [
     'QUEUED',

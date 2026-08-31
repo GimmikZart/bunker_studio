@@ -19,7 +19,7 @@ type Design = { id: string; version: number; status: string };
 
 const nextStates: Record<string, string[]> = {
   DRAFT: ['READY', 'CANCELED'],
-  READY: ['QUEUED', 'BLOCKED', 'CANCELED'],
+  READY: ['QUEUED', 'WAITING_BUDGET_APPROVAL', 'BLOCKED', 'CANCELED'],
   QUEUED: ['RUNNING', 'WAITING_DEPENDENCY', 'WAITING_APPROVAL', 'CANCELED'],
   RUNNING: ['VERIFYING', 'WAITING_PROVIDER_QUOTA', 'FAILED_RETRYABLE', 'FAILED_FINAL'],
   WAITING_DEPENDENCY: ['QUEUED', 'BLOCKED', 'CANCELED'],

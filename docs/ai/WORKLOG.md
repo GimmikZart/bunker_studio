@@ -657,3 +657,21 @@ Checkpoint locale stabile. Restano soltanto le verifiche quality esterne già tr
 ### Stato finale
 
 Working tree pulito. La Definition of Done resta aperta esclusivamente per AC-001, AC-006, AC-009, AC-011 e AC-013 in quality esterna, come indicato nella matrice acceptance.
+
+## 2026-08-31 — Budget gate con stato persistito e notifica
+
+### Lavoro svolto
+
+- Corretto il percorso `PATCH /api/tasks`: quando il preflight budget non consente l’avvio, il task passa deterministicamente a `BLOCKED` per `HARD_STOP` oppure a `WAITING_BUDGET_APPROVAL` per una policy che richiede approvazione.
+- Aggiunta notifica BUDGET tenant-scoped con deep link al task; la chiamata resta compatibile con repository locale sincrono e Supabase asincrono.
+- Allineate macchina a stati, UI e test per impedire l’invocazione del provider prima del gate.
+
+### Verifiche
+
+- Test mirati task/orchestration: PASS.
+- `pnpm verify`: PASS; 15/15 package, 25 task, 33 test web, build e audit high verdi.
+- `pnpm test:e2e`: PASS, 11/11 test in 2,7 minuti.
+
+### Stato finale
+
+Checkpoint locale stabile; restano i cinque scenari quality esterni già documentati.
