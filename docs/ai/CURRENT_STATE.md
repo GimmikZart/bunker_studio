@@ -29,12 +29,12 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 - `pnpm format:check`: PASS.
 - `pnpm lint`: PASS, 15 package task.
 - `pnpm typecheck`: PASS, 15 package task.
-- `pnpm test`: PASS, 24 task Turborepo.
+- `pnpm test`: PASS, 25 task Turborepo.
 - `pnpm build`: PASS, 15 package task; Next genera 45 route/pagine.
 - `pnpm exec playwright test`: PASS, 10 test (health, onboarding, login/signup, PWA, tenancy/isolation, design/staffing/memory, worker, operations/review/portability, virgin template, smoke responsive/accessibility).
 - `pnpm audit --audit-level high`: PASS, nessuna vulnerabilità nota.
-- `supabase db reset --local`: PASS; migrations `00000000000000..00000000000013` applicate, inclusi RLS assignments, trigger domain events e metadati workflow plan.
-- Test mirati post-hardening: Lead workflow plan 2/2, AgentRuntime 6/6, Anthropic adapter 2/2, typecheck 15/15: PASS.
+- `supabase db reset --local`: PASS; migrations `00000000000000..00000000000015` applicate, inclusi RLS assignments, trigger domain events, metadati workflow plan, worker registration RPC e stato delivery push.
+- Test mirati post-hardening: Lead workflow plan 2/2, AgentRuntime 6/6, Anthropic adapter 2/2, Git 7/7, Notifications 4/4, Worker 7/7, DB worker scheduler 3/3, typecheck 15/15: PASS.
 - Smoke pg-boss v12 su PostgreSQL Supabase locale (queue init, send/fetch batch, complete): PASS; il restart multi-processo quality resta da eseguire.
 
 ## Problemi aperti
@@ -43,7 +43,7 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 - La chat production seleziona un runtime HTTP configurato, usa il binding come modello di fallback e salva conversazioni/messaggi tenant-scoped; il fake runtime resta ammesso solo per fixture locali.
 - Office, Agent registry, Meetings, Approvals, Cost Center e Activity hanno pannelli client live con organization selector e stati/errori espliciti; Projects e Teams espongono create/edit/archive tenant-scoped, mentre Settings mostra runtime, provider senza segreti, worker/heartbeat e preferenze notifiche per categoria.
 - Mancano ancora le verifiche quality esterne dei criteri `PARTIAL` e il drill backup/restore su un progetto quality; la UI task/workflow supporta create, transizioni controllate e persistenza del piano Lead, mentre l’endpoint di esecuzione resta soggetto ai gate esistenti.
-- Security: Gitleaks eseguito in Docker con 39 commit e nessun leak; `pnpm audit --audit-level high` è verde. Semgrep ruleset JavaScript in Docker non ha prodotto un risultato terminale utile entro la finestra quality e osv-scanner non è disponibile nell'host.
+- Security: Gitleaks eseguito in Docker con 41 commit e nessun leak; `pnpm audit --audit-level high` è verde. Semgrep ruleset JavaScript in Docker non ha prodotto un risultato terminale utile entro la finestra quality e osv-scanner non è disponibile nell'host.
 
 ## Ultimo aggiornamento
 

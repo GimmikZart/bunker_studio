@@ -11,6 +11,13 @@
 
 Prossimo passo: eseguire gli scenari quality esterni `PARTIAL` con credenziali, device e runtime dedicati.
 
+## 2026-08-31 — Secret scan sul checkpoint corrente
+
+- Gitleaks Docker: PASS, 41 commit e circa 884 KB scansionati, nessun leak trovato.
+- `pnpm audit --audit-level high`: PASS già incluso nella verifica completa.
+
+Prossimo passo: eseguire gli scenari quality esterni `PARTIAL` con credenziali, device e runtime dedicati.
+
 ## 2026-08-31 — Dispatcher persistente notifiche
 
 - Aggiunto il dispatcher provider-neutral per notifiche pending: applica preferenze/severità, invia a tutte le subscription, marca delivery, differisce errori transitori e revoca endpoint 404/410.
@@ -557,3 +564,10 @@ Restano le verifiche quality `PARTIAL` dipendenti da accessi esterni e il backup
 
 - Queue orchestration: 21/21 test PASS.
 - Smoke PostgreSQL locale ripetuto dopo l’inizializzazione queue: PASS.
+
+## 2026-08-31 — Verifica E2E dopo dispatcher push
+
+- `pnpm test:e2e`: 10/10 test PASS in circa 3,7 minuti sul tree corrente, inclusi tenancy/isolation, worker, operations, PWA e responsive/accessibility smoke.
+- `pnpm verify`: PASS sul tree corrente; test Turborepo 25 task e build web 48 route/pagine.
+
+Prossimo passo: eseguire gli scenari quality esterni `PARTIAL` con credenziali, device e runtime dedicati.
