@@ -1,4 +1,10 @@
 import { getWorkerHealth } from './health.js';
+import { createStudioServiceClient } from '@bunker-studio/db';
+import {
+  createVapidPushClient,
+  dispatchPendingPushNotifications,
+} from '@bunker-studio/notifications';
+import { createSupabaseNotificationSource } from './notification-source.js';
 import { createRuntimeWorkerClient } from './runtime-client.js';
 
 const intervalMs = Number(process.env.WORKER_HEARTBEAT_INTERVAL_MS ?? 60_000);
@@ -13,15 +19,50 @@ const capabilities = (process.env.WORKER_CAPABILITIES ?? 'chat')
   .filter(Boolean);
 
 let heartbeat: ReturnType<typeof setInterval> | null = null;
+let notificationTimer: ReturnType<typeof setInterval> | null = null;
 let runtimeIdentity = nodeId && credential ? { nodeId, credential } : null;
 
 function stopHeartbeat() {
   if (heartbeat) clearInterval(heartbeat);
   heartbeat = null;
+  if (notificationTimer) clearInterval(notificationTimer);
+  notificationTimer = null;
+}
+
+function startNotificationDispatcher() {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const subject = process.env.WEB_PUSH_VAPID_SUBJECT;
+  const publicKey = process.env.WEB_PUSH_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY;
+  if (!url || !serviceRoleKey || !subject || !publicKey || !privateKey) return;
+  const pollIntervalMs = Number(process.env.WORKER_PUSH_POLL_INTERVAL_MS ?? 5_000);
+  const source = createSupabaseNotificationSource(
+    createStudioServiceClient({ url, serviceRoleKey }),
+  );
+  const client = createVapidPushClient({ subject, publicKey, privateKey });
+  const dispatch = () => {
+    void dispatchPendingPushNotifications(source, client)
+      .then((result) => {
+        if (result.delivered || result.deferred || result.revoked)
+          console.log(JSON.stringify({ event: 'worker.push_dispatch', ...result }));
+      })
+      .catch((error) => {
+        console.error(
+          JSON.stringify({
+            event: 'worker.push_dispatch_failed',
+            message: error instanceof Error ? error.message : String(error),
+          }),
+        );
+      });
+  };
+  dispatch();
+  notificationTimer = setInterval(dispatch, pollIntervalMs);
 }
 
 async function start() {
   console.log(JSON.stringify({ event: 'worker.started', ...getWorkerHealth(), intervalMs }));
+  startNotificationDispatcher();
   if (!controlPlaneUrl || (!runtimeIdentity && !registrationToken)) {
     heartbeat = setInterval(() => {
       console.log(JSON.stringify({ event: 'worker.heartbeat', ...getWorkerHealth() }));

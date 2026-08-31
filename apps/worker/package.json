@@ -14,7 +14,10 @@
   },
   "dependencies": {
     "@bunker-studio/config": "workspace:*",
+    "@bunker-studio/db": "workspace:*",
+    "@bunker-studio/notifications": "workspace:*",
     "@bunker-studio/orchestration": "workspace:*",
+    "@supabase/supabase-js": "^2.57.0",
     "pg-boss": "^12.29.0"
   },
   "devDependencies": {

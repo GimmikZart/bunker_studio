@@ -657,6 +657,56 @@ export class WorkerRegistry {
   }
 }
 
+export type WorkerTaskRequest = {
+  id: string;
+  organizationId: string;
+  capability?: string;
+  readScope?: string[];
+  writeScope?: string[];
+};
+
+export type WorkerTaskAssignment = {
+  taskId: string;
+  workerId: string;
+  assignedAt: number;
+};
+
+function scopeIsAllowed(scope: string, allowedScopes: string[]): boolean {
+  const normalized = scope.replace(/\\/g, '/').replace(/^\/+/, '');
+  return allowedScopes.some((allowed) => {
+    const root = allowed.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/$/, '');
+    return Boolean(root) && (normalized === root || normalized.startsWith(`${root}/`));
+  });
+}
+
+/**
+ * Deterministic local-worker assignment. Empty worker scopes are intentionally
+ * restrictive: a node must opt into every non-empty task scope.
+ */
+export class WorkerTaskScheduler {
+  constructor(private readonly registry: WorkerRegistry) {}
+
+  assign(task: WorkerTaskRequest, now = Date.now()): WorkerTaskAssignment | null {
+    const requestedScopes = [...(task.readScope ?? []), ...(task.writeScope ?? [])];
+    const worker = this.registry
+      .list(task.organizationId)
+      .find(
+        (candidate) =>
+          isWorkerEligible(candidate, now) &&
+          candidate.activeJobs < candidate.maxConcurrent &&
+          (!task.capability || candidate.capabilities.includes(task.capability)) &&
+          requestedScopes.every((scope) => scopeIsAllowed(scope, candidate.allowedScopes)),
+      );
+    if (!worker) return null;
+    this.registry.startJob(worker.id, now);
+    return { taskId: task.id, workerId: worker.id, assignedAt: now };
+  }
+
+  finish(assignment: WorkerTaskAssignment): RegisteredWorker {
+    return this.registry.finishJob(assignment.workerId);
+  }
+}
+
 export type PortableOrganization = {
   organization: { id: string; name: string };
   teams: { id: string; name: string }[];

@@ -12,6 +12,12 @@ export type Notification = {
   readAt: string | null;
 };
 
+export type PendingPushNotification = Notification & {
+  userId: string;
+  organizationId: string;
+  severity: 'LOW' | 'HIGH' | 'CRITICAL';
+};
+
 export type NotificationPreferences = Record<NotificationCategory, boolean>;
 
 export function shouldPush(
@@ -89,6 +95,60 @@ export function notificationPayload(notification: Notification): string {
     body: notification.body,
     data: { deepLink: notification.deepLink, category: notification.category },
   });
+}
+
+export type PushDeliverySource = {
+  listPending: (now: Date) => Promise<PendingPushNotification[]>;
+  listSubscriptions: (userId: string) => Promise<PushSubscription[]>;
+  getPreferences: (organizationId: string, userId: string) => Promise<NotificationPreferences>;
+  markDelivered: (notificationId: string, now: Date) => Promise<void>;
+  defer: (notificationId: string, nextAttemptAt: Date) => Promise<void>;
+  revokeSubscription: (endpoint: string) => Promise<void>;
+};
+
+function isExpiredSubscriptionError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const statusCode = (error as { statusCode?: unknown }).statusCode;
+  return statusCode === 404 || statusCode === 410;
+}
+
+export async function dispatchPendingPushNotifications(
+  source: PushDeliverySource,
+  client: PushClient,
+  now = new Date(),
+): Promise<{ delivered: number; deferred: number; revoked: number }> {
+  const result = { delivered: 0, deferred: 0, revoked: 0 };
+  for (const notification of await source.listPending(now)) {
+    const preferences = await source.getPreferences(
+      notification.organizationId,
+      notification.userId,
+    );
+    if (!shouldPush(notification.category, notification.severity, preferences)) {
+      await source.markDelivered(notification.id, now);
+      result.delivered += 1;
+      continue;
+    }
+    const subscriptions = await source.listSubscriptions(notification.userId);
+    let failed = false;
+    for (const subscription of subscriptions) {
+      try {
+        await client.send(subscription, notificationPayload(notification));
+      } catch (error) {
+        if (isExpiredSubscriptionError(error)) {
+          await source.revokeSubscription(subscription.endpoint);
+          result.revoked += 1;
+        } else failed = true;
+      }
+    }
+    if (failed) {
+      await source.defer(notification.id, new Date(now.getTime() + 60_000));
+      result.deferred += 1;
+    } else {
+      await source.markDelivered(notification.id, now);
+      result.delivered += 1;
+    }
+  }
+  return result;
 }
 
 export async function deliverPush(

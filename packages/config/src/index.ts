@@ -30,6 +30,7 @@ const envSchema = z.object({
   WORKER_CREDENTIAL: z.union([z.string().min(1), z.literal('')]).optional(),
   WORKER_NAME: z.union([z.string().min(1), z.literal('')]).optional(),
   WORKER_CAPABILITIES: z.union([z.string().min(1), z.literal('')]).optional(),
+  WORKER_PUSH_POLL_INTERVAL_MS: z.coerce.number().int().positive().optional(),
 });
 
 export type StudioEnv = z.infer<typeof envSchema>;

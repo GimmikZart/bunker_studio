@@ -11,12 +11,30 @@
 
 Prossimo passo: eseguire gli scenari quality esterni `PARTIAL` con credenziali, device e runtime dedicati.
 
+## 2026-08-31 — Dispatcher persistente notifiche
+
+- Aggiunto il dispatcher provider-neutral per notifiche pending: applica preferenze/severità, invia a tutte le subscription, marca delivery, differisce errori transitori e revoca endpoint 404/410.
+- Aggiunta migrazione `00000000000015_notification_delivery.sql` con stato delivery/retry persistente e indice pending.
+- Il worker avvia il polling solo quando sono configurati service-role Supabase e VAPID server-side; nessun segreto viene incluso nei log o nel bundle browser.
+- Aggiunto source Supabase service-role per notifiche, subscription e preferenze; reset Supabase locale con migrazioni 00–15: PASS.
+- Test notifications: 4/4 PASS; worker typecheck/test/build: PASS.
+
+Prossimo passo: eseguire AC-011 con VAPID configurato e un browser/device reale.
+
 ## 2026-08-31 — Protocollo credenziale local worker
 
 - Aggiunta migrazione `00000000000014_worker_registration.sql` con token monouso, scadenza, scope/concurrency, RPC `exchange_worker_registration_token` e RPC `heartbeat_local_worker`.
 - Aggiunti endpoint amministrativo per emettere il token e endpoint runtime separati per exchange e heartbeat con `Bearer` credential; il database conserva solo hash SHA-256 della credenziale.
 - Aggiunti contratti Zod e test di validazione; il reset Supabase locale applica la migrazione senza errori.
 - Smoke SQL locale: exchange token restituisce la credenziale una sola volta e heartbeat autenticato mantiene il nodo `ONLINE`; dati di prova rollbackati.
+
+Prossimo passo: eseguire in quality il flusso AC-013 con un runtime Ollama/LM Studio e verificare assignment/offline reassignment.
+
+## 2026-08-31 — Scheduler locale fail-closed
+
+- Aggiunto `WorkerTaskScheduler` nel package DB: capability, read/write scope, concurrency e online eligibility sono verificati prima di incrementare `activeJobs`.
+- Scope vuoti o non autorizzati e nodi offline non ricevono nuovi task; il completamento rilascia il contatore in modo deterministico.
+- Aggiunta copertura test per assegnazione, capienza, scope denial e offline denial.
 
 Prossimo passo: eseguire in quality il flusso AC-013 con un runtime Ollama/LM Studio e verificare assignment/offline reassignment.
 
