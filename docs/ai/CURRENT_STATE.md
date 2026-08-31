@@ -43,7 +43,7 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 - La chat production seleziona un runtime HTTP configurato, usa il binding come modello di fallback e salva conversazioni/messaggi tenant-scoped; il fake runtime resta ammesso solo per fixture locali.
 - Office, Agent registry, Meetings, Approvals, Cost Center e Activity hanno pannelli client live con organization selector e stati/errori espliciti; Projects e Teams espongono create/edit/archive tenant-scoped, mentre Settings mostra runtime, provider senza segreti, worker/heartbeat e preferenze notifiche per categoria.
 - Mancano ancora le verifiche quality esterne dei criteri `PARTIAL` e il drill backup/restore su un progetto quality; la UI task/workflow supporta create, transizioni controllate e persistenza del piano Lead, mentre l’endpoint di esecuzione resta soggetto ai gate esistenti.
-- I check gitleaks/semgrep/osv-scanner non sono installati nell'host; audit pnpm è verde.
+- Security: Gitleaks eseguito in Docker con 38 commit e nessun leak; `pnpm audit --audit-level high` è verde. Semgrep auto-scan in Docker non ha prodotto un risultato terminale entro il run quality e osv-scanner non è disponibile nell'host.
 
 ## Ultimo aggiornamento
 

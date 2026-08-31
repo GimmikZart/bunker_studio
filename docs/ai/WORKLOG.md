@@ -482,6 +482,15 @@ Restano le verifiche quality `PARTIAL` dipendenti da accessi esterni e il backup
 
 - La prova conferma l’integrazione single-process locale; non sostituisce il test di restart multi-processo su quality richiesto da AC-006.
 
+## 2026-08-31 — Security scan locale
+
+### Verifiche
+
+- Gitleaks Docker: PASS, 38 commit scansionati, nessun leak trovato.
+- `pnpm audit --audit-level high`: PASS, nessuna vulnerabilità nota.
+- Semgrep auto-scan Docker è stato limitato a `apps`, `packages` e `supabase`, ma non ha raggiunto uno stato terminale utile e non viene conteggiato come PASS.
+- `osv-scanner` non è disponibile nell’host.
+
 ## 2026-08-31 — Retry pg-boss senza duplicazioni
 
 ### Lavoro svolto
