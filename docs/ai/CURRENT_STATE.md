@@ -1,5 +1,21 @@
 # Current Project State
 
+## Checkpoint 2026-08-31 — Test locale con provider remoto opzionale
+
+Il web locale ora supporta un provider remoto esplicito tramite `LOCAL_PROVIDER_*`.
+Con `pnpm dev` e queste variabili compilate e' possibile provare la chat con
+OpenAI reale senza pubblicare l'app; se restano vuote, il comportamento rimane
+il fake runtime locale senza consumo API. La configurazione di produzione
+continua a usare esclusivamente `AGENT_PROVIDER_*`.
+
+La guida quality documenta prima la prova locale, poi il test production-like
+con Supabase e infine Vercel. Il runtime Ollama/LM Studio resta opzionale e non
+bloccante.
+
+Verifica checkpoint: `pnpm verify` PASS (format, lint, typecheck, test, build,
+security audit); 15 package task lint/typecheck/build, 25 task test e 37 test
+web.
+
 ## Stato sintetico
 
 ### Checkpoint 2026-08-31

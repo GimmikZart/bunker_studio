@@ -21,23 +21,41 @@ export async function GET(request: Request) {
     const hasReadyProvider = persistedProviders.some(
       (provider) => provider.status === 'READY' && provider.models.length > 0,
     );
-    const environmentProvider = configuredRuntimeProvider();
+    const isProduction = process.env.NODE_ENV === 'production';
+    const environmentProvider = isProduction
+      ? configuredRuntimeProvider()
+      : configuredRuntimeProvider({
+          AGENT_PROVIDER_TYPE: process.env.LOCAL_PROVIDER_TYPE,
+          AGENT_PROVIDER_ENDPOINT: process.env.LOCAL_PROVIDER_ENDPOINT,
+          AGENT_PROVIDER_MODEL: process.env.LOCAL_PROVIDER_MODEL,
+        });
     const providers =
-      process.env.NODE_ENV === 'production' && !hasReadyProvider && environmentProvider
+      !hasReadyProvider && environmentProvider
         ? [...persistedProviders, environmentProvider]
         : persistedProviders;
     return NextResponse.json({
       providers,
       workers: await operations.listWorkers(organizationId, actorId),
       runtime: {
-        mode: process.env.NODE_ENV === 'production' ? 'configured-runtime' : 'local-fake',
-        providerType:
-          process.env.NODE_ENV === 'production'
-            ? (process.env.AGENT_PROVIDER_TYPE ?? 'openai-compatible')
+        mode: isProduction
+          ? 'configured-runtime'
+          : environmentProvider
+            ? 'local-configured-runtime'
+            : 'local-fake',
+        providerType: isProduction
+          ? (process.env.AGENT_PROVIDER_TYPE ?? 'openai-compatible')
+          : environmentProvider
+            ? (process.env.LOCAL_PROVIDER_TYPE ?? 'openai-compatible')
             : 'fake',
-        endpointConfigured: Boolean(process.env.AGENT_PROVIDER_ENDPOINT),
-        apiKeyConfigured: Boolean(process.env.AGENT_PROVIDER_API_KEY),
-        model: process.env.AGENT_PROVIDER_MODEL ?? null,
+        endpointConfigured: Boolean(
+          isProduction ? process.env.AGENT_PROVIDER_ENDPOINT : process.env.LOCAL_PROVIDER_ENDPOINT,
+        ),
+        apiKeyConfigured: Boolean(
+          isProduction ? process.env.AGENT_PROVIDER_API_KEY : process.env.LOCAL_PROVIDER_API_KEY,
+        ),
+        model:
+          (isProduction ? process.env.AGENT_PROVIDER_MODEL : process.env.LOCAL_PROVIDER_MODEL) ??
+          null,
       },
     });
   } catch {

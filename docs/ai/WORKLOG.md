@@ -1,5 +1,22 @@
 # Development Worklog
 
+## 2026-08-31 — Modalita' locale OpenAI opt-in
+
+### Lavoro svolto
+
+- Aggiunta una modalita' locale esplicita tramite `LOCAL_PROVIDER_TYPE`, `LOCAL_PROVIDER_ENDPOINT`, `LOCAL_PROVIDER_API_KEY` e `LOCAL_PROVIDER_MODEL`.
+- `pnpm dev` continua a usare il fake runtime quando il provider locale non e' configurato; quando e' configurato usa l'adapter OpenAI/Anthropic/OpenAI-compatible reale.
+- Aggiornata la schermata Settings per mostrare il runtime locale configurato senza chiavi e aggiornata `.env.example`.
+- Aggiornata la guida per provare web, agenti e chat sul PC prima di Supabase cloud e Vercel.
+
+### Verifiche
+
+- `pnpm verify`: PASS; format, lint 15/15, typecheck 15/15, test 25 task, build 15/15 e audit high senza vulnerabilita' note.
+
+### Stato finale
+
+Checkpoint locale stabile. Prossima attivita': compilare `.env.local` senza condividerlo, avviare `pnpm dev` e verificare manualmente un agente OpenAI.
+
 ## 2026-08-31 — Guida online e provider runtime configurato
 
 ### Lavoro svolto

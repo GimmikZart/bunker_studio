@@ -20,6 +20,9 @@ const envSchema = z.object({
   AGENT_PROVIDER_API_KEY: z.union([z.string().min(1), z.literal('')]).optional(),
   AGENT_PROVIDER_MODEL: z.union([z.string().min(1), z.literal('')]).optional(),
   AGENT_CHAT_ESTIMATED_COST: z.coerce.number().nonnegative().default(0.01),
+  LOCAL_PROVIDER_TYPE: z
+    .enum(['openai', 'anthropic', 'openai-compatible'])
+    .default('openai-compatible'),
   GITHUB_API_TOKEN: z.union([z.string().min(1), z.literal('')]).optional(),
   WEB_PUSH_VAPID_SUBJECT: z.union([z.string().min(1), z.literal('')]).optional(),
   WEB_PUSH_VAPID_PUBLIC_KEY: z.union([z.string().min(1), z.literal('')]).optional(),

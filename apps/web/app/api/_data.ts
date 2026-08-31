@@ -413,15 +413,21 @@ export async function getWebOperationalRepository(): Promise<WebOperationalRepos
 }
 
 export function getWebAgentRuntime(providerBindingId?: string): AgentRuntime | null {
-  if (process.env.NODE_ENV !== 'production') return new FakeRuntime({});
-  const endpoint = process.env.AGENT_PROVIDER_ENDPOINT;
-  if (!endpoint) return null;
+  const isProduction = process.env.NODE_ENV === 'production';
+  const endpoint = isProduction
+    ? process.env.AGENT_PROVIDER_ENDPOINT
+    : process.env.LOCAL_PROVIDER_ENDPOINT;
+  if (!endpoint) return isProduction ? null : new FakeRuntime({});
   const options = {
     endpoint,
-    apiKey: process.env.AGENT_PROVIDER_API_KEY,
-    model: process.env.AGENT_PROVIDER_MODEL || providerBindingId,
+    apiKey: isProduction ? process.env.AGENT_PROVIDER_API_KEY : process.env.LOCAL_PROVIDER_API_KEY,
+    model:
+      (isProduction ? process.env.AGENT_PROVIDER_MODEL : process.env.LOCAL_PROVIDER_MODEL) ||
+      providerBindingId,
   };
-  const provider = process.env.AGENT_PROVIDER_TYPE ?? 'openai-compatible';
+  const provider = isProduction
+    ? (process.env.AGENT_PROVIDER_TYPE ?? 'openai-compatible')
+    : (process.env.LOCAL_PROVIDER_TYPE ?? 'openai-compatible');
   if (provider === 'openai') return createOpenAIRuntime(options);
   if (provider === 'anthropic') return createAnthropicRuntime(options);
   return createCompatibleRuntime(options);

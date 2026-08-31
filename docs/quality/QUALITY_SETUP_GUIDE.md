@@ -10,6 +10,63 @@ riavvio di due worker, GitHub/CI protetto e notifica Web Push su un dispositivo.
 Sono controlli di qualita' per una release; non richiedono di cambiare il
 codice applicativo.
 
+## Prima di pubblicare: prova locale con OpenAI reale
+
+Questo e' il percorso consigliato per controllare l'app sul tuo PC prima di
+usare Vercel. Il browser e il server girano in locale, mentre soltanto le
+richieste del modello vanno all'API OpenAI. Il database locale di sviluppo e'
+temporaneo e viene mantenuto in memoria: serve per provare velocemente
+schermate, account di test, agenti e chat senza creare utenti pubblici.
+
+1. Crea il file `.env.local` copiando `.env.example` nella cartella principale
+   del progetto. `.env.local` e' ignorato da Git e non deve essere inviato in
+   chat.
+2. Nel file `.env.local` lascia `NODE_ENV=development` e inserisci soltanto
+   questi valori locali:
+
+~~~text
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+LOCAL_PROVIDER_TYPE=openai
+LOCAL_PROVIDER_ENDPOINT=https://api.openai.com/v1/chat/completions
+LOCAL_PROVIDER_API_KEY=<chiave API OpenAI>
+LOCAL_PROVIDER_MODEL=<ID esatto del modello disponibile>
+~~~
+
+3. Apri PowerShell nella cartella del progetto ed esegui:
+
+~~~powershell
+pnpm dev
+~~~
+
+4. Apri [http://localhost:3000](http://localhost:3000). Crea un account di
+   prova, un'organizzazione, un progetto e un agente. Apri la chat dell'agente
+   e invia un messaggio breve.
+5. Controlla **Settings**: il runtime deve risultare
+   `local-configured-runtime`, il provider deve essere OpenAI e la chiave non
+   deve essere visualizzata.
+6. Quando hai finito, torna alla PowerShell e premi `Ctrl+C` per fermare il
+   server.
+
+Se lasci vuote le variabili `LOCAL_PROVIDER_*`, il progetto usa il fake runtime:
+utile per testare l'interfaccia senza consumare credito OpenAI, ma non dimostra
+che OpenAI funzioni. Con `LOCAL_PROVIDER_*` valorizzate, invece, il test della
+chat usa davvero l'endpoint OpenAI. Questa configurazione locale non cambia le
+variabili di produzione `AGENT_PROVIDER_*`.
+
+Per provare anche autenticazione, RLS e persistenza reale prima di Vercel, puoi
+usare un progetto Supabase di test e avviare il web in modalita' production
+locale dopo aver configurato le variabili `SUPABASE_*` e `AGENT_PROVIDER_*`:
+
+~~~powershell
+$env:NODE_ENV = 'production'
+pnpm build
+pnpm --filter @bunker-studio/web start
+~~~
+
+Questo secondo test e' facoltativo per il primo giro. Il percorso piu' semplice
+e' iniziare con `pnpm dev` e `LOCAL_PROVIDER_*`, poi passare a Supabase cloud,
+infine a Vercel.
+
 ## Percorso unico per mettere online Bunker Studio
 
 Se vuoi semplicemente vedere l'app online e provarla con l'API OpenAI, segui
