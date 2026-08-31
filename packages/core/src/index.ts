@@ -221,6 +221,9 @@ export type CostEntry = {
   occurredAt: string;
   provider: string;
   model: string;
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  outputTokens?: number;
   projectId?: string;
   taskId?: string;
   agentId?: string;

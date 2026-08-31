@@ -1,5 +1,11 @@
 # Development Worklog
 
+## 2026-08-31 — Budget gate e cost ledger per chat diretta
+
+- La chat diretta ora esegue il preflight `evaluateBudgetPolicies` prima del runtime: hard-stop e richiesta di approvazione producono risposta `409`, notifica tenant-scoped e nessuna invocazione provider; la soglia soft produce una notifica informativa.
+- Le run chat riuscite registrano `runId`, agent, provider, modello, input/output token e stima configurabile `AGENT_CHAT_ESTIMATED_COST` nel cost ledger; il mapping Supabase gestisce anche i valori numerici restituiti come stringhe.
+- Verifiche: test mirati chat 2/2, web 35/35, `pnpm verify` PASS, E2E acceptance 5/5 e working tree in stabilizzazione.
+
 ## 2026-08-31 — Budget gate persistito e soglia soft
 
 - Corretto il gate di `PATCH /api/tasks`: `HARD_STOP` persiste il task in `BLOCKED`, `WAITING_BUDGET_APPROVAL` persiste lo stato omonimo; entrambi emettono una notifica tenant-scoped e non invocano il provider.

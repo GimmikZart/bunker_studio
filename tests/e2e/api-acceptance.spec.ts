@@ -237,7 +237,14 @@ test('meetings, approvals, costs, notifications and repository metadata are tena
     data: { amount: 1.25, provider: 'fake', model: 'test-model' },
   });
   expect(cost.status()).toBe(201);
-  expect((await (await request.get('/api/costs', { headers })).json()).entries).toHaveLength(2);
+  const costEntries = (await (await request.get('/api/costs', { headers })).json()).entries as {
+    amount: number;
+    agentId?: string;
+  }[];
+  expect(costEntries).toHaveLength(3);
+  expect(costEntries).toContainEqual(
+    expect.objectContaining({ amount: 0.01, agentId: agentIds[0] }),
+  );
 
   const repository = await request.post(`/api/projects/${project.id}/repository`, {
     headers,

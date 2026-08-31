@@ -6,6 +6,7 @@ describe('environment configuration', () => {
     expect(loadEnv({})).toMatchObject({
       SUPABASE_URL: 'http://127.0.0.1:55421',
       DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:55422/postgres',
+      AGENT_CHAT_ESTIMATED_COST: 0.01,
     });
   });
 

@@ -70,6 +70,13 @@ function nullableString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
+function nullableNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() && Number.isFinite(Number(value)))
+    return Number(value);
+  return undefined;
+}
+
 function mapMeeting(value: unknown): MeetingRecord {
   const item = object(value);
   const participants = Array.isArray(item.meeting_participants) ? item.meeting_participants : [];
@@ -149,6 +156,9 @@ function mapCost(value: unknown): CostRecord {
     occurredAt: stringValue(item.occurred_at, 'occurred_at'),
     provider: stringValue(item.provider_type, 'provider_type'),
     model: stringValue(item.provider_model_id, 'provider_model_id'),
+    inputTokens: nullableNumber(item.input_tokens),
+    cachedInputTokens: nullableNumber(item.cached_input_tokens),
+    outputTokens: nullableNumber(item.output_tokens),
     projectId: nullableString(item.project_id),
     taskId: nullableString(item.task_id),
     agentId: nullableString(item.agent_id),
@@ -664,6 +674,9 @@ export class SupabaseOperationalRepository {
           occurred_at: input.occurredAt,
           provider_type: input.provider,
           provider_model_id: input.model,
+          input_tokens: input.inputTokens ?? null,
+          cached_input_tokens: input.cachedInputTokens ?? null,
+          output_tokens: input.outputTokens ?? null,
           project_id: input.projectId ?? null,
           task_id: input.taskId ?? null,
           agent_id: input.agentId ?? null,
