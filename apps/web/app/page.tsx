@@ -18,6 +18,7 @@ export default function HomePage() {
           <a href="/approvals">Approvals</a>
           <a href="/meetings">Meetings</a>
           <a href="/tasks">Tasks</a>
+          <a href="/conversations">Conversations</a>
           <a href="/costs">Costs</a>
           <a href="/activity">Activity</a>
           <a href="/settings">Settings</a>

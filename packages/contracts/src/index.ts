@@ -46,6 +46,7 @@ export const leadTaskSchema = z.object({
   writeScope: z.array(z.string()),
   requiredCapability: z.string().min(1).max(80).optional(),
   parallelGroupId: z.string().min(1).optional(),
+  approvedDesignVersionId: z.string().uuid().optional(),
   definitionOfDone: z.array(z.string().min(1)),
   estimatedCost: z.number().nonnegative(),
 });

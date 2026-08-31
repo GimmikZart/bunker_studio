@@ -1,5 +1,5 @@
 import { taskCreateSchema, taskStateSchema, taskTransitionSchema } from '@bunker-studio/contracts';
-import { canWrite } from '@bunker-studio/core';
+import { canWrite, evaluateBudgetPolicies } from '@bunker-studio/core';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../_auth';
 import { getWebOperationalRepository, getWebTenancyRepository } from '../_data';
@@ -40,6 +40,11 @@ export async function POST(request: Request) {
       (item) => item.id === input.projectId,
     );
     if (!project) return NextResponse.json({ error: 'Project not found.' }, { status: 404 });
+    if (input.taskType === 'FRONTEND' && !input.approvedDesignVersionId)
+      return NextResponse.json(
+        { error: 'Every frontend task requires an approved design version.' },
+        { status: 409 },
+      );
     if (input.approvedDesignVersionId) {
       const design = (await operations.listDesignVersions(organizationId, actorId)).find(
         (version) => version.id === input.approvedDesignVersionId && version.status === 'APPROVED',
@@ -86,6 +91,23 @@ export async function PATCH(request: Request) {
   try {
     const input = taskTransitionSchema.parse(await request.json());
     const state = taskStateSchema.parse(input.state);
+    if (state === 'QUEUED' || state === 'RUNNING') {
+      const task = (await operations.listTasks(organizationId, actorId)).find(
+        (candidate) => candidate.id === taskId,
+      );
+      if (!task) return NextResponse.json({ error: 'Task not found.' }, { status: 404 });
+      const budget = evaluateBudgetPolicies({
+        policies: await operations.listBudgetPolicies(organizationId, actorId),
+        entries: await operations.listCosts(organizationId, actorId),
+        estimatedCost: task.estimatedCost,
+        context: { projectId: task.projectId, taskId: task.id },
+      });
+      if (budget.decision !== 'ALLOW')
+        return NextResponse.json(
+          { error: 'Budget policy prevents starting this task.', budget },
+          { status: 409 },
+        );
+    }
     return NextResponse.json({
       task: await operations.transitionTask(taskId, organizationId, state, actorId),
     });

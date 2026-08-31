@@ -15,6 +15,7 @@ type Task = {
   estimatedCost: number;
   priority: number;
 };
+type Design = { id: string; version: number; status: string };
 
 const nextStates: Record<string, string[]> = {
   DRAFT: ['READY', 'CANCELED'],
@@ -38,6 +39,8 @@ export function TaskBoard() {
   const [organizationId, setOrganizationId] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [designs, setDesigns] = useState<Design[]>([]);
+  const [approvedDesignVersionId, setApprovedDesignVersionId] = useState('');
   const [projectId, setProjectId] = useState('');
   const [title, setTitle] = useState('');
   const [taskType, setTaskType] = useState('BACKEND');
@@ -49,16 +52,18 @@ export function TaskBoard() {
     if (!nextOrganizationId) return;
     setError('');
     const headers = apiHeaders(nextOrganizationId);
-    const [projectsResponse, tasksResponse] = await Promise.all([
+    const [projectsResponse, tasksResponse, designsResponse] = await Promise.all([
       fetch(`/api/organizations/${nextOrganizationId}/projects`, { headers }),
       fetch('/api/tasks', { headers }),
+      fetch('/api/designs', { headers }),
     ]);
-    if (!projectsResponse.ok || !tasksResponse.ok) {
+    if (!projectsResponse.ok || !tasksResponse.ok || !designsResponse.ok) {
       setError('Could not load projects and tasks for this organization.');
       return;
     }
     const projectsPayload = (await projectsResponse.json()) as { projects?: Project[] };
     const tasksPayload = (await tasksResponse.json()) as { tasks?: Task[] };
+    const designsPayload = (await designsResponse.json()) as { versions?: Design[] };
     const nextProjects = projectsPayload.projects ?? [];
     setProjects(nextProjects);
     setProjectId((current) =>
@@ -67,6 +72,13 @@ export function TaskBoard() {
         : (nextProjects[0]?.id ?? ''),
     );
     setTasks(tasksPayload.tasks ?? []);
+    const approved = (designsPayload.versions ?? []).filter(
+      (design) => design.status === 'APPROVED',
+    );
+    setDesigns(approved);
+    setApprovedDesignVersionId((current) =>
+      approved.some((design) => design.id === current) ? current : (approved[0]?.id ?? ''),
+    );
   }
 
   useEffect(() => {
@@ -105,6 +117,7 @@ export function TaskBoard() {
         writeScope: [],
         estimatedCost: Number(estimatedCost),
         priority: 0,
+        ...(taskType === 'FRONTEND' ? { approvedDesignVersionId } : {}),
       }),
     });
     if (!response.ok) {
@@ -193,10 +206,34 @@ export function TaskBoard() {
           value={estimatedCost}
           onChange={(event) => setEstimatedCost(event.target.value)}
         />
+        {taskType === 'FRONTEND' && (
+          <>
+            <label htmlFor="task-design">Approved design version</label>
+            <select
+              id="task-design"
+              value={approvedDesignVersionId}
+              onChange={(event) => setApprovedDesignVersionId(event.target.value)}
+              disabled={!designs.length}
+              required
+            >
+              {!designs.length && <option value="">Approve a design first</option>}
+              {designs.map((design) => (
+                <option key={design.id} value={design.id}>
+                  Design v{design.version}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         <button
           className="primary-button"
           type="button"
-          disabled={!organizationId || !projectId || !title.trim()}
+          disabled={
+            !organizationId ||
+            !projectId ||
+            !title.trim() ||
+            (taskType === 'FRONTEND' && !approvedDesignVersionId)
+          }
           onClick={() => void createTask()}
         >
           Create task

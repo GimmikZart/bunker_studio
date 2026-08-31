@@ -627,3 +627,21 @@ Restano le verifiche quality `PARTIAL` dipendenti da accessi esterni e il backup
 - `pnpm verify`: PASS sul tree corrente; test Turborepo 25 task e build web 48 route/pagine.
 
 Prossimo passo: eseguire gli scenari quality esterni `PARTIAL` con credenziali, device e runtime dedicati.
+
+## 2026-08-31 — Archivio conversazioni e gate design sui task frontend
+
+### Lavoro svolto
+
+- Aggiunto `GET /api/conversations` con isolamento tenant, ricerca case-insensitive su sessione/messaggi, filtro agente e limite massimo bounded.
+- Aggiunta pagina `/conversations` con selezione organizzazione e ricerca dello storico, collegata alla navigazione Office.
+- Aggiunto gate server-side e UI per richiedere un `approvedDesignVersionId` sui task `FRONTEND`; i piani Lead applicano lo stesso vincolo e persistono il riferimento esatto.
+- Aggiunti test route e flusso E2E per la ricerca conversazioni e i gate task/design/budget.
+
+### Verifiche
+
+- `pnpm verify`: PASS; format, lint 15/15, typecheck 15/15, test 25 task/33 test web, build 15/15, audit high PASS.
+- `pnpm test:e2e`: PASS, 11/11 test in 3,1 minuti.
+
+### Stato finale
+
+Checkpoint locale stabile. Restano soltanto le verifiche quality esterne già tracciate in `ACCEPTANCE_MATRIX.md`.

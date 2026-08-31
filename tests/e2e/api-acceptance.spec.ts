@@ -187,6 +187,13 @@ test('meetings, approvals, costs, notifications and repository metadata are tena
     data: { content: 'Summarize the architecture boundary.' },
   });
   expect((await chat.json()).message.content).toContain('Summarize');
+  const conversationArchive = await request.get('/api/conversations?q=architecture%20boundary', {
+    headers,
+  });
+  expect(conversationArchive.status()).toBe(200);
+  expect((await conversationArchive.json()).conversations[0].messages).toEqual(
+    expect.arrayContaining([expect.stringContaining('architecture boundary')]),
+  );
   const meetingResponse = await request.post('/api/meetings', {
     headers,
     data: {

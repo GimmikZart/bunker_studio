@@ -41,6 +41,22 @@ export async function POST(request: Request) {
       (candidate) => candidate.id === input.projectId,
     );
     if (!project) return NextResponse.json({ error: 'Project not found.' }, { status: 404 });
+    const approvedDesignIds = new Set(
+      (await operations.listDesignVersions(organizationId, actorUserId))
+        .filter((design) => design.status === 'APPROVED')
+        .map((design) => design.id),
+    );
+    if (
+      input.plan.tasks.some(
+        (task) =>
+          task.taskType === 'FRONTEND' &&
+          !approvedDesignIds.has(task.approvedDesignVersionId ?? ''),
+      )
+    )
+      return NextResponse.json(
+        { error: 'Every frontend task requires an approved design version.' },
+        { status: 409 },
+      );
     if (input.plan.tasks.some((task) => task.dependencies.includes(task.id)))
       return NextResponse.json({ error: 'A task cannot depend on itself.' }, { status: 400 });
     const order = topologicalTaskKeys(input.plan.tasks);
@@ -82,6 +98,9 @@ export async function POST(request: Request) {
             ? { requiredCapability: planTask.requiredCapability }
             : {}),
           ...(planTask.parallelGroupId ? { parallelGroupId: planTask.parallelGroupId } : {}),
+          ...(planTask.approvedDesignVersionId
+            ? { approvedDesignVersionId: planTask.approvedDesignVersionId }
+            : {}),
           definitionOfDone: planTask.definitionOfDone,
           estimatedCost: planTask.estimatedCost,
           priority: 0,
