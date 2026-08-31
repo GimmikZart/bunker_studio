@@ -1,5 +1,10 @@
 # Development Worklog
 
+## 2026-08-31 — Audit dei prerequisiti quality
+
+- `supabase db lint --local`: PASS; `pnpm quality:pg-boss-restart` con DSN temporaneo del database locale `55422`: PASS.
+- Il controllo dell’ambiente conferma che non sono disponibili DSN Supabase/PostgreSQL quality, credenziali GitHub/VAPID o un endpoint Ollama/LM Studio; i cinque criteri `PARTIAL` restano correttamente non dichiarati conclusi.
+
 ## 2026-08-31 — Generazione persistente dei report settimanali
 
 - Aggiunta migration `00000000000019_budget_reports.sql` con storico report tenant-scoped, RLS, vincoli temporali, trigger activity e unique key per deduplicare la stessa finestra schedulata.
