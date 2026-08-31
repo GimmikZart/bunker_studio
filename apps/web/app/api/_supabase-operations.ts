@@ -1,4 +1,9 @@
-import { AuthorizationError, type DesignRecord, type OrganizationRole } from '@bunker-studio/core';
+import {
+  AuthorizationError,
+  type BudgetPolicy,
+  type DesignRecord,
+  type OrganizationRole,
+} from '@bunker-studio/core';
 import { canTransition, type TaskState } from '@bunker-studio/orchestration';
 import type {
   MemoryUnit,
@@ -21,6 +26,8 @@ import type {
   VerificationRunRecord,
   ActivityRecord,
   WorkflowRecord,
+  BudgetPolicyRecord,
+  ReportScheduleRecord,
 } from './_store';
 import type { ReviewFinding } from '@bunker-studio/contracts';
 
@@ -146,6 +153,48 @@ function mapCost(value: unknown): CostRecord {
     taskId: nullableString(item.task_id),
     agentId: nullableString(item.agent_id),
     meetingId: nullableString(item.meeting_id),
+    runId: nullableString(item.run_id),
+  };
+}
+
+function mapBudgetPolicy(value: unknown): BudgetPolicyRecord {
+  const item = object(value);
+  return {
+    id: stringValue(item.id, 'id'),
+    organizationId: stringValue(item.organization_id, 'organization_id'),
+    projectId: nullableString(item.project_id),
+    agentId: nullableString(item.agent_id),
+    periodType: item.period_type as BudgetPolicy['periodType'],
+    softLimit: Number(item.soft_limit ?? 0),
+    hardLimit: Number(item.hard_limit ?? 0),
+    currency: stringValue(item.currency, 'currency'),
+    actionOnSoft: item.action_on_soft as BudgetPolicy['actionOnSoft'],
+    actionOnHard: item.action_on_hard as BudgetPolicy['actionOnHard'],
+    escalationThreshold: Number(item.escalation_threshold ?? 2),
+    allowProviderFallback: item.allow_provider_fallback === true,
+    enabled: item.enabled !== false,
+    createdAt: stringValue(item.created_at, 'created_at'),
+    updatedAt: stringValue(item.updated_at, 'updated_at'),
+  };
+}
+
+function mapReportSchedule(value: unknown): ReportScheduleRecord {
+  const item = object(value);
+  const recipients = Array.isArray(item.recipients_json) ? item.recipients_json : [];
+  return {
+    id: stringValue(item.id, 'id'),
+    organizationId: stringValue(item.organization_id, 'organization_id'),
+    frequency: 'WEEKLY',
+    dayOfWeek: Number(item.day_of_week ?? 1),
+    hourUtc: Number(item.hour_utc ?? 9),
+    minuteUtc: Number(item.minute_utc ?? 0),
+    timezone: stringValue(item.timezone, 'timezone'),
+    recipients: recipients.filter((entry): entry is string => typeof entry === 'string'),
+    enabled: item.enabled !== false,
+    nextRunAt: stringValue(item.next_run_at, 'next_run_at'),
+    lastRunAt: nullableString(item.last_run_at) ?? null,
+    createdAt: stringValue(item.created_at, 'created_at'),
+    updatedAt: stringValue(item.updated_at, 'updated_at'),
   };
 }
 
@@ -233,6 +282,9 @@ function mapTask(value: unknown): TaskRecord {
       : {}),
     ...(typeof item.parallel_group_id === 'string'
       ? { parallelGroupId: item.parallel_group_id }
+      : {}),
+    ...(typeof item.approved_design_version_id === 'string'
+      ? { approvedDesignVersionId: item.approved_design_version_id }
       : {}),
     definitionOfDone: definitionItems.filter(
       (entry: unknown): entry is string => typeof entry === 'string',
@@ -616,12 +668,156 @@ export class SupabaseOperationalRepository {
           task_id: input.taskId ?? null,
           agent_id: input.agentId ?? null,
           meeting_id: input.meetingId ?? null,
+          run_id: input.runId ?? null,
           confidence: 'ESTIMATED',
         })
         .select('*')
         .single(),
     );
     return mapCost(data);
+  }
+
+  async listBudgetPolicies(
+    organizationId: string,
+    actorUserId: string,
+  ): Promise<BudgetPolicyRecord[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client.from('budget_policies').select('*').eq('organization_id', organizationId),
+    );
+    return Array.isArray(data) ? data.map(mapBudgetPolicy) : [];
+  }
+
+  async createBudgetPolicy(
+    organizationId: string,
+    input: Omit<BudgetPolicy, 'id'>,
+    actorUserId: string,
+  ): Promise<BudgetPolicyRecord> {
+    await this.requireWrite(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('budget_policies')
+        .insert({
+          organization_id: organizationId,
+          project_id: input.projectId ?? null,
+          agent_id: input.agentId ?? null,
+          period_type: input.periodType,
+          soft_limit: input.softLimit,
+          hard_limit: input.hardLimit,
+          currency: input.currency,
+          action_on_soft: input.actionOnSoft,
+          action_on_hard: input.actionOnHard,
+          escalation_threshold: input.escalationThreshold,
+          allow_provider_fallback: input.allowProviderFallback,
+          enabled: input.enabled,
+        })
+        .select('*')
+        .single(),
+    );
+    return mapBudgetPolicy(data);
+  }
+
+  async updateBudgetPolicy(
+    organizationId: string,
+    policyId: string,
+    patch: Partial<Omit<BudgetPolicy, 'id'>>,
+    actorUserId: string,
+  ): Promise<BudgetPolicyRecord | null> {
+    await this.requireWrite(organizationId, actorUserId);
+    const values: Record<string, unknown> = {};
+    const fields: Array<[keyof Omit<BudgetPolicy, 'id'>, string]> = [
+      ['projectId', 'project_id'],
+      ['agentId', 'agent_id'],
+      ['periodType', 'period_type'],
+      ['softLimit', 'soft_limit'],
+      ['hardLimit', 'hard_limit'],
+      ['currency', 'currency'],
+      ['actionOnSoft', 'action_on_soft'],
+      ['actionOnHard', 'action_on_hard'],
+      ['escalationThreshold', 'escalation_threshold'],
+      ['allowProviderFallback', 'allow_provider_fallback'],
+      ['enabled', 'enabled'],
+    ];
+    for (const [field, column] of fields) {
+      if (patch[field] !== undefined) values[column] = patch[field] ?? null;
+    }
+    if (!Object.keys(values).length) return null;
+    const data = await unwrap(
+      this.client
+        .from('budget_policies')
+        .update(values)
+        .eq('organization_id', organizationId)
+        .eq('id', policyId)
+        .select('*')
+        .maybeSingle(),
+    );
+    return data ? mapBudgetPolicy(data) : null;
+  }
+
+  async deleteBudgetPolicy(
+    organizationId: string,
+    policyId: string,
+    actorUserId: string,
+  ): Promise<boolean> {
+    await this.requireWrite(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('budget_policies')
+        .delete()
+        .eq('organization_id', organizationId)
+        .eq('id', policyId)
+        .select('id')
+        .maybeSingle(),
+    );
+    return Boolean(data);
+  }
+
+  async getReportSchedule(
+    organizationId: string,
+    actorUserId: string,
+  ): Promise<ReportScheduleRecord | null> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('report_schedules')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .maybeSingle(),
+    );
+    return data ? mapReportSchedule(data) : null;
+  }
+
+  async saveReportSchedule(
+    organizationId: string,
+    input: Omit<
+      ReportScheduleRecord,
+      'id' | 'organizationId' | 'createdAt' | 'updatedAt' | 'lastRunAt'
+    > & { lastRunAt?: string | null },
+    actorUserId: string,
+  ): Promise<ReportScheduleRecord> {
+    await this.requireWrite(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('report_schedules')
+        .upsert(
+          {
+            organization_id: organizationId,
+            frequency: input.frequency,
+            day_of_week: input.dayOfWeek,
+            hour_utc: input.hourUtc,
+            minute_utc: input.minuteUtc,
+            timezone: input.timezone,
+            recipients_json: input.recipients,
+            enabled: input.enabled,
+            next_run_at: input.nextRunAt,
+            ...(input.lastRunAt !== undefined ? { last_run_at: input.lastRunAt } : {}),
+          },
+          { onConflict: 'organization_id' },
+        )
+        .select('*')
+        .single(),
+    );
+    return mapReportSchedule(data);
   }
 
   async listNotifications(
@@ -912,6 +1108,48 @@ export class SupabaseOperationalRepository {
             .eq('id', version.id)
             .eq('organization_id', organizationId),
         );
+      }
+    }
+    return this.listDesignVersions(organizationId, actorUserId);
+  }
+
+  async resolveDesignVersion(
+    organizationId: string,
+    versionId: string,
+    decision: 'APPROVED' | 'REJECTED' | 'CHANGES',
+    actorUserId: string,
+  ): Promise<DesignRecord[]> {
+    const role = await this.requireMember(organizationId, actorUserId);
+    if (role !== 'OWNER') throw new AuthorizationError('Owner design resolution is required.');
+    const versions = await this.listDesignVersions(organizationId, actorUserId);
+    const target = versions.find(
+      (version) => version.id === versionId && version.status === 'SUBMITTED',
+    );
+    if (!target) throw new Error('Only a submitted design version can be resolved.');
+    const status = decision === 'CHANGES' ? 'DRAFT' : decision;
+    await unwrap(
+      this.client
+        .from('design_versions')
+        .update({
+          status,
+          ...(decision === 'APPROVED'
+            ? { approved_at: new Date().toISOString(), approved_by: actorUserId }
+            : {}),
+        })
+        .eq('id', versionId)
+        .eq('organization_id', organizationId),
+    );
+    if (decision === 'APPROVED') {
+      for (const version of versions) {
+        if (version.id !== versionId && version.status === 'APPROVED') {
+          await unwrap(
+            this.client
+              .from('design_versions')
+              .update({ status: 'SUPERSEDED' })
+              .eq('organization_id', organizationId)
+              .eq('id', version.id),
+          );
+        }
       }
     }
     return this.listDesignVersions(organizationId, actorUserId);
@@ -1251,6 +1489,9 @@ export class SupabaseOperationalRepository {
           write_scope_json: input.writeScope,
           ...(input.requiredCapability ? { required_capability: input.requiredCapability } : {}),
           ...(input.parallelGroupId ? { parallel_group_id: input.parallelGroupId } : {}),
+          ...(input.approvedDesignVersionId
+            ? { approved_design_version_id: input.approvedDesignVersionId }
+            : {}),
           definition_of_done_json: {
             estimated_cost: input.estimatedCost,
             items: input.definitionOfDone ?? [],

@@ -42,6 +42,12 @@ import {
   createTask,
   listTasks,
   listActivity,
+  listBudgetPolicies,
+  createBudgetPolicy,
+  updateBudgetPolicy,
+  deleteBudgetPolicy,
+  getReportSchedule,
+  saveReportSchedule,
   createWorkflow,
   listWorkflows,
   updateWorkflowTasks,
@@ -61,11 +67,16 @@ import {
   type TaskCreateRecord,
   type ActivityRecord,
   type WorkflowRecord,
+  type BudgetPolicyRecord,
+  type ReportScheduleRecord,
 } from './_store';
 import type { MemoryUnit, RegisteredWorker } from '@bunker-studio/db';
 import type { LeadPlan } from '@bunker-studio/contracts';
-import { approveDesignVersion as applyDesignApproval } from '@bunker-studio/core';
-import type { DesignRecord } from '@bunker-studio/core';
+import {
+  approveDesignVersion as applyDesignApproval,
+  resolveDesignVersion as applyDesignResolution,
+} from '@bunker-studio/core';
+import type { BudgetPolicy, DesignRecord } from '@bunker-studio/core';
 import { FakeRuntime, type AgentRuntime } from '@bunker-studio/agent-runtime';
 import { createAnthropicRuntime } from '@bunker-studio/provider-anthropic';
 import { createOpenAIRuntime } from '@bunker-studio/provider-openai';
@@ -125,6 +136,28 @@ type LocalOperationalRepository = {
   ) => ApprovalRecord | null;
   listCosts: (organizationId: string, actorUserId: string) => CostRecord[];
   addCost: (input: Omit<CostRecord, 'id'>, actorUserId: string) => CostRecord;
+  listBudgetPolicies: (organizationId: string, actorUserId: string) => BudgetPolicyRecord[];
+  createBudgetPolicy: (
+    organizationId: string,
+    input: Omit<BudgetPolicy, 'id'>,
+    actorUserId: string,
+  ) => BudgetPolicyRecord;
+  updateBudgetPolicy: (
+    organizationId: string,
+    policyId: string,
+    patch: Partial<Omit<BudgetPolicy, 'id'>>,
+    actorUserId: string,
+  ) => BudgetPolicyRecord | null;
+  deleteBudgetPolicy: (organizationId: string, policyId: string, actorUserId: string) => boolean;
+  getReportSchedule: (organizationId: string, actorUserId: string) => ReportScheduleRecord | null;
+  saveReportSchedule: (
+    organizationId: string,
+    input: Omit<
+      ReportScheduleRecord,
+      'id' | 'organizationId' | 'createdAt' | 'updatedAt' | 'lastRunAt'
+    > & { lastRunAt?: string | null },
+    actorUserId: string,
+  ) => ReportScheduleRecord;
   listNotifications: (
     userId: string,
     organizationId: string,
@@ -175,6 +208,12 @@ type LocalOperationalRepository = {
   approveDesignVersion: (
     organizationId: string,
     versionId: string,
+    actorUserId: string,
+  ) => DesignRecord[];
+  resolveDesignVersion: (
+    organizationId: string,
+    versionId: string,
+    decision: 'APPROVED' | 'REJECTED' | 'CHANGES',
     actorUserId: string,
   ) => DesignRecord[];
   registerWorker: (input: {
@@ -284,6 +323,13 @@ const localOperationalRepository: LocalOperationalRepository = {
     resolveApproval(organizationId, approvalId, status, resolvedByUserId, resolutionNote),
   listCosts: (organizationId) => listCosts(organizationId),
   addCost: (input) => addCost(input),
+  listBudgetPolicies: (organizationId) => listBudgetPolicies(organizationId),
+  createBudgetPolicy: (organizationId, input) => createBudgetPolicy(organizationId, input),
+  updateBudgetPolicy: (organizationId, policyId, patch) =>
+    updateBudgetPolicy(organizationId, policyId, patch),
+  deleteBudgetPolicy: (organizationId, policyId) => deleteBudgetPolicy(organizationId, policyId),
+  getReportSchedule: (organizationId) => getReportSchedule(organizationId),
+  saveReportSchedule: (organizationId, input) => saveReportSchedule(organizationId, input),
   listNotifications: (userId, organizationId) => listNotifications(userId, organizationId),
   addNotification: (input) => addNotification(input),
   markNotificationRead: (userId, notificationId) => markNotificationRead(userId, notificationId),
@@ -305,6 +351,12 @@ const localOperationalRepository: LocalOperationalRepository = {
     const approved = applyDesignApproval(versions, versionId, actorUserId);
     replaceDesignVersions(organizationId, approved);
     return approved;
+  },
+  resolveDesignVersion: (organizationId, versionId, decision, actorUserId) => {
+    const versions = listDesignVersions(organizationId);
+    const resolved = applyDesignResolution(versions, versionId, decision, actorUserId);
+    replaceDesignVersions(organizationId, resolved);
+    return resolved;
   },
   registerWorker: ({ organizationId, name, capabilities, allowedScopes, maxConcurrent }) =>
     workerRegistry.register({ organizationId, name, capabilities, allowedScopes, maxConcurrent }),

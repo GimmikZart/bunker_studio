@@ -88,6 +88,7 @@ export async function GET(
           writeScope,
           requiredCapability,
           parallelGroupId,
+          approvedDesignVersionId,
           estimatedCost,
           priority,
         }) => ({
@@ -102,6 +103,7 @@ export async function GET(
           writeScope,
           ...(requiredCapability ? { requiredCapability } : {}),
           ...(parallelGroupId ? { parallelGroupId } : {}),
+          ...(approvedDesignVersionId ? { approvedDesignVersionId } : {}),
           estimatedCost,
           priority,
         }),

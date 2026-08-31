@@ -285,6 +285,39 @@ h2 {
 .settings-grid .live-panel-card {
   min-height: 100%;
 }
+.settings-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+.settings-form-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.settings-form-grid input,
+.settings-form-grid select {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: var(--ink);
+  background: white;
+  font: inherit;
+}
+.settings-form-grid .checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: end;
+  min-height: 38px;
+}
+.settings-form-grid .checkbox-field input {
+  width: auto;
+}
 .preference-list {
   display: grid;
   gap: 8px;
@@ -453,6 +486,9 @@ h2 {
     grid-template-columns: repeat(2, 1fr);
   }
   .settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .settings-form-grid {
     grid-template-columns: 1fr;
   }
   .settings-grid {

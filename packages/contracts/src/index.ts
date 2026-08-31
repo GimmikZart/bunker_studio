@@ -81,6 +81,10 @@ export const reviewReportSchema = z.object({
   summary: z.string(),
   findings: z.array(reviewFindingSchema),
   verificationRuns: z.array(verificationRunSchema),
+  failedImplementationAttempts: z.number().int().nonnegative().optional(),
+  repeatedTestFailures: z.number().int().nonnegative().optional(),
+  architecturalReviewRequired: z.boolean().optional(),
+  conflictingProposals: z.boolean().optional(),
 });
 export type ReviewReport = z.infer<typeof reviewReportSchema>;
 
@@ -100,6 +104,10 @@ export const designVersionSchema = z.object({
   previewArtifactIds: z.array(z.string()),
 });
 export type DesignVersion = z.infer<typeof designVersionSchema>;
+export const designResolutionSchema = z.object({
+  decision: z.enum(['APPROVED', 'REJECTED', 'CHANGES']),
+});
+export type DesignResolutionInput = z.infer<typeof designResolutionSchema>;
 
 export const staffingProposalSchema = z.object({
   roleKey: z.string().min(1),
@@ -261,7 +269,46 @@ export const costEntrySchema = z.object({
   projectId: z.string().optional(),
   taskId: z.string().optional(),
   agentId: z.string().optional(),
+  runId: z.string().uuid().optional(),
+  meetingId: z.string().uuid().optional(),
 });
+
+const budgetPolicyBaseSchema = z.object({
+  projectId: z.string().uuid().nullable().optional(),
+  agentId: z.string().uuid().nullable().optional(),
+  periodType: z.enum(['PER_RUN', 'PER_TASK', 'DAILY', 'MONTHLY']),
+  softLimit: z.number().nonnegative().max(1_000_000_000),
+  hardLimit: z.number().nonnegative().max(1_000_000_000),
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  actionOnSoft: z.enum(['ALLOW', 'NOTIFY', 'REQUIRE_APPROVAL']),
+  actionOnHard: z.enum(['BLOCK', 'REQUIRE_APPROVAL']),
+  escalationThreshold: z.number().int().min(0).max(100),
+  allowProviderFallback: z.boolean(),
+  enabled: z.boolean(),
+});
+export const budgetPolicySchema = budgetPolicyBaseSchema.refine(
+  (value) => value.hardLimit === 0 || value.softLimit === 0 || value.softLimit <= value.hardLimit,
+  {
+    message: 'Soft limit cannot exceed hard limit.',
+    path: ['softLimit'],
+  },
+);
+export type BudgetPolicyInput = z.infer<typeof budgetPolicySchema>;
+export const budgetPolicyUpdateSchema = budgetPolicyBaseSchema.partial();
+export type BudgetPolicyUpdateInput = z.infer<typeof budgetPolicyUpdateSchema>;
+
+export const reportScheduleSchema = z.object({
+  frequency: z.literal('WEEKLY'),
+  dayOfWeek: z.number().int().min(0).max(6),
+  hourUtc: z.number().int().min(0).max(23),
+  minuteUtc: z.number().int().min(0).max(59),
+  timezone: z.string().trim().min(1).max(64),
+  recipients: z.array(z.string().min(1).max(320)).max(20),
+  enabled: z.boolean(),
+});
+export type ReportScheduleInput = z.infer<typeof reportScheduleSchema>;
+export const reportScheduleUpdateSchema = reportScheduleSchema.partial();
+export type ReportScheduleUpdateInput = z.infer<typeof reportScheduleUpdateSchema>;
 
 export const notificationCreateSchema = z.object({
   userId: z.string().min(1),
@@ -329,6 +376,7 @@ export const taskCreateSchema = z.object({
   writeScope: z.array(z.string().trim().min(1)).max(100).default([]),
   requiredCapability: z.string().trim().min(1).max(80).optional(),
   parallelGroupId: z.string().trim().min(1).max(120).optional(),
+  approvedDesignVersionId: z.string().uuid().optional(),
   estimatedCost: z.number().nonnegative().max(1_000_000).default(0),
   priority: z.number().int().min(-100).max(100).default(0),
 });

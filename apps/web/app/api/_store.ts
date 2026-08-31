@@ -1,5 +1,5 @@
 import { TenantStore, WorkerRegistry } from '@bunker-studio/db';
-import type { CostEntry, DesignRecord } from '@bunker-studio/core';
+import type { BudgetPolicy, CostEntry, DesignRecord } from '@bunker-studio/core';
 import type { LeadPlan, ReviewFinding, VerificationRun } from '@bunker-studio/contracts';
 import type { MemoryUnit } from '@bunker-studio/db';
 
@@ -21,6 +21,8 @@ type WebRuntimeState = {
   tasks: Map<string, TaskRecord[]>;
   activity: Map<string, ActivityRecord[]>;
   workflows: Map<string, WorkflowRecord[]>;
+  budgetPolicies: Map<string, BudgetPolicyRecord[]>;
+  reportSchedules: Map<string, ReportScheduleRecord>;
 };
 
 type GlobalWithRuntime = typeof globalThis & { __bunkerStudioRuntime?: WebRuntimeState };
@@ -43,6 +45,8 @@ const state = (globalRuntime.__bunkerStudioRuntime ??= {
   tasks: new Map<string, TaskRecord[]>(),
   activity: new Map<string, ActivityRecord[]>(),
   workflows: new Map<string, WorkflowRecord[]>(),
+  budgetPolicies: new Map<string, BudgetPolicyRecord[]>(),
+  reportSchedules: new Map<string, ReportScheduleRecord>(),
 });
 state.notificationPreferences ??= new Map<string, NotificationPreferences>();
 state.conversations ??= new Map<string, ConversationRecord[]>();
@@ -50,6 +54,8 @@ state.verificationRuns ??= new Map<string, VerificationRunRecord[]>();
 state.reviews ??= new Map<string, ReviewRecord[]>();
 state.activity ??= new Map<string, ActivityRecord[]>();
 state.workflows ??= new Map<string, WorkflowRecord[]>();
+state.budgetPolicies ??= new Map<string, BudgetPolicyRecord[]>();
+state.reportSchedules ??= new Map<string, ReportScheduleRecord>();
 
 export const tenantStore = state.tenantStore;
 export const workerRegistry = state.workerRegistry;
@@ -243,6 +249,28 @@ export type CostRecord = CostEntry & {
   meetingId?: string;
 };
 
+export type BudgetPolicyRecord = BudgetPolicy & {
+  organizationId: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ReportScheduleRecord = {
+  id: string;
+  organizationId: string;
+  frequency: 'WEEKLY';
+  dayOfWeek: number;
+  hourUtc: number;
+  minuteUtc: number;
+  timezone: string;
+  recipients: string[];
+  enabled: boolean;
+  nextRunAt: string;
+  lastRunAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type NotificationRecord = {
   id: string;
   organizationId: string;
@@ -330,6 +358,7 @@ export type TaskRecord = {
   writeScope: string[];
   requiredCapability?: string;
   parallelGroupId?: string;
+  approvedDesignVersionId?: string;
   definitionOfDone?: string[];
   estimatedCost: number;
   priority: number;
@@ -441,6 +470,75 @@ export function addCost(input: Omit<CostRecord, 'id'>): CostRecord {
 
 export function listCosts(organizationId: string): CostRecord[] {
   return structuredClone(state.costs.get(organizationId) ?? []);
+}
+
+export function listBudgetPolicies(organizationId: string): BudgetPolicyRecord[] {
+  return structuredClone(state.budgetPolicies.get(organizationId) ?? []);
+}
+
+export function createBudgetPolicy(
+  organizationId: string,
+  input: Omit<BudgetPolicy, 'id'>,
+): BudgetPolicyRecord {
+  const now = new Date().toISOString();
+  const policy: BudgetPolicyRecord = {
+    ...input,
+    id: crypto.randomUUID(),
+    organizationId,
+    createdAt: now,
+    updatedAt: now,
+  };
+  state.budgetPolicies.set(organizationId, [
+    ...(state.budgetPolicies.get(organizationId) ?? []),
+    policy,
+  ]);
+  return structuredClone(policy);
+}
+
+export function updateBudgetPolicy(
+  organizationId: string,
+  policyId: string,
+  patch: Partial<Omit<BudgetPolicy, 'id'>>,
+): BudgetPolicyRecord | null {
+  const policies = state.budgetPolicies.get(organizationId) ?? [];
+  const policy = policies.find((item) => item.id === policyId);
+  if (!policy) return null;
+  Object.assign(policy, patch, { updatedAt: new Date().toISOString() });
+  return structuredClone(policy);
+}
+
+export function deleteBudgetPolicy(organizationId: string, policyId: string): boolean {
+  const policies = state.budgetPolicies.get(organizationId) ?? [];
+  const next = policies.filter((policy) => policy.id !== policyId);
+  if (next.length === policies.length) return false;
+  state.budgetPolicies.set(organizationId, next);
+  return true;
+}
+
+export function getReportSchedule(organizationId: string): ReportScheduleRecord | null {
+  const schedule = state.reportSchedules.get(organizationId);
+  return schedule ? structuredClone(schedule) : null;
+}
+
+export function saveReportSchedule(
+  organizationId: string,
+  input: Omit<
+    ReportScheduleRecord,
+    'id' | 'organizationId' | 'createdAt' | 'updatedAt' | 'lastRunAt'
+  > & { lastRunAt?: string | null },
+): ReportScheduleRecord {
+  const previous = state.reportSchedules.get(organizationId);
+  const now = new Date().toISOString();
+  const schedule: ReportScheduleRecord = {
+    ...input,
+    id: previous?.id ?? crypto.randomUUID(),
+    organizationId,
+    lastRunAt: input.lastRunAt ?? previous?.lastRunAt ?? null,
+    createdAt: previous?.createdAt ?? now,
+    updatedAt: now,
+  };
+  state.reportSchedules.set(organizationId, schedule);
+  return structuredClone(schedule);
 }
 
 export function addNotification(

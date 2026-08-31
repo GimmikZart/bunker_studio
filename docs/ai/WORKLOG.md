@@ -1,5 +1,12 @@
 # Development Worklog
 
+## 2026-08-31 - Cost Center, design resolution ed escalation
+
+- Aggiunte budget policy tenant-scoped per run/task/daily/monthly con hard/soft limit, azioni deterministic, fallback consent ed escalation threshold; Settings espone policy e report weekly configurabile.
+- Aggiunta persistenza Supabase `report_schedules` con RLS, next-run UTC e test route locale; migration `00000000000018_budget_reports.sql` applicata e lintata localmente.
+- Il design gate supporta owner-only Approve/Reject/Changes; i task possono referenziare una versione design approvata; le review registrano `TASK_ESCALATION_REQUESTED` nel ledger quando le soglie deterministiche sono raggiunte.
+- Verifiche: typecheck/lint/test web PASS; route web 17 file/29 test PASS; test mirati design, review ed budgets PASS.
+
 ## 2026-08-31 — Smoke performance pagine core
 
 - Aggiunto `tests/e2e/performance-smoke.spec.ts`: warm-up e cinque richieste per ciascuna pagina core, con calcolo p95 e target server-side `< 800 ms` definito dalla specifica, senza chiamate provider.

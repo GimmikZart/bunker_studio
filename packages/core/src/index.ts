@@ -216,7 +216,16 @@ export function protectedMergeGate(input: {
   return { allowed: missing.length === 0, missing, productionDeployAllowed: false };
 }
 
-export type CostEntry = { amount: number; occurredAt: string; provider: string; model: string };
+export type CostEntry = {
+  amount: number;
+  occurredAt: string;
+  provider: string;
+  model: string;
+  projectId?: string;
+  taskId?: string;
+  agentId?: string;
+  runId?: string;
+};
 
 export function forecastMonthlyCost(entries: CostEntry[], now = new Date()): number {
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -270,6 +279,159 @@ export function weeklyCostReport(
     total: inPeriod.reduce((total, entry) => total + entry.amount, 0),
     byProvider,
   };
+}
+
+export function nextWeeklyReportAt(
+  schedule: { dayOfWeek: number; hourUtc: number; minuteUtc: number },
+  now = new Date(),
+): Date {
+  const dayOfWeek = Math.min(6, Math.max(0, Math.trunc(schedule.dayOfWeek)));
+  const hourUtc = Math.min(23, Math.max(0, Math.trunc(schedule.hourUtc)));
+  const minuteUtc = Math.min(59, Math.max(0, Math.trunc(schedule.minuteUtc)));
+  const candidate = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hourUtc, minuteUtc, 0, 0),
+  );
+  let daysUntil = (dayOfWeek - now.getUTCDay() + 7) % 7;
+  if (daysUntil === 0 && candidate.getTime() <= now.getTime()) daysUntil = 7;
+  candidate.setUTCDate(candidate.getUTCDate() + daysUntil);
+  return candidate;
+}
+
+export type BudgetPeriodType = 'PER_RUN' | 'PER_TASK' | 'DAILY' | 'MONTHLY';
+export type BudgetSoftAction = 'ALLOW' | 'NOTIFY' | 'REQUIRE_APPROVAL';
+export type BudgetHardAction = 'BLOCK' | 'REQUIRE_APPROVAL';
+export type BudgetPolicy = {
+  id: string;
+  projectId?: string | null;
+  agentId?: string | null;
+  periodType: BudgetPeriodType;
+  softLimit: number;
+  hardLimit: number;
+  currency: string;
+  actionOnSoft: BudgetSoftAction;
+  actionOnHard: BudgetHardAction;
+  escalationThreshold: number;
+  allowProviderFallback: boolean;
+  enabled: boolean;
+};
+
+export type BudgetEvaluation = {
+  decision: BudgetDecision;
+  usageByPolicy: Record<string, number>;
+  matchedPolicyIds: string[];
+  softLimitExceeded: string[];
+  hardLimitExceeded: string[];
+  fallbackAllowed: boolean;
+};
+
+function policyMatches(
+  policy: Pick<BudgetPolicy, 'projectId' | 'agentId'>,
+  context: { projectId?: string; agentId?: string },
+): boolean {
+  return (
+    (policy.projectId == null || policy.projectId === context.projectId) &&
+    (policy.agentId == null || policy.agentId === context.agentId)
+  );
+}
+
+function periodStart(periodType: BudgetPeriodType, now: Date): number | null {
+  if (periodType === 'PER_RUN' || periodType === 'PER_TASK') return null;
+  if (periodType === 'DAILY')
+    return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+}
+
+function entryBelongsToPolicy(
+  entry: CostEntry,
+  policy: BudgetPolicy,
+  context: { projectId?: string; taskId?: string; agentId?: string; runId?: string },
+  now: Date,
+): boolean {
+  if (policy.projectId != null && entry.projectId !== policy.projectId) return false;
+  if (policy.agentId != null && entry.agentId !== policy.agentId) return false;
+  if (policy.periodType === 'PER_RUN' && entry.runId !== context.runId) return false;
+  if (policy.periodType === 'PER_TASK' && entry.taskId !== context.taskId) return false;
+  const start = periodStart(policy.periodType, now);
+  return start === null || Date.parse(entry.occurredAt) >= start;
+}
+
+export function evaluateBudgetPolicies(input: {
+  policies: BudgetPolicy[];
+  entries: CostEntry[];
+  estimatedCost: number;
+  context: { projectId?: string; taskId?: string; agentId?: string; runId?: string };
+  now?: Date;
+  approvalGranted?: boolean;
+}): BudgetEvaluation {
+  const now = input.now ?? new Date();
+  const usageByPolicy: Record<string, number> = {};
+  const matchedPolicyIds: string[] = [];
+  const softLimitExceeded: string[] = [];
+  const hardLimitExceeded: string[] = [];
+  let waitingForApproval = false;
+  let fallbackAllowed = false;
+
+  for (const policy of input.policies) {
+    if (!policy.enabled || !policyMatches(policy, input.context)) continue;
+    matchedPolicyIds.push(policy.id);
+    const usage = input.entries
+      .filter((entry) => entryBelongsToPolicy(entry, policy, input.context, now))
+      .reduce((total, entry) => total + entry.amount, 0);
+    const projected = usage + input.estimatedCost;
+    usageByPolicy[policy.id] = usage;
+    fallbackAllowed ||= policy.allowProviderFallback;
+    if (policy.hardLimit > 0 && projected > policy.hardLimit) {
+      hardLimitExceeded.push(policy.id);
+      if (policy.actionOnHard === 'REQUIRE_APPROVAL' && !input.approvalGranted)
+        waitingForApproval = true;
+      else if (policy.actionOnHard === 'BLOCK') waitingForApproval = false;
+    } else if (policy.softLimit > 0 && projected > policy.softLimit) {
+      softLimitExceeded.push(policy.id);
+      if (policy.actionOnSoft === 'REQUIRE_APPROVAL' && !input.approvalGranted)
+        waitingForApproval = true;
+    }
+  }
+
+  const hardBlocked = hardLimitExceeded.some((id) => {
+    const policy = input.policies.find((candidate) => candidate.id === id);
+    return policy?.actionOnHard === 'BLOCK';
+  });
+  return {
+    decision: hardBlocked ? 'HARD_STOP' : waitingForApproval ? 'WAITING_BUDGET_APPROVAL' : 'ALLOW',
+    usageByPolicy,
+    matchedPolicyIds,
+    softLimitExceeded,
+    hardLimitExceeded,
+    fallbackAllowed,
+  };
+}
+
+export type EscalationReason =
+  | 'FAILED_IMPLEMENTATION_ATTEMPTS'
+  | 'REPEATED_TEST_FAILURE'
+  | 'ARCHITECTURAL_REVIEW'
+  | 'CONFLICTING_PROPOSALS';
+
+export type EscalationDecision = {
+  escalate: boolean;
+  reasons: EscalationReason[];
+};
+
+export function evaluateEscalation(input: {
+  failedImplementationAttempts?: number;
+  repeatedTestFailures?: number;
+  reviewerRequiresArchitecture?: boolean;
+  conflictingProposals?: boolean;
+  threshold?: number;
+}): EscalationDecision {
+  const threshold = Math.max(2, input.threshold ?? 2);
+  const reasons: EscalationReason[] = [];
+  if ((input.failedImplementationAttempts ?? 0) >= threshold)
+    reasons.push('FAILED_IMPLEMENTATION_ATTEMPTS');
+  if ((input.repeatedTestFailures ?? 0) >= threshold) reasons.push('REPEATED_TEST_FAILURE');
+  if (input.reviewerRequiresArchitecture) reasons.push('ARCHITECTURAL_REVIEW');
+  if (input.conflictingProposals) reasons.push('CONFLICTING_PROPOSALS');
+  return { escalate: reasons.length > 0, reasons };
 }
 
 export type StaffingProposal = {
@@ -336,6 +498,24 @@ export function approveDesignVersion(
       : version.status === 'APPROVED'
         ? { ...version, status: 'SUPERSEDED' }
         : version,
+  );
+}
+
+export type DesignResolution = 'APPROVED' | 'REJECTED' | 'CHANGES';
+
+export function resolveDesignVersion(
+  versions: DesignRecord[],
+  id: string,
+  resolution: DesignResolution,
+  ownerUserId: string,
+): DesignRecord[] {
+  const target = versions.find((version) => version.id === id && version.status === 'SUBMITTED');
+  if (!target) throw new Error('Only a submitted design version can be resolved.');
+  if (resolution === 'APPROVED') return approveDesignVersion(versions, id, ownerUserId);
+  return versions.map((version) =>
+    version.id === id
+      ? { ...version, status: resolution === 'CHANGES' ? 'DRAFT' : 'REJECTED' }
+      : version,
   );
 }
 

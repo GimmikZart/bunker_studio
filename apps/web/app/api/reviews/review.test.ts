@@ -111,6 +111,7 @@ describe('verification and review routes', () => {
                 durationMs: 80,
               },
             ],
+            failedImplementationAttempts: 2,
           },
         }),
       }),
@@ -119,6 +120,10 @@ describe('verification and review routes', () => {
     const reviewPayload = await review.json();
     expect(reviewPayload.verificationRuns).toHaveLength(1);
     expect(reviewPayload.fixTasks).toHaveLength(1);
+    expect(reviewPayload.escalation).toMatchObject({
+      escalate: true,
+      reasons: ['FAILED_IMPLEMENTATION_ATTEMPTS'],
+    });
 
     const reviews = await GET(new Request('http://localhost', { headers }));
     expect((await reviews.json()).reviews).toHaveLength(1);

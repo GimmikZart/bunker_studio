@@ -40,6 +40,16 @@ export async function POST(request: Request) {
       (item) => item.id === input.projectId,
     );
     if (!project) return NextResponse.json({ error: 'Project not found.' }, { status: 404 });
+    if (input.approvedDesignVersionId) {
+      const design = (await operations.listDesignVersions(organizationId, actorId)).find(
+        (version) => version.id === input.approvedDesignVersionId && version.status === 'APPROVED',
+      );
+      if (!design)
+        return NextResponse.json(
+          { error: 'An approved design version is required for this task.' },
+          { status: 409 },
+        );
+    }
     const tasks = await operations.listTasks(organizationId, actorId);
     if (input.dependencies.some((dependency) => !tasks.some((task) => task.id === dependency)))
       return NextResponse.json({ error: 'Task dependency not found.' }, { status: 400 });

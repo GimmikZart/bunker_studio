@@ -1,5 +1,5 @@
 import { reviewSubmissionSchema } from '@bunker-studio/contracts';
-import { canWrite, reviewOutcome } from '@bunker-studio/core';
+import { canWrite, evaluateEscalation, reviewOutcome } from '@bunker-studio/core';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../_auth';
 import {
@@ -97,6 +97,25 @@ export async function POST(request: Request) {
       },
       actorId,
     );
+    const escalation = evaluateEscalation({
+      failedImplementationAttempts: input.report.failedImplementationAttempts,
+      repeatedTestFailures: input.report.repeatedTestFailures,
+      reviewerRequiresArchitecture: input.report.architecturalReviewRequired,
+      conflictingProposals: input.report.conflictingProposals,
+    });
+    if (escalation.escalate) {
+      await operations.recordActivity({
+        organizationId,
+        eventType: 'TASK_ESCALATION_REQUESTED',
+        aggregateType: 'review',
+        aggregateId: review.id,
+        payload: {
+          actorUserId: actorId,
+          reasons: escalation.reasons,
+          taskId: input.taskId ?? null,
+        },
+      });
+    }
     const fixTasks =
       status === 'FIX_REQUIRED'
         ? await Promise.all(
@@ -120,7 +139,7 @@ export async function POST(request: Request) {
               ),
           )
         : [];
-    return NextResponse.json({ review, verificationRuns, fixTasks }, { status: 201 });
+    return NextResponse.json({ review, verificationRuns, fixTasks, escalation }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.name === 'AuthorizationError')
       return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
