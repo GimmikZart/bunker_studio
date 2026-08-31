@@ -1,5 +1,10 @@
 # Development Worklog
 
+## 2026-08-31 — Smoke performance pagine core
+
+- Aggiunto `tests/e2e/performance-smoke.spec.ts`: warm-up e cinque richieste per ciascuna pagina core, con calcolo p95 e target server-side `< 800 ms` definito dalla specifica, senza chiamate provider.
+- Smoke Playwright mirato: `1 passed`; il p95 misurato resta sotto il target. La suite completa successiva ha chiuso con `11 passed (3.1m)`.
+
 ## 2026-08-31 — Dataset demo Supabase locale
 
 - Sostituito il seed vuoto con un dataset deterministico e idempotente per `supabase db reset`: utente Auth tecnico senza password, organizzazione, team, progetto, tre agenti con binding fake, workflow Lead con dipendenza, memoria e decisione.
