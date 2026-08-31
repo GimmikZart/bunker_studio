@@ -1,5 +1,11 @@
 # Development Worklog
 
+## 2026-08-31 — Dataset demo Supabase locale
+
+- Sostituito il seed vuoto con un dataset deterministico e idempotente per `supabase db reset`: utente Auth tecnico senza password, organizzazione, team, progetto, tre agenti con binding fake, workflow Lead con dipendenza, memoria e decisione.
+- Il seed non contiene credential o secret provider; la documentazione indica l'uso dell'header fixture solo in sviluppo e mantiene il signup Auth per i flussi reali.
+- `supabase db reset --local`: PASS; conteggi verificati (1 utente, 1 organizzazione, 3 agenti, 2 task, 1 memoria). `supabase db lint --local`: PASS.
+
 ## 2026-08-31 — Outbox transazionale per task accodati
 
 - Aggiunta migration `00000000000017_task_outbox_trigger.sql`: ogni transizione Supabase verso `QUEUED` crea nello stesso commit un evento `task.run` con task/organization/project/retry metadata.

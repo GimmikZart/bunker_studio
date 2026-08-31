@@ -37,3 +37,17 @@ supabase db reset
 ```
 
 Le variabili applicative sono documentate in `.env.example`. I secret reali non devono essere committati.
+
+`supabase db reset` carica anche un dataset demo deterministico in `supabase/seed.sql`:
+
+- organizzazione `bunker-demo`;
+- team Core Product e Quality & Security;
+- progetto Bunker Demo App;
+- tre agenti con binding al runtime fake locale;
+- workflow Lead con due task e una dipendenza;
+- memoria e decisione di esempio.
+
+Il seed crea l'utente Auth tecnico `demo@bunker.local` senza password e non inserisce
+credential o secret provider. Per provare i dati con la web app in sviluppo usare
+l'identificativo `00000000-0000-0000-0000-000000000001` nell'header fixture
+`x-bunker-user-id`; per un flusso Auth reale creare invece un utente tramite signup.

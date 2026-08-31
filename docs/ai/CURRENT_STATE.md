@@ -18,7 +18,7 @@ Bootstrap, fondazioni domain e vertical slices principali sono implementati; il 
 - M2 capability envelope: avatar statici, skills/tools/permissions persistiti e trasferiti al runtime senza esporre segreti; migrazione compatibile per i record agent esistenti.
 - UI/API: login/signup/onboarding, PWA manifest/service worker, CRUD tenancy (including reversible project/team archive), agent registry create/edit/archive, design/staffing/memory/worker, meetings/minutes, approvals, cost ledger/report, notification inbox/subscription/preferences, repository metadata, task verification, review report, Lead workflow-plan endpoint con DAG persistito e virgin template export endpoints.
 - Persistenza production: repository Supabase SSR/RLS-aware per tenancy, agenti/provider binding, design gate, memorie, meetings/minutes, approval, cost ledger, notifiche/push, repository metadata e worker registry; lo store globale resta una fixture esclusivamente non-production.
-- Hardening release: singleton runtime per route bundle in sviluppo, budget cumulativo sui batch concorrenti, trigger Supabase per profilo e membership Owner, Docker context workspace e runbook quality/production.
+- Hardening release: singleton runtime per route bundle in sviluppo, budget cumulativo sui batch concorrenti, trigger Supabase per profilo e membership Owner, Docker context workspace, runbook quality/production e dataset demo Supabase locale idempotente.
 
 ## Lavoro in corso
 
@@ -38,6 +38,7 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 - Smoke SQL local worker: PASS; claim con capability/scope/dependency, capacity gate, completion e reassignment su lease scaduta sono stati verificati su PostgreSQL Supabase locale con rollback finale.
 - Smoke SQL outbox: PASS; la transizione `QUEUED` crea un evento `task.run`, gli update non di stato non duplicano eventi e un nuovo passaggio `RUNNING → QUEUED` crea il retry event, con rollback finale.
 - Smoke pg-boss v12 su PostgreSQL Supabase locale (queue init, send/fetch batch, complete): PASS; `pnpm quality:pg-boss-restart` verifica anche il recupero dello stesso job con due processi dopo timeout: PASS. Il restart sul database multi-processo quality resta da eseguire.
+- Seed Supabase locale: PASS; `supabase db reset --local` carica il dataset demo (1 utente, 1 organizzazione, 3 agenti, 2 task, 1 memoria) senza credential o secret provider.
 
 ## Problemi aperti
 
