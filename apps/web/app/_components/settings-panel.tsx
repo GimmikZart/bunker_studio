@@ -40,11 +40,24 @@ function formatHeartbeat(timestamp: number) {
   return timestamp ? new Date(timestamp).toLocaleString() : 'Not reported';
 }
 
+function decodeVapidKey(value: string): ArrayBuffer {
+  const normalized = `${value}${'='.repeat((4 - (value.length % 4)) % 4)}`
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  const binary = window.atob(normalized);
+  const bytes = new Uint8Array(binary.length);
+  binary.split('').forEach((character, index) => {
+    bytes[index] = character.charCodeAt(0);
+  });
+  return bytes.buffer;
+}
+
 export function SettingsPanel() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationId, setOrganizationId] = useState('');
   const [settings, setSettings] = useState<SettingsPayload | null>(null);
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
+  const [vapidPublicKey, setVapidPublicKey] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -53,13 +66,15 @@ export function SettingsPanel() {
     setError('');
     setNotice('');
     const headers = apiHeaders(nextOrganizationId);
-    const [response, preferencesResponse] = await Promise.all([
+    const [response, preferencesResponse, pushResponse] = await Promise.all([
       fetch('/api/settings', { headers }),
       fetch('/api/notifications/preferences', { headers }),
+      fetch('/api/notifications/subscribe', { headers }),
     ]);
-    if (!response.ok || !preferencesResponse.ok) {
+    if (!response.ok || !preferencesResponse.ok || !pushResponse.ok) {
       setSettings(null);
       setPreferences(null);
+      setVapidPublicKey(null);
       setError('Could not load settings for this organization.');
       return;
     }
@@ -67,6 +82,9 @@ export function SettingsPanel() {
     setPreferences(
       ((await preferencesResponse.json()) as { preferences?: NotificationPreferences })
         .preferences ?? null,
+    );
+    setVapidPublicKey(
+      ((await pushResponse.json()) as { publicKey?: string | null }).publicKey ?? null,
     );
   }
 
@@ -108,6 +126,38 @@ export function SettingsPanel() {
     }
     setPreferences(next);
     setNotice('Notification preferences saved.');
+  }
+
+  async function enablePushNotifications() {
+    setError('');
+    setNotice('');
+    if (!vapidPublicKey || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setError('Push notifications are not configured or supported in this browser.');
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setError('Browser notification permission was not granted.');
+        return;
+      }
+      const registration = await navigator.serviceWorker.ready;
+      const subscription =
+        (await registration.pushManager.getSubscription()) ??
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: decodeVapidKey(vapidPublicKey),
+        }));
+      const response = await fetch('/api/notifications/subscribe', {
+        method: 'POST',
+        headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
+        body: JSON.stringify(subscription.toJSON()),
+      });
+      if (!response.ok) throw new Error('subscription');
+      setNotice('Push notifications enabled for this browser.');
+    } catch {
+      setError('Push notifications could not be enabled.');
+    }
   }
 
   return (
@@ -215,6 +265,16 @@ export function SettingsPanel() {
                       </label>
                     ),
                   )}
+                </div>
+                <div className="action-row">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => void enablePushNotifications()}
+                    disabled={!vapidPublicKey}
+                  >
+                    {vapidPublicKey ? 'Enable browser push' : 'Push not configured'}
+                  </button>
                 </div>
               </div>
             </div>

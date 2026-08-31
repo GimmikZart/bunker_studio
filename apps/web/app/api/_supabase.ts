@@ -1,4 +1,4 @@
-import { createStudioSupabaseClient } from '@bunker-studio/db';
+import { createStudioServiceClient, createStudioSupabaseClient } from '@bunker-studio/db';
 import { cookies } from 'next/headers';
 
 export async function createRequestSupabaseClient() {
@@ -14,4 +14,11 @@ export async function createRequestSupabaseClient() {
     },
     { url, anonKey },
   );
+}
+
+export function createWorkerServiceSupabaseClient() {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return null;
+  return createStudioServiceClient({ url, serviceRoleKey });
 }

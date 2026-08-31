@@ -1,5 +1,42 @@
 # Development Worklog
 
+## 2026-08-31 — GitHub/CI e Web Push VAPID adapter
+
+- Aggiunto `@bunker-studio/git` adapter HTTP GitHub con branch creation, check-run CI normalizzati (`PASS`/`FAIL`/`PENDING`) e apertura di pull request; il token è iniettato solo negli header e non compare negli errori.
+- Aggiunti test contract con trasporto `fetch` fake per branch, CI pending, pull request e sanitizzazione degli errori.
+- Aggiunto `@bunker-studio/notifications` adapter server-only basato su `web-push` con VAPID runtime config, TTL/urgency deterministici e test senza rete.
+- Aggiunto endpoint controllato per la VAPID public key e flusso Settings browser → service worker → `/api/notifications/subscribe`.
+- Aggiunte variabili opzionali di configurazione per GitHub e Web Push; nessuna chiave è stata inserita nel repository.
+- Verifiche mirate: Git 7 test/typecheck, Notifications 3 test/typecheck, Config test/typecheck, Web typecheck/build PASS.
+
+Prossimo passo: eseguire gli scenari quality esterni `PARTIAL` con credenziali, device e runtime dedicati.
+
+## 2026-08-31 — Protocollo credenziale local worker
+
+- Aggiunta migrazione `00000000000014_worker_registration.sql` con token monouso, scadenza, scope/concurrency, RPC `exchange_worker_registration_token` e RPC `heartbeat_local_worker`.
+- Aggiunti endpoint amministrativo per emettere il token e endpoint runtime separati per exchange e heartbeat con `Bearer` credential; il database conserva solo hash SHA-256 della credenziale.
+- Aggiunti contratti Zod e test di validazione; il reset Supabase locale applica la migrazione senza errori.
+- Smoke SQL locale: exchange token restituisce la credenziale una sola volta e heartbeat autenticato mantiene il nodo `ONLINE`; dati di prova rollbackati.
+
+Prossimo passo: eseguire in quality il flusso AC-013 con un runtime Ollama/LM Studio e verificare assignment/offline reassignment.
+
+## 2026-08-31 — Verifica sicurezza dopo le integrazioni
+
+- `pnpm verify`: PASS completo sul tree corrente; installazione frozen, format, lint, typecheck, 24 task test, build e audit.
+- `pnpm test:e2e`: 10/10 PASS in circa 3 minuti.
+- Gitleaks Docker: PASS, 39 commit scansionati, nessun leak trovato.
+- Semgrep Docker con ruleset JavaScript esplicito: nessun risultato terminale utile entro la finestra quality; resta `inconclusive`, non viene conteggiato come PASS.
+
+Prossimo passo: eseguire gli scenari quality esterni `PARTIAL` con credenziali, device e runtime dedicati.
+
+## 2026-08-31 — Daemon control-plane local worker
+
+- Aggiunto `apps/worker/src/runtime-client.ts` con register tramite token monouso e heartbeat autenticato via `Bearer` credential.
+- L’entrypoint worker usa il control plane quando configurato (`WORKER_CONTROL_PLANE_URL`, token oppure `WORKER_NODE_ID` + `WORKER_CREDENTIAL`) e conserva il comportamento heartbeat locale quando non configurato.
+- Aggiunti test client e variabili Zod; Worker 7 test, typecheck e build PASS.
+
+Prossimo passo: eseguire in quality il flusso AC-013 con un runtime Ollama/LM Studio e verificare assignment/offline reassignment.
+
 Storico append-only.
 
 ## 2026-08-31 — Persistenza completa dei metadati Lead e usage SSE

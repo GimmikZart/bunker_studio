@@ -202,6 +202,14 @@ export const workerRegistrationSchema = z.object({
   maxConcurrent: z.number().int().positive().max(32).optional(),
 });
 export const workerHeartbeatSchema = z.object({ nodeId: z.string().uuid() });
+export const workerRegistrationTokenCreateSchema = z.object({
+  allowedScopes: z.array(z.string().trim().min(1)).max(100).default([]),
+  maxConcurrent: z.number().int().positive().max(32).default(1),
+  expiresInMinutes: z.number().int().min(5).max(1_440).default(60),
+});
+export const workerRuntimeRegistrationSchema = workerRegistrationSchema.extend({
+  registrationToken: z.string().trim().min(32).max(256),
+});
 
 export const memoryCreateSchema = z.object({
   content: z.string().min(1).max(20_000),

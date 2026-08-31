@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dedupeKey, deliverPush, shouldPush } from './index';
+import { createVapidPushClient, dedupeKey, deliverPush, shouldPush } from './index';
 
 describe('notification policy', () => {
   it('pushes only critical categories and deduplicates by deep link', () => {
@@ -40,5 +40,40 @@ describe('notification policy', () => {
     );
     expect(sent).toBe(true);
     expect(JSON.parse(payload).data.deepLink).toBe('/approvals/1');
+  });
+
+  it('passes subscriptions and runtime VAPID configuration to the Web Push adapter', async () => {
+    let received: { subscription: unknown; payload: string; options: unknown } | undefined;
+    const client = createVapidPushClient(
+      {
+        subject: 'mailto:security@example.test',
+        publicKey: 'public-key',
+        privateKey: 'private-key',
+      },
+      async (subscription, body, options) => {
+        received = { subscription, payload: String(body), options };
+        return { statusCode: 201, body: '', headers: {} };
+      },
+    );
+    await client.send(
+      { endpoint: 'https://push.example', p256dh: 'key', auth: 'auth' },
+      '{"ok":true}',
+    );
+    expect(received).toMatchObject({
+      subscription: {
+        endpoint: 'https://push.example',
+        keys: { p256dh: 'key', auth: 'auth' },
+      },
+      payload: '{"ok":true}',
+      options: {
+        TTL: 60,
+        urgency: 'high',
+        vapidDetails: {
+          subject: 'mailto:security@example.test',
+          publicKey: 'public-key',
+          privateKey: 'private-key',
+        },
+      },
+    });
   });
 });

@@ -4,6 +4,8 @@ import {
   leadPlanSchema,
   reviewReportSchema,
   verificationRunSchema,
+  workerRegistrationTokenCreateSchema,
+  workerRuntimeRegistrationSchema,
 } from './index';
 
 describe('contracts', () => {
@@ -57,5 +59,22 @@ describe('contracts', () => {
         durationMs: 1,
       }).success,
     ).toBe(false);
+  });
+
+  it('keeps local worker registration credentials out of the persisted node contract', () => {
+    expect(
+      workerRegistrationTokenCreateSchema.parse({
+        allowedScopes: ['apps/web'],
+        maxConcurrent: 2,
+        expiresInMinutes: 30,
+      }),
+    ).toMatchObject({ maxConcurrent: 2 });
+    expect(
+      workerRuntimeRegistrationSchema.parse({
+        name: 'Ollama node',
+        capabilities: ['ollama', 'chat'],
+        registrationToken: 'a'.repeat(64),
+      }).registrationToken,
+    ).toHaveLength(64);
   });
 });

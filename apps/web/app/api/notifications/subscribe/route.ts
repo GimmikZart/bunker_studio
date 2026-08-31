@@ -3,6 +3,14 @@ import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../_auth';
 import { getWebOperationalRepository } from '../../_data';
 
+export async function GET(request: Request) {
+  const actorId = await resolveActorId(request);
+  if (!actorId) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+  return NextResponse.json({
+    publicKey: process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY ?? null,
+  });
+}
+
 export async function POST(request: Request) {
   const actorId = await resolveActorId(request);
   if (!actorId) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
