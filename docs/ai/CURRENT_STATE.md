@@ -53,3 +53,20 @@ Eseguire in un ambiente quality isolato i quattro scenari ancora `PARTIAL` e blo
 ## Ultimo aggiornamento
 
 2026-08-31
+
+## Checkpoint 2026-08-31 — Percorso online Supabase/OpenAI/Vercel
+
+La guida quality ora contiene un percorso unico per utenti non tecnici:
+Supabase cloud, migrazioni, OpenAI API, deploy web gratuito su Vercel,
+variabili ambiente, URL pubblico e smoke test online. Il runtime locale
+Ollama/LM Studio resta opzionale e non bloccante.
+
+In produzione `/api/settings` espone il runtime OpenAI/Anthropic configurato
+tramite variabili server come provider selezionabile, senza restituire chiavi.
+La funzione e' isolata in `apps/web/app/api/settings/runtime-provider.ts` con
+test dedicati.
+
+Verifiche del checkpoint: format:check PASS, lint 15/15 PASS, typecheck 15/15
+PASS, test 25 task / 37 test web PASS, build 15/15 PASS, audit high PASS.
+Restano da eseguire dall'utente le verifiche cloud/device e il worker sempre
+attivo richiesti dalla Definition of Done; il modello locale non e' richiesto.

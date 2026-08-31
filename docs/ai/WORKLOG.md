@@ -1,5 +1,28 @@
 # Development Worklog
 
+## 2026-08-31 — Guida online e provider runtime configurato
+
+### Lavoro svolto
+
+- Consolidata `docs/quality/QUALITY_SETUP_GUIDE.md` in un percorso unico e semplice per Supabase cloud, OpenAI API, Vercel e verifica online.
+- Documentati i punti esatti della dashboard in cui trovare URL, Reference ID, chiavi Supabase e connection string, senza chiedere all'utente di condividere segreti.
+- Chiarito che `.env.prod` non viene caricato automaticamente, che `localhost` va sostituito dopo il primo deploy Vercel e che il worker persistente richiede un servizio separato.
+- Aggiunto il provider runtime configurato a `/api/settings` in produzione quando non esiste ancora un provider persistito READY, mantenendo le chiavi server-only.
+- Aggiunti test per configurazione, modello obbligatorio e assenza di leakage della chiave.
+
+### Verifiche
+
+- `pnpm format:check`: PASS.
+- `pnpm lint`: PASS, 15 package task.
+- `pnpm typecheck`: PASS, 15 package task.
+- `pnpm test`: PASS, 25 task; web 20 file / 37 test.
+- `pnpm build`: PASS, 15 package task.
+- `pnpm audit --audit-level high`: PASS, nessuna vulnerabilita' nota.
+
+### Stato finale
+
+Checkpoint locale stabile. Prossimo passo unico: seguire la sezione A della guida e creare il progetto Supabase cloud; poi proseguire con OpenAI, Vercel e smoke test. Non segnare la Definition of Done come completata prima delle verifiche quality esterne e del backup/restore.
+
 ## 2026-08-31 — UI audit e runtime locale non bloccante
 
 - Corretto l'audit Playwright funzionale: attende la hydration client di Next, coordina click e navigazione con `Promise.all` e usa il selettore accessibile del menu mobile. Tutti i 13 checkpoint UI-001--UI-008 passano: CTA, onboarding, progetto, agente da template/provider, task DRAFT->READY, design gate, Settings/provider, navigazione, hard refresh e responsive.

@@ -1,6 +1,34 @@
 import { describe, expect, it } from 'vitest';
 import { POST as createOrganization } from '../organizations/route';
 import { GET } from './route';
+import { configuredRuntimeProvider } from './runtime-provider';
+
+describe('configuredRuntimeProvider', () => {
+  it('describes the configured runtime without exposing its API key', () => {
+    const provider = configuredRuntimeProvider({
+      AGENT_PROVIDER_TYPE: 'openai',
+      AGENT_PROVIDER_ENDPOINT: 'https://api.openai.com/v1/chat/completions',
+      AGENT_PROVIDER_MODEL: 'test-model',
+    });
+
+    expect(provider).toMatchObject({
+      providerType: 'OPENAI',
+      displayName: 'OpenAI runtime',
+      status: 'READY',
+      models: ['test-model'],
+    });
+    expect(JSON.stringify(provider)).not.toContain('API_KEY');
+  });
+
+  it('stays hidden until endpoint and model are both configured', () => {
+    expect(
+      configuredRuntimeProvider({
+        AGENT_PROVIDER_TYPE: 'openai',
+        AGENT_PROVIDER_ENDPOINT: 'https://api.openai.com/v1/chat/completions',
+      }),
+    ).toBeNull();
+  });
+});
 
 describe('GET /api/settings', () => {
   it('returns provider and worker settings without secrets', async () => {

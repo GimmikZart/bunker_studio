@@ -6,7 +6,7 @@ L’audit funzionale Playwright UI-001–UI-008 passa tutti i 13 checkpoint: CTA
 
 ## Prossima attività precisa
 
-Eseguire AC-001 in quality con una sessione Supabase cloud da un secondo dispositivo e registrare evidenza di recupero dopo la perdita del PC principale. Seguire la guida per principianti in [`docs/quality/QUALITY_SETUP_GUIDE.md`](../quality/QUALITY_SETUP_GUIDE.md).
+Completare il percorso A-D nella guida per principianti in [`docs/quality/QUALITY_SETUP_GUIDE.md`](../quality/QUALITY_SETUP_GUIDE.md): creare Supabase cloud, applicare le migrazioni, configurare OpenAI e pubblicare il web su Vercel. Poi eseguire AC-001 in quality con un secondo dispositivo e registrare l'evidenza di recupero dopo la perdita del PC principale.
 
 Il codice locale, incluso il piano Lead persistito in `POST /api/workflows/plan`, è verificato; dopo AC-001 procedere con AC-006, AC-009 e AC-011. Non cambiare `CURRENT_STATE.md` a `IMPLEMENTAZIONE COMPLETATA` finché queste quattro verifiche esterne e il backup/restore drill non sono concluse. AC-013 local worker è esplicitamente non bloccante: resta pronto per una futura macchina con hardware adeguato.
 
