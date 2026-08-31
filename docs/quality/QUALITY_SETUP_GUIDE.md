@@ -129,7 +129,7 @@ L'hosting gratuito e' pensato per uso personale e include HTTPS automatico.
 5. Aggiungi queste variabili almeno per l'ambiente **Production** (puoi
    selezionare anche Preview per avere anteprime funzionanti):
 
-   - `NODE_ENV` = `production` (Vercel lo imposta normalmente da solo);
+   - `NODE_ENV`: non aggiungerla manualmente; Vercel la imposta a `production`;
    - `SUPABASE_URL` = Project URL di Supabase;
    - `SUPABASE_ANON_KEY` = chiave anon legacy;
    - `SUPABASE_SERVICE_ROLE_KEY` = chiave service_role legacy;
