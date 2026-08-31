@@ -23,7 +23,7 @@ Bootstrap, fondazioni domain e vertical slices principali sono implementati; il 
 
 ## Lavoro in corso
 
-Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC loss cloud, restart multi-process pg-boss, GitHub/CI protetto, VAPID/device e runtime Ollama/LM Studio) e registrare gli esiti nella matrice.
+Eseguire in un ambiente quality isolato i quattro scenari ancora `PARTIAL` e bloccanti (PC loss cloud, restart multi-process pg-boss, GitHub/CI protetto e VAPID/device) e registrare gli esiti nella matrice. Il runtime locale Ollama/LM Studio resta implementato come capacita futura opzionale: la sua verifica e' rinviata a quando sara' disponibile un computer adeguato e non blocca la release iniziale.
 
 ## Verifiche
 
@@ -33,6 +33,7 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 - `pnpm test`: PASS, 25 task Turborepo.
 - `pnpm build`: PASS, 15 package task; Next genera 54 route/pagine, inclusi archivio conversazioni e API di ricerca bounded.
 - `pnpm test:e2e`: PASS, 11 test (health, onboarding, login/signup, PWA, tenancy/isolation, design/staffing/memory, worker, operations/review/portability, virgin template, smoke responsive/accessibility e performance); p95 pagine core sotto 800 ms.
+- `pnpm exec node scripts/ui-functional-audit.mjs`: PASS, 13 checkpoint UI-001--UI-008 su CTA, onboarding, progetto, agente da template/provider, task DRAFT->READY, design gate, Settings/provider, navigazione desktop/mobile, hard refresh e responsive.
 - `pnpm audit --audit-level high`: PASS, nessuna vulnerabilità nota.
 - `supabase db reset --local`: PASS; migrations `00000000000000..00000000000019` applicate, inclusi RLS assignments, trigger domain events, metadati workflow plan, worker registration RPC, stato delivery push, task claim/lease locali, outbox transazionale per task `QUEUED`, budget/report schedules e storico report settimanali.
 - Test mirati post-hardening: Lead workflow plan 2/2, AgentRuntime 6/6, Anthropic adapter 2/2, Git 7/7, Notifications 4/4, Worker 12/12 (incluso dispatcher report), Web routes 35/35 (inclusi archivio conversazioni, budget/design/task gates e chat budget/ledger), DB worker scheduler 3/3, typecheck 15/15: PASS.
@@ -43,7 +44,7 @@ Eseguire in un ambiente quality isolato i cinque scenari ancora `PARTIAL` (PC lo
 
 ## Problemi aperti
 
-- Provider reali, Supabase cloud, GitHub, VAPID/Web Push e pg-boss multi-process quality richiedono configurazione/credenziali; gli adapter GitHub, Web Push VAPID, il protocollo token/heartbeat/task pull worker e pg-boss concreto, fake e contract test sono disponibili.
+- Provider reali, Supabase cloud, GitHub, VAPID/Web Push e pg-boss multi-process quality richiedono configurazione/credenziali; gli adapter GitHub, Web Push VAPID, il protocollo token/heartbeat/task pull worker e pg-boss concreto, fake e contract test sono disponibili. Il runtime locale non e' un blocker: adapter, scheduler, control plane, fake e contract test sono pronti e la prova Ollama/LM Studio verra' eseguita solo quando sara' disponibile hardware idoneo.
 - La chat production seleziona un runtime HTTP configurato, usa il binding come modello di fallback e salva conversazioni/messaggi tenant-scoped; il fake runtime resta ammesso solo per fixture locali.
 - Office, Agent registry, Meetings, Approvals, Cost Center e Activity hanno pannelli client live con organization selector e stati/errori espliciti; Projects e Teams espongono create/edit/archive tenant-scoped, mentre Settings mostra runtime, provider senza segreti, worker/heartbeat, preferenze notifiche, budget policy e report settimanale configurabile.
 - Mancano ancora le verifiche quality esterne dei criteri `PARTIAL` e il drill backup/restore su un progetto quality; la UI task/workflow supporta create, transizioni controllate, gate budget con notifica e persistenza del piano Lead, mentre l’endpoint di esecuzione resta soggetto ai gate esistenti.

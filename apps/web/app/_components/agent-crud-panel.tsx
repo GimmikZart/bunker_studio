@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { apiHeaders } from './live-panel';
@@ -16,6 +17,8 @@ type Agent = {
   permissions: string[];
   providerBindingId: string;
 };
+type Provider = { id: string; displayName: string; status: string; models: string[] };
+type TemplateKey = 'lead' | 'frontend' | 'backend' | 'reviewer' | 'designer' | 'hr' | 'custom';
 
 const AVATARS = [
   { id: '', label: 'Default' },
@@ -23,8 +26,56 @@ const AVATARS = [
   { id: '00000000-0000-0000-0000-000000000002', label: 'Cobalt' },
   { id: '00000000-0000-0000-0000-000000000003', label: 'Mint' },
 ];
+const TEMPLATES: Record<
+  TemplateKey,
+  { label: string; title: string; skills: string[]; tools: string[]; permissions: string[] }
+> = {
+  lead: {
+    label: 'Lead',
+    title: 'Lead Architect / Orchestrator',
+    skills: ['planning', 'architecture', 'coordination'],
+    tools: ['project.read', 'task.plan'],
+    permissions: ['task.plan', 'task.assign'],
+  },
+  frontend: {
+    label: 'Frontend',
+    title: 'Frontend Engineer',
+    skills: ['frontend', 'accessibility', 'testing'],
+    tools: ['repository.workspace', 'ci.read'],
+    permissions: ['repo.read', 'artifact.write'],
+  },
+  backend: {
+    label: 'Backend',
+    title: 'Backend Engineer',
+    skills: ['backend', 'api-design', 'testing'],
+    tools: ['repository.workspace', 'ci.read'],
+    permissions: ['repo.read', 'artifact.write'],
+  },
+  reviewer: {
+    label: 'Reviewer / QA',
+    title: 'Reviewer / QA / Security',
+    skills: ['review', 'security', 'quality-assurance'],
+    tools: ['repository.read', 'ci.read'],
+    permissions: ['repo.read'],
+  },
+  designer: {
+    label: 'Designer',
+    title: 'Product Designer',
+    skills: ['product-design', 'ux', 'design-system'],
+    tools: ['design.read', 'artifact.write'],
+    permissions: ['design.write', 'artifact.write'],
+  },
+  hr: {
+    label: 'HR',
+    title: 'HR / Staffing',
+    skills: ['staffing', 'cost-analysis', 'team-design'],
+    tools: ['agent.read', 'project.read'],
+    permissions: ['agent.recommend'],
+  },
+  custom: { label: 'Custom', title: '', skills: [], tools: [], permissions: [] },
+};
 
-function splitCapabilities(value: string): string[] {
+function split(value: string) {
   return [
     ...new Set(
       value
@@ -39,66 +90,85 @@ export function AgentCrudPanel() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationId, setOrganizationId] = useState('');
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
   const [editingId, setEditingId] = useState('');
+  const [templateKey, setTemplateKey] = useState<TemplateKey>('frontend');
   const [name, setName] = useState('');
-  const [roleKey, setRoleKey] = useState('');
-  const [title, setTitle] = useState('');
+  const [roleKey, setRoleKey] = useState('frontend');
+  const [title, setTitle] = useState(TEMPLATES.frontend.title);
   const [avatarAssetId, setAvatarAssetId] = useState('');
-  const [skills, setSkills] = useState('');
-  const [tools, setTools] = useState('');
-  const [permissions, setPermissions] = useState('');
+  const [skills, setSkills] = useState(TEMPLATES.frontend.skills.join(', '));
+  const [tools, setTools] = useState(TEMPLATES.frontend.tools.join(', '));
+  const [permissions, setPermissions] = useState(TEMPLATES.frontend.permissions.join(', '));
   const [providerBindingId, setProviderBindingId] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  async function load(nextOrganizationId: string) {
-    if (!nextOrganizationId) return;
-    const response = await fetch('/api/agents', { headers: apiHeaders(nextOrganizationId) });
-    if (!response.ok) {
-      setError('Could not load agents for this organization.');
+  async function load(id: string) {
+    if (!id) return;
+    const [agentsResponse, settingsResponse] = await Promise.all([
+      fetch('/api/agents', { headers: apiHeaders(id) }),
+      fetch('/api/settings', { headers: apiHeaders(id) }),
+    ]);
+    if (!agentsResponse.ok || !settingsResponse.ok) {
+      setError(
+        'We could not load this organization’s agents. Select the organization again or retry.',
+      );
       return;
     }
-    const payload = (await response.json()) as { agents?: Agent[] };
-    setAgents(payload.agents ?? []);
+    setAgents(((await agentsResponse.json()) as { agents?: Agent[] }).agents ?? []);
+    setProviders(
+      (((await settingsResponse.json()) as { providers?: Provider[] }).providers ?? []).filter(
+        (provider) => provider.status === 'READY',
+      ),
+    );
   }
-
   useEffect(() => {
     void fetch('/api/organizations', { headers: apiHeaders() })
       .then(async (response) => {
-        if (!response.ok) throw new Error('organization');
-        const payload = (await response.json()) as { organizations?: Organization[] };
-        const next = payload.organizations ?? [];
+        if (!response.ok) throw new Error();
+        const next =
+          ((await response.json()) as { organizations?: Organization[] }).organizations ?? [];
         setOrganizations(next);
         const saved = window.localStorage.getItem('bunker-organization-id');
         const selected = next.some((item) => item.id === saved) ? saved! : (next[0]?.id ?? '');
         setOrganizationId(selected);
         await load(selected);
       })
-      .catch(() => setError('Create or select an organization to manage agents.'));
+      .catch(() => setError('You need an organization before you can manage agents.'));
   }, []);
 
-  function resetForm() {
+  function applyTemplate(key: TemplateKey) {
+    const template = TEMPLATES[key];
+    setTemplateKey(key);
+    setRoleKey(key);
+    setTitle(template.title);
+    setSkills(template.skills.join(', '));
+    setTools(template.tools.join(', '));
+    setPermissions(template.permissions.join(', '));
+  }
+  function reset() {
     setEditingId('');
     setName('');
-    setRoleKey('');
-    setTitle('');
     setAvatarAssetId('');
-    setSkills('');
-    setTools('');
-    setPermissions('');
     setProviderBindingId('');
+    setShowAdvanced(false);
+    applyTemplate('frontend');
   }
-
-  function selectOrganization(value: string) {
-    setOrganizationId(value);
-    window.localStorage.setItem('bunker-organization-id', value);
-    resetForm();
-    void load(value);
+  function selectOrganization(id: string) {
+    setOrganizationId(id);
+    window.localStorage.setItem('bunker-organization-id', id);
+    reset();
+    void load(id);
   }
-
   function startEdit(agent: Agent) {
     setEditingId(agent.id);
     setName(agent.name);
+    const key = Object.keys(TEMPLATES).includes(agent.roleKey)
+      ? (agent.roleKey as TemplateKey)
+      : 'custom';
+    setTemplateKey(key);
     setRoleKey(agent.roleKey);
     setTitle(agent.title);
     setAvatarAssetId(agent.avatarAssetId ?? '');
@@ -106,14 +176,19 @@ export function AgentCrudPanel() {
     setTools(agent.tools.join(', '));
     setPermissions(agent.permissions.join(', '));
     setProviderBindingId(agent.providerBindingId);
+    setShowAdvanced(true);
     setNotice('');
   }
-
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!organizationId) return;
     setError('');
     setNotice('');
+    if (!organizationId || !name.trim() || !title.trim() || !providerBindingId) {
+      setError(
+        'Enter a name and choose a provider model. The template supplies the remaining safe defaults.',
+      );
+      return;
+    }
     const response = await fetch(editingId ? `/api/agents/${editingId}` : '/api/agents', {
       method: editingId ? 'PATCH' : 'POST',
       headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
@@ -122,36 +197,48 @@ export function AgentCrudPanel() {
         roleKey,
         title,
         avatarAssetId: avatarAssetId || null,
-        skills: splitCapabilities(skills),
-        tools: splitCapabilities(tools),
-        permissions: splitCapabilities(permissions),
+        skills: split(skills),
+        tools: split(tools),
+        permissions: split(permissions),
         providerBindingId,
         personality: {},
       }),
     });
     if (!response.ok) {
-      setError('The agent could not be saved.');
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      setError(
+        payload.error ??
+          'The agent could not be saved. Check the highlighted choices and try again.',
+      );
       return;
     }
     await load(organizationId);
-    setNotice(editingId ? 'Agent updated.' : 'Agent created.');
-    resetForm();
+    setNotice(
+      editingId
+        ? 'Agent updated. Its identity and history are unchanged.'
+        : 'Agent created and ready to be assigned to work.',
+    );
+    reset();
   }
-
   async function archive(agent: Agent) {
     if (!window.confirm(`Archive ${agent.name}? It will remain recoverable.`)) return;
-    setError('');
     const response = await fetch(`/api/agents/${agent.id}`, {
       method: 'DELETE',
       headers: apiHeaders(organizationId),
     });
     if (!response.ok) {
-      setError('The agent could not be archived.');
+      setError('The agent could not be archived. Please retry.');
       return;
     }
     await load(organizationId);
     setNotice('Agent archived.');
   }
+  const choices = providers.flatMap((provider) =>
+    provider.models.map((model) => ({
+      value: `${provider.id}:${model}`,
+      label: `${provider.displayName} · ${model}`,
+    })),
+  );
 
   return (
     <section className="live-panel" aria-label="Agent management">
@@ -163,7 +250,7 @@ export function AgentCrudPanel() {
           onChange={(event) => selectOrganization(event.target.value)}
           disabled={!organizations.length}
         >
-          {!organizations.length && <option value="">No organizations</option>}
+          {!organizations.length && <option value="">Create an organization first</option>}
           {organizations.map((organization) => (
             <option key={organization.id} value={organization.id}>
               {organization.name}
@@ -171,6 +258,15 @@ export function AgentCrudPanel() {
           ))}
         </select>
       </div>
+      {!organizations.length && (
+        <div className="actionable-empty-state">
+          <strong>You need an organization before you can create an agent.</strong>
+          <span>Organizations keep identities, permissions, and history isolated.</span>
+          <Link className="primary-button" href="/onboarding">
+            Create an organization
+          </Link>
+        </div>
+      )}
       <form className="resource-form" onSubmit={(event) => void submit(event)}>
         <label htmlFor="agent-name">Name</label>
         <input
@@ -179,37 +275,71 @@ export function AgentCrudPanel() {
           onChange={(event) => setName(event.target.value)}
           required
           maxLength={120}
+          disabled={!organizationId}
+          aria-describedby="agent-name-help"
         />
-        <label htmlFor="agent-role">Role key</label>
-        <input
-          id="agent-role"
-          value={roleKey}
-          onChange={(event) => setRoleKey(event.target.value)}
-          required
-        />
+        <p id="agent-name-help" className="field-help">
+          This durable name stays with the agent even if you change model or provider later.
+        </p>
+        <label htmlFor="agent-template">Agent template</label>
+        <select
+          id="agent-template"
+          value={templateKey}
+          onChange={(event) => applyTemplate(event.target.value as TemplateKey)}
+          disabled={!organizationId}
+        >
+          {Object.entries(TEMPLATES).map(([key, template]) => (
+            <option key={key} value={key}>
+              {template.label}
+            </option>
+          ))}
+        </select>
+        <p className="field-help">
+          Templates pre-fill a safe role, skills, tools, and permissions. Advanced settings remain
+          editable.
+        </p>
         <label htmlFor="agent-title">Title</label>
         <input
           id="agent-title"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           required
+          disabled={!organizationId}
         />
-        <label htmlFor="agent-provider">Provider binding label</label>
-        <input
+        <label htmlFor="agent-provider">Provider and model</label>
+        <select
           id="agent-provider"
           value={providerBindingId}
           onChange={(event) => setProviderBindingId(event.target.value)}
-          placeholder="local-ollama or provider label"
           required
-        />
-        <p className="field-help">
-          Use a binding label; API keys remain server-side and are never shown here.
-        </p>
+          disabled={!organizationId || !choices.length}
+        >
+          <option value="">
+            {choices.length ? 'Choose a provider model' : 'No provider model available'}
+          </option>
+          {choices.map((choice) => (
+            <option key={choice.value} value={choice.value}>
+              {choice.label}
+            </option>
+          ))}
+        </select>
+        {!choices.length && (
+          <>
+            <p className="field-help">
+              No ready provider is configured for this organization. Credentials remain server-side
+              and are never entered here.
+            </p>
+            <Link className="secondary-button" href="/settings#providers">
+              Configure provider
+            </Link>
+          </>
+        )}
         <label htmlFor="agent-avatar">Avatar</label>
         <select
           id="agent-avatar"
           value={avatarAssetId}
           onChange={(event) => setAvatarAssetId(event.target.value)}
+          disabled={!organizationId}
         >
           {AVATARS.map((avatar) => (
             <option key={avatar.id} value={avatar.id}>
@@ -217,36 +347,51 @@ export function AgentCrudPanel() {
             </option>
           ))}
         </select>
-        <label htmlFor="agent-skills">Skills</label>
-        <input
-          id="agent-skills"
-          value={skills}
-          onChange={(event) => setSkills(event.target.value)}
-          placeholder="frontend, accessibility"
-        />
-        <label htmlFor="agent-tools">Tools</label>
-        <input
-          id="agent-tools"
-          value={tools}
-          onChange={(event) => setTools(event.target.value)}
-          placeholder="repository workspace, CI"
-        />
-        <label htmlFor="agent-permissions">Permissions</label>
-        <input
-          id="agent-permissions"
-          value={permissions}
-          onChange={(event) => setPermissions(event.target.value)}
-          placeholder="repo.read, artifact.write"
-        />
-        <p className="field-help">
-          Comma-separated capability identifiers. Only these values are sent to the runtime.
-        </p>
+        <details
+          className="advanced-section"
+          open={showAdvanced}
+          onToggle={(event) => setShowAdvanced(event.currentTarget.open)}
+        >
+          <summary>Advanced: capabilities and technical identifiers</summary>
+          <label htmlFor="agent-role">Role key</label>
+          <input
+            id="agent-role"
+            value={roleKey}
+            onChange={(event) => setRoleKey(event.target.value)}
+            required
+          />
+          <label htmlFor="agent-skills">Skills</label>
+          <input
+            id="agent-skills"
+            value={skills}
+            onChange={(event) => setSkills(event.target.value)}
+          />
+          <label htmlFor="agent-tools">Tools</label>
+          <input
+            id="agent-tools"
+            value={tools}
+            onChange={(event) => setTools(event.target.value)}
+          />
+          <label htmlFor="agent-permissions">Permissions</label>
+          <input
+            id="agent-permissions"
+            value={permissions}
+            onChange={(event) => setPermissions(event.target.value)}
+          />
+          <p className="field-help">
+            Comma-separated authorized capability identifiers sent to the runtime.
+          </p>
+        </details>
         <div className="action-row">
-          <button className="primary-button" type="submit" disabled={!organizationId}>
+          <button
+            className="primary-button"
+            type="submit"
+            disabled={!organizationId || !choices.length}
+          >
             {editingId ? 'Save changes' : 'Create agent'}
           </button>
           {editingId && (
-            <button className="secondary-button" type="button" onClick={resetForm}>
+            <button className="secondary-button" type="button" onClick={reset}>
               Cancel
             </button>
           )}
@@ -263,23 +408,26 @@ export function AgentCrudPanel() {
         </p>
       )}
       <div className="live-records">
-        {agents.length === 0 && !error && (
-          <span className="empty-state">Nothing recorded yet.</span>
+        {agents.length === 0 && !error && organizationId && (
+          <span className="empty-state">
+            No agents yet. Choose a template, provider model, and name above to create the first
+            one.
+          </span>
         )}
         {agents.map((agent) => (
           <div className="live-record" key={agent.id}>
             <span>
               <strong>{agent.name}</strong>
               <small>
-                {agent.title} · {agent.roleKey} · {agent.providerBindingId}
+                {agent.title} · {agent.roleKey}
               </small>
             </span>
             <button className="secondary-button" type="button" onClick={() => startEdit(agent)}>
               Edit
             </button>
-            <a className="secondary-button" href={`/agents?agentId=${agent.id}`}>
+            <Link className="secondary-button" href={`/agents?agentId=${agent.id}`}>
               Details
-            </a>
+            </Link>
             <button className="secondary-button" type="button" onClick={() => void archive(agent)}>
               Archive
             </button>

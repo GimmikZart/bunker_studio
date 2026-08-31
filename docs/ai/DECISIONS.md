@@ -116,3 +116,12 @@
 **Motivazione:** Evitare conflitti e corruzione del lavoro.
 
 **Conseguenze:** Il Lead può parallelizzare solo task con dependency graph e write scopes compatibili.
+
+## DEC-014 — Local runtime deferred and non-blocking
+**Status:** Accepted — 2026-08-31
+
+**Decisione:** Il runtime locale (Ollama/LM Studio) resta una capacita supportata e gia predisposta tramite adapter, scheduler, control plane, fake e contract test, ma la prova con un nodo reale e rinviata finche l'utente non dispone di un computer adeguato. AC-013 e quindi `PARTIAL (non-blocking)` e non impedisce la release iniziale.
+
+**Motivazione:** L'utente non dispone attualmente dell'hardware necessario. Rendere obbligatoria questa prova impedirebbe senza motivo la verifica delle funzionalita indipendenti e contraddirebbe l'obiettivo cloud-first del prodotto.
+
+**Conseguenze:** Non vengono rimossi ne indeboliti i controlli del local worker e non si dichiara AC-013 `PASS` senza la prova reale futura. I blocker di release restano soltanto AC-001, AC-006, AC-009 e AC-011, oltre al backup/restore drill.

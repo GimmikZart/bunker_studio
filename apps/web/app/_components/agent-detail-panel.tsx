@@ -34,6 +34,11 @@ export function AgentDetailPanel() {
   const [agent, setAgent] = useState<Agent | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [metrics, setMetrics] = useState<AgentMetrics | null>(null);
+  const [organizationId, setOrganizationId] = useState('');
+  const [chatContent, setChatContent] = useState('');
+  const [chatReply, setChatReply] = useState('');
+  const [chatError, setChatError] = useState('');
+  const [chatSessionId, setChatSessionId] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -49,6 +54,7 @@ export function AgentDetailPanel() {
           ? saved
           : organizations[0]?.id;
         if (!organizationId) throw new Error('organization');
+        setOrganizationId(organizationId);
         const response = await fetch('/api/agents', { headers: apiHeaders(organizationId) });
         if (!response.ok) throw new Error('agent');
         const agents = ((await response.json()) as { agents?: Agent[] }).agents ?? [];
@@ -73,6 +79,30 @@ export function AgentDetailPanel() {
       })
       .catch(() => setError('Create an organization and agent to view the detail.'));
   }, []);
+
+  async function sendChat() {
+    if (!agent || !organizationId || !chatContent.trim()) return;
+    setChatError('');
+    const response = await fetch(`/api/agents/${agent.id}/chat`, {
+      method: 'POST',
+      headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
+      body: JSON.stringify({ content: chatContent, sessionId: chatSessionId || undefined }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      message?: { content?: string };
+      sessionId?: string;
+      error?: string;
+    };
+    if (!response.ok) {
+      setChatError(
+        payload.error ?? 'The chat could not be started. Check provider and budget settings.',
+      );
+      return;
+    }
+    setChatReply(payload.message?.content ?? 'No response was returned.');
+    setChatSessionId(payload.sessionId ?? '');
+    setChatContent('');
+  }
 
   if (error)
     return (
@@ -112,6 +142,32 @@ export function AgentDetailPanel() {
               <strong>Skills</strong>
               <small>{agent.skills.join(', ') || 'None configured'}</small>
             </span>
+          </div>
+          <div className="live-record agent-chat-card">
+            <span>
+              <strong>Chat</strong>
+              <small>
+                Send a scoped message through the configured runtime. Budget and permission gates
+                still apply.
+              </small>
+            </span>
+            <textarea
+              aria-label={`Chat with ${agent.name}`}
+              value={chatContent}
+              onChange={(event) => setChatContent(event.target.value)}
+              placeholder={`Message ${agent.name}`}
+              rows={3}
+            />
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => void sendChat()}
+              disabled={!chatContent.trim()}
+            >
+              Send message
+            </button>
+            {chatReply && <small>{chatReply}</small>}
+            {chatError && <small className="live-error">{chatError}</small>}
           </div>
           <div className="live-record">
             <span>

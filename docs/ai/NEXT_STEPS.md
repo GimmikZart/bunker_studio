@@ -1,14 +1,18 @@
 # Next Steps
 
+## Completato — UI audit
+
+L’audit funzionale Playwright UI-001–UI-008 passa tutti i 13 checkpoint: CTA home, onboarding, progetto, agente da template/provider, task DRAFT→READY, design gate, Settings/provider, navigazione desktop/mobile, hard refresh e responsive. L’audit attende ora la hydration client prima dei click e usa selettori coerenti con il markup accessibile.
+
 ## Prossima attività precisa
 
-Eseguire AC-001 in quality con una sessione Supabase cloud da un secondo dispositivo e registrare evidenza di recupero dopo la perdita del PC principale.
+Eseguire AC-001 in quality con una sessione Supabase cloud da un secondo dispositivo e registrare evidenza di recupero dopo la perdita del PC principale. Seguire la guida per principianti in [`docs/quality/QUALITY_SETUP_GUIDE.md`](../quality/QUALITY_SETUP_GUIDE.md).
 
-Il codice locale, incluso il piano Lead persistito in `POST /api/workflows/plan`, è verificato; dopo AC-001 procedere con gli altri scenari `PARTIAL` già elencati nella matrice. Non cambiare `CURRENT_STATE.md` a `IMPLEMENTAZIONE COMPLETATA` finché tali verifiche esterne non sono concluse.
+Il codice locale, incluso il piano Lead persistito in `POST /api/workflows/plan`, è verificato; dopo AC-001 procedere con AC-006, AC-009 e AC-011. Non cambiare `CURRENT_STATE.md` a `IMPLEMENTAZIONE COMPLETATA` finché queste quattro verifiche esterne e il backup/restore drill non sono concluse. AC-013 local worker è esplicitamente non bloccante: resta pronto per una futura macchina con hardware adeguato.
 
 ## Prossima attività
 
-Eseguire nella quality isolata i cinque scenari `PARTIAL` della matrice (PC loss cloud, restart multi-processo pg-boss, GitHub/CI protetto, VAPID/device e Ollama/LM Studio), registrando evidenze e RPO/RTO del backup drill.
+Eseguire nella quality isolata i quattro scenari `PARTIAL` bloccanti della matrice (PC loss cloud, restart multi-processo pg-boss, GitHub/CI protetto e VAPID/device), registrando evidenze e RPO/RTO del backup drill. Non serve predisporre ora Ollama o LM Studio.
 
 ### Area interessata
 

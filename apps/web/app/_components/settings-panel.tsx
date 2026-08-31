@@ -310,7 +310,7 @@ export function SettingsPanel() {
       )}
       {settings && (
         <div className="settings-grid">
-          <div className="getting-started live-panel-card">
+          <div className="getting-started live-panel-card" id="providers">
             <div>
               <h2>Runtime</h2>
               <p>
@@ -328,7 +328,17 @@ export function SettingsPanel() {
               <h2>Providers</h2>
               <div className="live-records">
                 {settings.providers.length === 0 && (
-                  <span className="empty-state">No provider connections.</span>
+                  <div className="actionable-empty-state">
+                    <strong>No provider connection is ready.</strong>
+                    <span>
+                      This deployment does not expose credential entry in the browser: secrets must
+                      be encrypted and configured server-side by an owner or deployment
+                      administrator.
+                    </span>
+                    <a className="secondary-button" href="#provider-requirements">
+                      View provider setup requirements
+                    </a>
+                  </div>
                 )}
                 {settings.providers.map((provider) => (
                   <div className="live-record" key={provider.id}>
@@ -344,6 +354,15 @@ export function SettingsPanel() {
                   </div>
                 ))}
               </div>
+              <details className="advanced-section" id="provider-requirements">
+                <summary>Provider setup requirements</summary>
+                <p className="field-help">
+                  Configure an approved provider connection and its model catalog through the secure
+                  server-side deployment flow. API keys are never displayed, stored in browser
+                  state, or copied into agent forms. Once its connection status is Ready, models
+                  become selectable when creating an agent.
+                </p>
+              </details>
             </div>
           </div>
           <div className="getting-started live-panel-card">

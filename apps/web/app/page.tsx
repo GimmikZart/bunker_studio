@@ -1,33 +1,9 @@
+import Link from 'next/link';
 import { OfficeDashboard } from './_components/office-dashboard';
 
 export default function HomePage() {
   return (
     <main className="shell">
-      <nav className="topbar" aria-label="Primary navigation">
-        <div className="brand-mark">
-          <span className="brand-dot" aria-hidden="true" />
-          <span>Bunker Studio</span>
-        </div>
-        <div className="nav-links">
-          <a className="active" href="/">
-            Office
-          </a>
-          <a href="#projects">Projects</a>
-          <a href="/agents">Agents</a>
-          <a href="/studio-labs">Studio Labs</a>
-          <a href="/approvals">Approvals</a>
-          <a href="/meetings">Meetings</a>
-          <a href="/tasks">Tasks</a>
-          <a href="/conversations">Conversations</a>
-          <a href="/costs">Costs</a>
-          <a href="/activity">Activity</a>
-          <a href="/settings">Settings</a>
-        </div>
-        <button className="avatar-button" type="button" aria-label="Open account menu">
-          GM
-        </button>
-      </nav>
-
       <section className="hero" id="office">
         <div>
           <p className="eyebrow">Organization / Bunker Studio</p>
@@ -48,19 +24,21 @@ export default function HomePage() {
 
       <OfficeDashboard />
 
-      <section className="getting-started" id="projects">
+      <section className="getting-started">
         <div>
           <p className="eyebrow">Getting started</p>
           <h2>Build the team around the work.</h2>
-          <p>Create your first project, connect a repository, or invite an agent to begin.</p>
+          <p>
+            Start by creating an organization. Then create a project and choose an agent template.
+          </p>
         </div>
         <div className="action-row">
-          <button className="primary-button" type="button">
+          <Link className="primary-button" href="/projects">
             Create project
-          </button>
-          <button className="secondary-button" type="button">
+          </Link>
+          <Link className="secondary-button" href="/agents">
             Add an agent
-          </button>
+          </Link>
         </div>
       </section>
     </main>

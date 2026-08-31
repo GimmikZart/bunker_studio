@@ -1,5 +1,12 @@
 # Development Worklog
 
+## 2026-08-31 — UI audit e runtime locale non bloccante
+
+- Corretto l'audit Playwright funzionale: attende la hydration client di Next, coordina click e navigazione con `Promise.all` e usa il selettore accessibile del menu mobile. Tutti i 13 checkpoint UI-001--UI-008 passano: CTA, onboarding, progetto, agente da template/provider, task DRAFT->READY, design gate, Settings/provider, navigazione, hard refresh e responsive.
+- `pnpm verify`: PASS; format, lint 15/15, typecheck 15/15, test 25 task, build 15/15 e audit sicurezza pnpm senza vulnerabilita' note. `pnpm test:e2e`: PASS, 11/11.
+- Decisione utente registrata in DEC-014: Ollama/LM Studio resta una capacita' futura opzionale. AC-013 e' `PARTIAL (non-blocking)` e non e' piu' un blocker di release; i blocker esterni restano AC-001, AC-006, AC-009, AC-011 e il backup/restore drill.
+- Aggiunta la guida per principianti `docs/quality/QUALITY_SETUP_GUIDE.md`, senza credenziali, con i passaggi e le regole di sicurezza per i quattro controlli quality bloccanti.
+
 ## 2026-08-31 — Security scan sul checkpoint corrente
 
 - Gitleaks Docker ha analizzato 60 commit e circa 1,07 MB senza trovare leak.
@@ -704,3 +711,41 @@ Working tree pulito. La Definition of Done resta aperta esclusivamente per AC-00
 ### Stato finale
 
 Checkpoint locale stabile; restano i cinque scenari quality esterni già documentati.
+## 2026-08-31 — Audit funzionale UI con Playwright
+
+### Lavoro svolto
+
+- Eseguito `scripts/ui-functional-audit.mjs` contro una nuova istanza Next.js del tree corrente su `http://localhost:3000`.
+- Percorsi UI-001–UI-008 provati click-by-click a 1280px e 390px.
+- Prodotti 49 screenshot e `artifacts/ui-audit-2026-08-31/results.json` con URL, risultati, console, pageerror e request failure per checkpoint.
+- Aggiornato `docs/ai/UX_FUNCTIONAL_AUDIT_2026-08-31.md` con esiti e bug riproducibili.
+
+### Verifiche
+
+- `pageerror`: 0; `requestfailed`: 0.
+- Console: 4 errori React hydration mismatch su Agents/Tasks/Projects (diff con `style={{caret-color:"transparent"}}`).
+- Bug confermati: CTA home senza handler, onboarding senza next step, provider setup non operabile, link Projects come anchor, nav mobile non raggiungibile, design gate senza CTA di recupero.
+
+### Stato finale
+
+Audit interattivo completato con evidenze. Definition of Done invariata: restano aperte le correzioni UX e le verifiche quality esterne.
+
+## 2026-08-31 — Correzione UX audit (checkpoint parziale)
+
+### Lavoro svolto
+
+- Aggiunti AppShell e navigazione desktop/mobile accessibile, CTA home funzionali e onboarding con next step.
+- Ridisegnato il form agente con template, preset sicuri, provider/modello selezionabili e Advanced per gli identificatori tecnici.
+- Aggiunti task description/scope/dependencies, recovery design, pagina design, spiegazioni provider sicure e chat nel dettaglio agente.
+- Riscritto il runner Playwright UI-001–UI-008 per i nuovi flussi.
+
+### Verifiche
+
+- `pnpm format`: PASS.
+- `pnpm typecheck`: PASS (15/15 package).
+- `pnpm lint`: avviato dopo typecheck; completamento da rieseguire nel prossimo checkpoint.
+- Playwright aggiornato: BLOCCATO da bootstrap/hydration client nel runner headless; i submit form non emettono POST. Esito documentato in `UX_FUNCTIONAL_AUDIT_2026-08-31.md` e artifacts aggiornati.
+
+### Stato finale
+
+Checkpoint compilabile ma audit UI non ancora chiuso. Priorità: isolare e correggere l'aggancio degli handler client nel runner, quindi rieseguire UI-001–UI-008 e le verifiche complete.

@@ -20,6 +20,19 @@ body {
   background: var(--paper);
   font-family: Arial, sans-serif;
 }
+.app-header {
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+.app-header-inner {
+  width: min(1180px, calc(100% - 48px));
+  min-height: 78px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
 button,
 a {
   font: inherit;
@@ -83,7 +96,10 @@ button {
 }
 .nav-links {
   display: flex;
-  gap: 28px;
+  flex: 1;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
 }
 .nav-links a {
   color: var(--muted);
@@ -273,6 +289,23 @@ h2 {
 .live-record small {
   display: block;
 }
+.agent-chat-card {
+  display: grid;
+  align-items: start;
+  justify-content: stretch;
+}
+.agent-chat-card textarea {
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px;
+  font: inherit;
+}
+.agent-chat-card button {
+  justify-self: start;
+  margin-top: 8px;
+}
 .live-record small {
   margin-top: 3px;
   color: var(--muted);
@@ -353,7 +386,9 @@ h2 {
   font-weight: 700;
 }
 .resource-form input,
-.resource-form textarea {
+.resource-form textarea,
+.resource-form select,
+.task-create-form textarea {
   width: 100%;
   border: 1px solid #d6d9df;
   border-radius: 8px;
@@ -390,6 +425,56 @@ h2 {
   font: inherit;
   color: var(--ink);
   background: white;
+}
+.task-create-form select[multiple] {
+  min-height: 110px;
+}
+.advanced-section {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.advanced-section summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+.advanced-section:not([open]) > :not(summary) {
+  display: none;
+}
+.actionable-empty-state {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px dashed #b9b7e9;
+  border-radius: 12px;
+  background: #f8f7ff;
+  color: var(--muted);
+  font-size: 13px;
+}
+.actionable-empty-state strong {
+  color: var(--ink);
+}
+.actionable-empty-state .primary-button,
+.actionable-empty-state .secondary-button {
+  justify-self: start;
+}
+.next-steps {
+  margin-top: 30px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+}
+.next-steps p {
+  color: var(--muted);
+}
+.mobile-navigation {
+  display: none;
 }
 .task-create-form button {
   margin-top: 8px;
@@ -468,11 +553,67 @@ h2 {
   color: var(--ink);
 }
 @media (max-width: 800px) {
+  body {
+    padding-bottom: 80px;
+  }
+  .app-header-inner {
+    width: min(100% - 28px, 620px);
+    min-height: 62px;
+  }
   .shell {
     width: min(100% - 28px, 620px);
   }
   .nav-links {
     display: none;
+  }
+  .mobile-navigation {
+    position: fixed;
+    z-index: 10;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: stretch;
+    min-height: 64px;
+    border-top: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.98);
+  }
+  .mobile-navigation > a,
+  .mobile-navigation summary {
+    display: grid;
+    place-items: center;
+    padding: 7px 3px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 11px;
+    list-style: none;
+    cursor: pointer;
+  }
+  .mobile-navigation a.active {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .mobile-navigation details {
+    position: relative;
+  }
+  .mobile-navigation-menu {
+    position: absolute;
+    right: 8px;
+    bottom: 56px;
+    display: grid;
+    min-width: 160px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: white;
+    box-shadow: var(--shadow);
+  }
+  .mobile-navigation-menu a {
+    padding: 10px;
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 13px;
   }
   .hero,
   .getting-started {
@@ -504,6 +645,9 @@ h2 {
     width: 100%;
   }
   .action-row button {
+    flex: 1;
+  }
+  .action-row a {
     flex: 1;
   }
 }

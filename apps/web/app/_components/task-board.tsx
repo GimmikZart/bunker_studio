@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
@@ -14,6 +15,9 @@ type Task = {
   state: string;
   estimatedCost: number;
   priority: number;
+  dependencies?: string[];
+  readScope?: string[];
+  writeScope?: string[];
 };
 type Design = { id: string; version: number; status: string };
 
@@ -43,6 +47,10 @@ export function TaskBoard() {
   const [approvedDesignVersionId, setApprovedDesignVersionId] = useState('');
   const [projectId, setProjectId] = useState('');
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [dependencies, setDependencies] = useState<string[]>([]);
+  const [readScope, setReadScope] = useState('');
+  const [writeScope, setWriteScope] = useState('');
   const [taskType, setTaskType] = useState('BACKEND');
   const [estimatedCost, setEstimatedCost] = useState('0');
   const [error, setError] = useState('');
@@ -111,10 +119,17 @@ export function TaskBoard() {
       body: JSON.stringify({
         projectId,
         title,
-        description: '',
+        description,
         taskType,
-        dependencies: [],
-        writeScope: [],
+        dependencies,
+        readScope: readScope
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+        writeScope: writeScope
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
         estimatedCost: Number(estimatedCost),
         priority: 0,
         ...(taskType === 'FRONTEND' ? { approvedDesignVersionId } : {}),
@@ -125,6 +140,10 @@ export function TaskBoard() {
       return;
     }
     setTitle('');
+    setDescription('');
+    setDependencies([]);
+    setReadScope('');
+    setWriteScope('');
     setEstimatedCost('0');
     setNotice('Task created in DRAFT.');
     await load(organizationId);
@@ -165,6 +184,28 @@ export function TaskBoard() {
         </select>
       </div>
       <div className="task-create-form">
+        {!organizationId && (
+          <div className="actionable-empty-state">
+            <strong>Create an organization before creating tasks.</strong>
+            <span>Tasks belong to a project in one organization.</span>
+            <Link className="primary-button" href="/onboarding">
+              Create an organization
+            </Link>
+          </div>
+        )}
+        {organizationId && !projects.length && (
+          <div className="actionable-empty-state">
+            <strong>Create a project before creating a task.</strong>
+            <span>Projects provide the workflow, budget, team, and repository context.</span>
+            <Link className="primary-button" href="/projects">
+              Create a project
+            </Link>
+          </div>
+        )}
+        <p className="field-help">
+          A task starts as a draft. State changes are checked by the server against dependencies,
+          budgets, and approvals.
+        </p>
         <label htmlFor="task-project">Project</label>
         <select
           id="task-project"
@@ -187,6 +228,15 @@ export function TaskBoard() {
           required
           maxLength={200}
         />
+        <label htmlFor="task-description">Description</label>
+        <textarea
+          id="task-description"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          rows={4}
+          maxLength={10_000}
+          placeholder="Outcome, constraints, and acceptance checks for this work."
+        />
         <label htmlFor="task-type">Type</label>
         <select
           id="task-type"
@@ -206,6 +256,44 @@ export function TaskBoard() {
           value={estimatedCost}
           onChange={(event) => setEstimatedCost(event.target.value)}
         />
+        <label htmlFor="task-read-scope">Read scope</label>
+        <input
+          id="task-read-scope"
+          value={readScope}
+          onChange={(event) => setReadScope(event.target.value)}
+          placeholder="apps/web, docs/product"
+        />
+        <label htmlFor="task-write-scope">Write scope</label>
+        <input
+          id="task-write-scope"
+          value={writeScope}
+          onChange={(event) => setWriteScope(event.target.value)}
+          placeholder="apps/web/app, packages/contracts"
+        />
+        <label htmlFor="task-dependencies">Dependencies</label>
+        <select
+          id="task-dependencies"
+          multiple
+          value={dependencies}
+          onChange={(event) =>
+            setDependencies(
+              Array.from(event.currentTarget.selectedOptions, (option) => option.value),
+            )
+          }
+          disabled={!tasks.filter((task) => task.projectId === projectId).length}
+        >
+          {tasks
+            .filter((task) => task.projectId === projectId)
+            .map((task) => (
+              <option key={task.id} value={task.id}>
+                {task.title} ({task.state})
+              </option>
+            ))}
+        </select>
+        <p className="field-help">
+          Optional. Select completed work this task must wait for; declared write scopes help the
+          scheduler avoid conflicts.
+        </p>
         {taskType === 'FRONTEND' && (
           <>
             <label htmlFor="task-design">Approved design version</label>
@@ -223,6 +311,15 @@ export function TaskBoard() {
                 </option>
               ))}
             </select>
+            {!designs.length && (
+              <div className="actionable-empty-state">
+                <strong>A frontend task needs an approved design.</strong>
+                <span>This prevents implementation against an unreviewed interface proposal.</span>
+                <Link className="secondary-button" href="/designs">
+                  Create or approve a design
+                </Link>
+              </div>
+            )}
           </>
         )}
         <button
