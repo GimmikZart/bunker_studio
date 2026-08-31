@@ -1,5 +1,10 @@
 # Development Worklog
 
+## 2026-08-31 — Security scan sul checkpoint corrente
+
+- Gitleaks Docker ha analizzato 60 commit e circa 1,07 MB senza trovare leak.
+- Il container Semgrep JavaScript è rimasto attivo senza output utile per oltre cinque minuti ed è stato interrotto controllatamente; non viene considerato un risultato positivo.
+
 ## 2026-08-31 — Audit dei prerequisiti quality
 
 - `supabase db lint --local`: PASS; `pnpm quality:pg-boss-restart` con DSN temporaneo del database locale `55422`: PASS.
