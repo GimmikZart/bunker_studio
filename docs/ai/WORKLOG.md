@@ -1,5 +1,12 @@
 # Development Worklog
 
+## 2026-08-31 — Verifica completa del checkpoint locale
+
+- `pnpm verify`: PASS sul commit `6acf82d`; formatting, lint 15/15, typecheck 15/15, test 25/25, build 15/15 con 50 route/pagine e `pnpm audit --audit-level high` senza vulnerabilità note.
+- `pnpm test:e2e`: PASS 10/10; smoke SQL locale del worker e `supabase db lint --local`: PASS.
+
+La Definition of Done resta aperta soltanto per gli scenari quality esterni già tracciati nella matrice acceptance: cloud/secondo device e backup/restore, pg-boss multi-process, GitHub/CI reale, VAPID/device reale e runtime Ollama/LM Studio con quality node.
+
 ## 2026-08-31 — GitHub/CI e Web Push VAPID adapter
 
 - Aggiunto `@bunker-studio/git` adapter HTTP GitHub con branch creation, check-run CI normalizzati (`PASS`/`FAIL`/`PENDING`) e apertura di pull request; il token è iniettato solo negli header e non compare negli errori.
