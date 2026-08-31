@@ -96,6 +96,9 @@ importers:
       '@bunker-studio/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@bunker-studio/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@bunker-studio/db':
         specifier: workspace:*
         version: link:../../packages/db

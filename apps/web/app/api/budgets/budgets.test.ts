@@ -95,7 +95,9 @@ describe('budget policy and report routes', () => {
     );
     if (!report) throw new Error('Expected report response.');
     expect(report.status).toBe(200);
-    expect((await report.json()).schedule.timezone).toBe('Europe/Rome');
+    const payload = await report.json();
+    expect(payload.schedule.timezone).toBe('Europe/Rome');
+    expect(payload.reports).toEqual([]);
   });
 
   it('rejects unauthenticated policy access', async () => {

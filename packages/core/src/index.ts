@@ -257,15 +257,14 @@ export function budgetDecision(
   return approvalGranted ? 'ALLOW' : 'WAITING_BUDGET_APPROVAL';
 }
 
-export function weeklyCostReport(
-  entries: CostEntry[],
-  now = new Date(),
-): {
+export type WeeklyCostReport = {
   periodStart: string;
   periodEnd: string;
   total: number;
   byProvider: Record<string, number>;
-} {
+};
+
+export function weeklyCostReport(entries: CostEntry[], now = new Date()): WeeklyCostReport {
   const end = now.getTime();
   const start = end - 7 * 24 * 60 * 60 * 1_000;
   const inPeriod = entries.filter((entry) => {

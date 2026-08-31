@@ -48,6 +48,8 @@ import {
   deleteBudgetPolicy,
   getReportSchedule,
   saveReportSchedule,
+  listBudgetReports,
+  type BudgetReportRecord,
   createWorkflow,
   listWorkflows,
   updateWorkflowTasks,
@@ -158,6 +160,7 @@ type LocalOperationalRepository = {
     > & { lastRunAt?: string | null },
     actorUserId: string,
   ) => ReportScheduleRecord;
+  listBudgetReports: (organizationId: string, actorUserId: string) => BudgetReportRecord[];
   listNotifications: (
     userId: string,
     organizationId: string,
@@ -330,6 +333,7 @@ const localOperationalRepository: LocalOperationalRepository = {
   deleteBudgetPolicy: (organizationId, policyId) => deleteBudgetPolicy(organizationId, policyId),
   getReportSchedule: (organizationId) => getReportSchedule(organizationId),
   saveReportSchedule: (organizationId, input) => saveReportSchedule(organizationId, input),
+  listBudgetReports: (organizationId) => listBudgetReports(organizationId),
   listNotifications: (userId, organizationId) => listNotifications(userId, organizationId),
   addNotification: (input) => addNotification(input),
   markNotificationRead: (userId, notificationId) => markNotificationRead(userId, notificationId),

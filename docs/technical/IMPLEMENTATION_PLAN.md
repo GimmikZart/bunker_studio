@@ -220,6 +220,7 @@ Implementare:
 - deterministic reports/forecast;
 - quota UI;
 - notifications;
+- worker-generated weekly report persistence with idempotent schedule advancement;
 - Web Push/PWA;
 - approval inbox;
 - deep links.

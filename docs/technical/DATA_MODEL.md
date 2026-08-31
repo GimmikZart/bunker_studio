@@ -481,6 +481,26 @@ Indexes:
 - action_on_hard
 - enabled
 
+### `report_schedules`
+- id
+- organization_id
+- frequency (`WEEKLY`)
+- day_of_week / hour_utc / minute_utc
+- timezone
+- recipients_json
+- enabled
+- next_run_at / last_run_at
+
+### `budget_reports`
+- id
+- organization_id
+- schedule_id
+- period_start / period_end
+- total
+- by_provider_json
+- generated_at
+- unique schedule/period key for idempotent worker delivery
+
 ## 13. Notifications
 
 ### `notifications`

@@ -28,6 +28,7 @@ import type {
   WorkflowRecord,
   BudgetPolicyRecord,
   ReportScheduleRecord,
+  BudgetReportRecord,
 } from './_store';
 import type { ReviewFinding } from '@bunker-studio/contracts';
 
@@ -205,6 +206,26 @@ function mapReportSchedule(value: unknown): ReportScheduleRecord {
     lastRunAt: nullableString(item.last_run_at) ?? null,
     createdAt: stringValue(item.created_at, 'created_at'),
     updatedAt: stringValue(item.updated_at, 'updated_at'),
+  };
+}
+
+function mapBudgetReport(value: unknown): BudgetReportRecord {
+  const item = object(value);
+  const byProviderValue = object(item.by_provider_json ?? {});
+  const byProvider: Record<string, number> = {};
+  for (const [provider, amount] of Object.entries(byProviderValue)) {
+    const parsed = nullableNumber(amount);
+    if (parsed !== undefined) byProvider[provider] = parsed;
+  }
+  return {
+    id: stringValue(item.id, 'id'),
+    organizationId: stringValue(item.organization_id, 'organization_id'),
+    scheduleId: stringValue(item.schedule_id, 'schedule_id'),
+    periodStart: stringValue(item.period_start, 'period_start'),
+    periodEnd: stringValue(item.period_end, 'period_end'),
+    total: Number(item.total ?? 0),
+    byProvider,
+    generatedAt: stringValue(item.generated_at, 'generated_at'),
   };
 }
 
@@ -831,6 +852,22 @@ export class SupabaseOperationalRepository {
         .single(),
     );
     return mapReportSchedule(data);
+  }
+
+  async listBudgetReports(
+    organizationId: string,
+    actorUserId: string,
+  ): Promise<BudgetReportRecord[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client.from('budget_reports').select('*').eq('organization_id', organizationId),
+    );
+    return Array.isArray(data)
+      ? data
+          .map(mapBudgetReport)
+          .sort((left, right) => right.generatedAt.localeCompare(left.generatedAt))
+          .slice(0, 20)
+      : [];
   }
 
   async listNotifications(

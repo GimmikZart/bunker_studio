@@ -46,6 +46,7 @@ export async function GET(request: Request) {
     schedule: await access.operations.getReportSchedule(access.organizationId, access.actorId),
     weekly: weeklyCostReport(entries),
     monthlyForecast: forecastMonthlyCost(entries),
+    reports: await access.operations.listBudgetReports(access.organizationId, access.actorId),
   });
 }
 

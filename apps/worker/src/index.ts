@@ -6,6 +6,8 @@ import {
   dispatchPendingPushNotifications,
 } from '@bunker-studio/notifications';
 import { createSupabaseNotificationSource } from './notification-source.js';
+import { createSupabaseReportSource } from './report-source.js';
+import { dispatchDueWeeklyReports } from './report-scheduler.js';
 import { LocalWorkerTaskLoop, createRuntimeTaskExecutor } from './local-task.js';
 import { createRuntimeWorkerClient } from './runtime-client.js';
 
@@ -23,6 +25,7 @@ const taskPollIntervalMs = Number(process.env.WORKER_TASK_POLL_INTERVAL_MS ?? 2_
 
 let heartbeat: ReturnType<typeof setInterval> | null = null;
 let notificationTimer: ReturnType<typeof setInterval> | null = null;
+let reportTimer: ReturnType<typeof setInterval> | null = null;
 let taskTimer: ReturnType<typeof setInterval> | null = null;
 let runtimeIdentity = nodeId && credential ? { nodeId, credential } : null;
 
@@ -31,8 +34,35 @@ function stopHeartbeat() {
   heartbeat = null;
   if (notificationTimer) clearInterval(notificationTimer);
   notificationTimer = null;
+  if (reportTimer) clearInterval(reportTimer);
+  reportTimer = null;
   if (taskTimer) clearInterval(taskTimer);
   taskTimer = null;
+}
+
+function startReportDispatcher() {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return;
+  const pollIntervalMs = Number(process.env.WORKER_REPORT_POLL_INTERVAL_MS ?? 60_000);
+  const source = createSupabaseReportSource(createStudioServiceClient({ url, serviceRoleKey }));
+  const dispatch = () => {
+    void dispatchDueWeeklyReports(source)
+      .then((result) => {
+        if (result.generated || result.duplicates || result.failed)
+          console.log(JSON.stringify({ event: 'worker.report_dispatch', ...result }));
+      })
+      .catch((error) => {
+        console.error(
+          JSON.stringify({
+            event: 'worker.report_dispatch_failed',
+            message: error instanceof Error ? error.message : String(error),
+          }),
+        );
+      });
+  };
+  dispatch();
+  reportTimer = setInterval(dispatch, pollIntervalMs);
 }
 
 function startNotificationDispatcher() {
@@ -97,6 +127,7 @@ function startTaskLoop(client: ReturnType<typeof createRuntimeWorkerClient>) {
 async function start() {
   console.log(JSON.stringify({ event: 'worker.started', ...getWorkerHealth(), intervalMs }));
   startNotificationDispatcher();
+  startReportDispatcher();
   if (!controlPlaneUrl || (!runtimeIdentity && !registrationToken)) {
     heartbeat = setInterval(() => {
       console.log(JSON.stringify({ event: 'worker.heartbeat', ...getWorkerHealth() }));

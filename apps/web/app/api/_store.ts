@@ -1,5 +1,5 @@
 import { TenantStore, WorkerRegistry } from '@bunker-studio/db';
-import type { BudgetPolicy, CostEntry, DesignRecord } from '@bunker-studio/core';
+import type { BudgetPolicy, CostEntry, DesignRecord, WeeklyCostReport } from '@bunker-studio/core';
 import type { LeadPlan, ReviewFinding, VerificationRun } from '@bunker-studio/contracts';
 import type { MemoryUnit } from '@bunker-studio/db';
 
@@ -23,6 +23,7 @@ type WebRuntimeState = {
   workflows: Map<string, WorkflowRecord[]>;
   budgetPolicies: Map<string, BudgetPolicyRecord[]>;
   reportSchedules: Map<string, ReportScheduleRecord>;
+  budgetReports: Map<string, BudgetReportRecord[]>;
 };
 
 type GlobalWithRuntime = typeof globalThis & { __bunkerStudioRuntime?: WebRuntimeState };
@@ -47,6 +48,7 @@ const state = (globalRuntime.__bunkerStudioRuntime ??= {
   workflows: new Map<string, WorkflowRecord[]>(),
   budgetPolicies: new Map<string, BudgetPolicyRecord[]>(),
   reportSchedules: new Map<string, ReportScheduleRecord>(),
+  budgetReports: new Map<string, BudgetReportRecord[]>(),
 });
 state.notificationPreferences ??= new Map<string, NotificationPreferences>();
 state.conversations ??= new Map<string, ConversationRecord[]>();
@@ -56,6 +58,7 @@ state.activity ??= new Map<string, ActivityRecord[]>();
 state.workflows ??= new Map<string, WorkflowRecord[]>();
 state.budgetPolicies ??= new Map<string, BudgetPolicyRecord[]>();
 state.reportSchedules ??= new Map<string, ReportScheduleRecord>();
+state.budgetReports ??= new Map<string, BudgetReportRecord[]>();
 
 export const tenantStore = state.tenantStore;
 export const workerRegistry = state.workerRegistry;
@@ -269,6 +272,13 @@ export type ReportScheduleRecord = {
   lastRunAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type BudgetReportRecord = WeeklyCostReport & {
+  id: string;
+  organizationId: string;
+  scheduleId: string;
+  generatedAt: string;
 };
 
 export type NotificationRecord = {
@@ -539,6 +549,24 @@ export function saveReportSchedule(
   };
   state.reportSchedules.set(organizationId, schedule);
   return structuredClone(schedule);
+}
+
+export function listBudgetReports(organizationId: string, limit = 20): BudgetReportRecord[] {
+  return structuredClone((state.budgetReports.get(organizationId) ?? []).slice(0, limit));
+}
+
+export function recordBudgetReport(input: Omit<BudgetReportRecord, 'id'>): BudgetReportRecord {
+  const reports = state.budgetReports.get(input.organizationId) ?? [];
+  const existing = reports.find(
+    (report) =>
+      report.scheduleId === input.scheduleId &&
+      report.periodStart === input.periodStart &&
+      report.periodEnd === input.periodEnd,
+  );
+  if (existing) return structuredClone(existing);
+  const report: BudgetReportRecord = { ...input, id: crypto.randomUUID() };
+  state.budgetReports.set(input.organizationId, [report, ...reports]);
+  return structuredClone(report);
 }
 
 export function addNotification(

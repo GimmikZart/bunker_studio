@@ -1,5 +1,12 @@
 # Development Worklog
 
+## 2026-08-31 — Generazione persistente dei report settimanali
+
+- Aggiunta migration `00000000000019_budget_reports.sql` con storico report tenant-scoped, RLS, vincoli temporali, trigger activity e unique key per deduplicare la stessa finestra schedulata.
+- Il worker processa le schedulazioni scadute, calcola il report deterministico sugli ultimi sette giorni, persiste il risultato e avanza `next_run_at` con update condizionale; il dispatcher è idempotente anche in caso di due worker concorrenti.
+- L’API budget espone gli ultimi report generati; aggiunti source Supabase, adapter locale e test scheduler 2/2.
+- Verifiche: worker 12/12, web 35/35, typecheck worker/web/db PASS, `supabase db reset --local` e `supabase db lint --local` PASS.
+
 ## 2026-08-31 — Budget gate e cost ledger per chat diretta
 
 - La chat diretta ora esegue il preflight `evaluateBudgetPolicies` prima del runtime: hard-stop e richiesta di approvazione producono risposta `409`, notifica tenant-scoped e nessuna invocazione provider; la soglia soft produce una notifica informativa.
