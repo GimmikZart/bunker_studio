@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { POST as createOrganization } from '../organizations/route';
-import { POST as submitDesign } from './route';
+import { GET as listDesigns, POST as submitDesign } from './route';
 import { POST as approveDesign } from './[versionId]/approve/route';
 import { POST as resolveDesign } from './[versionId]/resolve/route';
 
@@ -93,5 +93,44 @@ describe('design gate API', () => {
         (version: { id: string }) => version.id === changes.id,
       ).status,
     ).toBe('DRAFT');
+  });
+
+  it('creates one to three bounded static previews for a designer request', async () => {
+    const owner = `designer-preview-owner-${crypto.randomUUID()}`;
+    const headers = { 'content-type': 'application/json', 'x-bunker-user-id': owner };
+    const organization = await createOrganization(
+      new Request('http://localhost', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name: `Designer previews ${owner}` }),
+      }),
+    );
+    const organizationId = (await organization.json()).organization.id;
+    const response = await submitDesign(
+      new Request('http://localhost/api/designs', {
+        method: 'POST',
+        headers: { ...headers, 'x-bunker-organization-id': organizationId },
+        body: JSON.stringify({
+          designerAgentId: crypto.randomUUID(),
+          brief: '<script>must not execute</script> Home dashboard',
+          constraints: ['Keyboard navigation'],
+          variantCount: 2,
+        }),
+      }),
+    );
+    expect(response.status).toBe(201);
+    const created = (await response.json()).versions;
+    expect(created).toHaveLength(2);
+    expect(created[0].previewArtifactIds).toHaveLength(1);
+    expect(created[0].designRequestId).toBe(created[1].designRequestId);
+
+    const listed = await listDesigns(
+      new Request('http://localhost/api/designs', {
+        headers: { ...headers, 'x-bunker-organization-id': organizationId },
+      }),
+    );
+    const first = (await listed.json()).versions[0];
+    expect(first.previews[0].html).toContain('&lt;script&gt;must not execute&lt;/script&gt;');
+    expect(first.previews[0].html).not.toContain('<script>');
   });
 });

@@ -75,6 +75,75 @@ test('design, staffing confirmation and bounded memory search remain gated', asy
   expect((await search.json()).memories[0].source).toContain('memory:');
 });
 
+test('designer creates sandbox-safe variants and an owner approves an immutable reference', async ({
+  request,
+}) => {
+  const userId = `e2e-designer-${Date.now()}`;
+  const organization = await createOrganization(request, userId, `Designer ${userId}`);
+  const headers = {
+    'content-type': 'application/json',
+    'x-bunker-user-id': userId,
+    'x-bunker-organization-id': organization.id,
+  };
+  const agentResponse = await request.post('/api/agents', {
+    headers,
+    data: {
+      name: 'Product Designer',
+      roleKey: 'designer',
+      title: 'Product Designer',
+      providerConnectionId: '00000000-0000-4000-8000-000000000001',
+      providerModelId: 'fake-default',
+      runtimeType: 'OPENAI_COMPATIBLE',
+      reasoningEffort: 'medium',
+    },
+  });
+  expect(agentResponse.status()).toBe(201);
+  const designerAgentId = (await agentResponse.json()).agent.id as string;
+  const created = await request.post('/api/designs', {
+    headers,
+    data: {
+      designerAgentId,
+      brief: '<script>untrusted</script> Project overview',
+      constraints: ['Keyboard navigation'],
+      variantCount: 2,
+    },
+  });
+  expect(created.status()).toBe(201);
+  const versions = (await created.json()).versions as {
+    id: string;
+    designRequestId: string;
+    previewArtifactIds: string[];
+  }[];
+  expect(versions).toHaveLength(2);
+  expect(versions[0]!.designRequestId).toBe(versions[1]!.designRequestId);
+  expect(versions[0]!.previewArtifactIds).toHaveLength(1);
+  const listed = await request.get('/api/designs', { headers });
+  const first = (await listed.json()).versions[0] as {
+    previews: { html: string }[];
+  };
+  expect(first.previews[0]!.html).toContain('&lt;script&gt;untrusted&lt;/script&gt;');
+  expect(first.previews[0]!.html).not.toContain('<script>');
+  const approval = await request.post(`/api/designs/${versions[0]!.id}/approve`, { headers });
+  expect(approval.status()).toBe(200);
+  const projectResponse = await request.post(`/api/organizations/${organization.id}/projects`, {
+    headers,
+    data: { name: 'Designed interface' },
+  });
+  expect(projectResponse.status()).toBe(201);
+  const projectId = (await projectResponse.json()).project.id as string;
+  const frontendTask = await request.post('/api/tasks', {
+    headers,
+    data: {
+      projectId,
+      title: 'Implement approved overview',
+      taskType: 'FRONTEND',
+      approvedDesignVersionId: versions[0]!.id,
+    },
+  });
+  expect(frontendTask.status()).toBe(201);
+  expect((await frontendTask.json()).task.approvedDesignVersionId).toBe(versions[0]!.id);
+});
+
 test('local worker registration advertises capability and accepts a heartbeat', async ({
   request,
 }) => {

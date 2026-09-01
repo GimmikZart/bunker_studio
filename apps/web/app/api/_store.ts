@@ -8,6 +8,7 @@ type WebRuntimeState = {
   workerRegistry: WorkerRegistry;
   memories: Map<string, MemoryUnit[]>;
   designs: Map<string, DesignRecord[]>;
+  designPreviews: Map<string, DesignPreviewArtifact[]>;
   meetings: Map<string, MeetingRecord[]>;
   approvals: Map<string, ApprovalRecord[]>;
   costs: Map<string, CostRecord[]>;
@@ -33,6 +34,7 @@ const state = (globalRuntime.__bunkerStudioRuntime ??= {
   workerRegistry: new WorkerRegistry(),
   memories: new Map<string, MemoryUnit[]>(),
   designs: new Map<string, DesignRecord[]>(),
+  designPreviews: new Map<string, DesignPreviewArtifact[]>(),
   meetings: new Map<string, MeetingRecord[]>(),
   approvals: new Map<string, ApprovalRecord[]>(),
   costs: new Map<string, CostRecord[]>(),
@@ -51,6 +53,7 @@ const state = (globalRuntime.__bunkerStudioRuntime ??= {
   budgetReports: new Map<string, BudgetReportRecord[]>(),
 });
 state.notificationPreferences ??= new Map<string, NotificationPreferences>();
+state.designPreviews ??= new Map<string, DesignPreviewArtifact[]>();
 state.conversations ??= new Map<string, ConversationRecord[]>();
 state.verificationRuns ??= new Map<string, VerificationRunRecord[]>();
 state.reviews ??= new Map<string, ReviewRecord[]>();
@@ -180,17 +183,40 @@ export function deleteMemory(organizationId: string, memoryId: string): boolean 
 
 export function submitDesignVersion(
   organizationId: string,
-  input: Pick<DesignRecord, 'version' | 'spec'>,
+  input: Pick<DesignRecord, 'version' | 'spec'> & {
+    rationale?: string;
+    previewArtifactIds?: string[];
+    designRequestId?: string;
+    designRequest?: {
+      designerAgentId: string;
+      brief: string;
+      projectId?: string;
+      taskId?: string;
+    };
+    previews?: Omit<DesignPreviewArtifact, 'id'>[];
+  },
 ): DesignRecord {
   const versions = state.designs.get(organizationId) ?? [];
+  const previews = (input.previews ?? []).map((preview) => ({
+    ...structuredClone(preview),
+    id: crypto.randomUUID(),
+  }));
   const record: DesignRecord = {
     id: crypto.randomUUID(),
     version: input.version,
     status: 'SUBMITTED',
     spec: structuredClone(input.spec),
+    ...(input.designRequestId || input.designRequest
+      ? { designRequestId: input.designRequestId ?? crypto.randomUUID() }
+      : {}),
+    rationale: input.rationale ?? '',
+    previewArtifactIds: previews
+      .map((preview) => preview.id)
+      .concat(input.previewArtifactIds ?? []),
   };
+  if (previews.length) state.designPreviews.set(record.id, previews);
   state.designs.set(organizationId, [...versions, record]);
-  return record;
+  return structuredClone(record);
 }
 
 export function listDesignVersions(organizationId: string): DesignRecord[] {
@@ -199,6 +225,21 @@ export function listDesignVersions(organizationId: string): DesignRecord[] {
 
 export function replaceDesignVersions(organizationId: string, versions: DesignRecord[]): void {
   state.designs.set(organizationId, structuredClone(versions));
+}
+
+export type DesignPreviewArtifact = {
+  id: string;
+  title: string;
+  html: string;
+};
+
+export function listDesignPreviews(
+  organizationId: string,
+  versionId: string,
+): DesignPreviewArtifact[] {
+  if (!(state.designs.get(organizationId) ?? []).some((version) => version.id === versionId))
+    return [];
+  return structuredClone(state.designPreviews.get(versionId) ?? []);
 }
 
 export type MeetingContributionRecord = {

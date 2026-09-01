@@ -1,6 +1,6 @@
 # Current Project State
 
-## Checkpoint 2026-09-01 — M6 GitHub PR/CI e gate di review completata localmente
+## Checkpoint 2026-09-01 — M7 Designer workflow completato localmente
 
 Bunker Studio supporta il percorso iniziale richiesto: web locale o ospitato,
 Supabase Cloud come system of record e worker repository sul PC in pull via
@@ -39,14 +39,25 @@ se verification, CI o reviewer non soddisfano i gate deterministici.
 - L'E2E funzionale usa il server dev con persistenza in memoria; il p95 misura
   invece la build production. Le due configurazioni impediscono che la
   compilazione lazy di `next dev` falsi la soglia, senza allentare i criteri.
+- M7: contratto bounded `designProposalRequest`, preview HTML statiche
+  escaped/sandboxed, persistence di rationale/preview/request ID e migrazione
+  `00000000000026` con limite metadata/artefatti e immutabilita' SQL per versioni
+  approvate.
 
 ## Stato milestone
 
-M0–M6 sono implementate e verificate localmente. Le slice già presenti di M7
-(versioni design, approvazione Owner e gate frontend) soddisfano AC-008, ma il
-workflow Designer non ha ancora un contratto runtime che produca 1–3 varianti
-con preview artifact e prototipo HTML/statico. Quella è la prima attività
-incompleta reale e va completata prima di M8.
+M0–M7 sono implementate e verificate localmente. M7 riceve brief e constraint
+associati a un Designer selezionato e genera una–tre varianti versionate con
+rationale, stati principali, design spec e preview HTML statico. Le preview sono
+artefatti tenant-scoped bounded e vengono mostrate in iframe sandboxed; il brief
+viene HTML-escaped. L'Owner può approvare/rifiutare/richiedere modifiche; i
+contenuti di una versione APPROVED sono protetti anche da trigger SQL e un task
+FRONTEND conserva l'ID esatto di una versione approvata.
+
+Il generatore statico è il fake/adapter v1 del contratto Designer: mantiene il
+flusso funzionante senza una chiamata provider o Figma. Un adapter immagine/Figma
+o un Designer provider-backed può sostituirlo senza cambiare contratti, gate o
+storage.
 
 ## Verifiche correnti
 
@@ -56,7 +67,9 @@ incompleta reale e va completata prima di M8.
   funzionali dev + 1 performance p95 su build production.
 - Web: 23 file / 41 test PASS; worker: 12 file / 32 test PASS; Git: 12 test
   PASS; orchestration: 23 test PASS; contracts: 5 test PASS.
-- `supabase db reset --local`: PASS con migrazioni `00..25` e seed.
+- Test M7 API/unit: PASS (3/3); E2E M7: PASS - brief, due preview sicure,
+  Owner approve e task FRONTEND con riferimento esatto.
+- `supabase db reset --local`: PASS con migrazioni `00..26` e seed.
 - `supabase db lint --local`: PASS, nessun errore schema.
 
 ## Limiti e verifiche esterne pendenti

@@ -873,17 +873,36 @@ idempotenti di M6; nessun push, merge o chiamata provider reale eseguiti.
   lease (`00000000000025`). Separato l'E2E funzionale dev dal p95 production,
   senza modificare la soglia di 800 ms.
 
+## 2026-09-01 - M7 Designer con preview statiche sicure
+
+### Lavoro svolto
+
+- Aggiunto il contratto di richiesta Designer bounded: agent ID, brief,
+  constraint, project/task opzionali e una-tre varianti.
+- Implementato il fallback v1 statico: spec, rationale, stati principali e HTML
+  prodotto solo da template con dati escaped; nessuna inferenza provider o Figma
+  e' necessaria per provare il flusso.
+- Salvati request ID, rationale e ID preview nella persistenza in-memory;
+  Supabase crea la design request, artefatti `DESIGN_PREVIEW_HTML` tenant-scoped
+  e collega gli ID alla versione.
+- UI `/designs`: scelta esplicita dell'agente, constraint, numero varianti e
+  iframe `sandbox` per ogni preview.
+- Migrazione `00000000000026`: massimo tre preview, metadata bounded a 64 KiB e
+  trigger che rende contenuti/approvazione delle versioni APPROVED immutabili
+  (ammesso soltanto `SUPERSEDED`).
+
 ### Verifiche
 
-- `pnpm verify`: PASS — lint/typecheck/build 15/15, Turbo test 26/26, web
-  23 file/41 test, worker 12 file/32 test, audit high senza vulnerabilità note.
-- `pnpm test:e2e` in memory mode: PASS — 10 flussi funzionali dev e 1 test p95
-  su build production.
-- `supabase db reset --local`: PASS con migrazioni `00..25` e seed.
-- `supabase db lint --local`: PASS.
+- Contract/core test: PASS; test API Designer 3/3 PASS.
+- E2E Playwright M7: PASS - due preview sicure, approvazione Owner e task
+  FRONTEND con ID design approvato esatto.
+- `pnpm format:check`: PASS; `pnpm lint`: PASS 15/15; typecheck web: PASS.
+- `supabase db reset --local`: PASS con migrazioni `00..26` e seed;
+  `supabase db lint --local`: PASS.
+- Build web production: completata localmente senza errori.
 
 ### Stato finale
 
-M6 completata localmente e checkpoint stabile. Prossima attività unica: runtime
-Designer con preview artifact/versioni bounded di M7. Nessun push, merge, deploy
-o chiamata provider reale eseguiti.
+M7 completata localmente. Prossima attivita' unica: audit M8 HR + Team Builder.
+Adapter immagine/Figma e Designer provider-backed restano integrazioni esterne
+non bloccanti, dietro il contratto ora persistito.

@@ -484,6 +484,10 @@ export type DesignRecord = {
   version: number;
   status: DesignStatus;
   spec: Readonly<Record<string, unknown>>;
+  /** The immutable request this proposal belongs to, when it was created by Designer. */
+  designRequestId?: string;
+  rationale?: string;
+  previewArtifactIds?: readonly string[];
   approvedAt?: string;
   approvedBy?: string;
 };

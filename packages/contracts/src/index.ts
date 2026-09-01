@@ -129,13 +129,27 @@ export const reviewSubmissionSchema = z.object({
 export type ReviewSubmission = z.infer<typeof reviewSubmissionSchema>;
 
 export const designVersionSchema = z.object({
-  versionNumber: z.number().int().positive().max(3),
+  versionNumber: z.number().int().positive().max(10_000),
   status: z.enum(['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'SUPERSEDED']),
   spec: z.record(z.unknown()),
   rationale: z.string(),
   previewArtifactIds: z.array(z.string()),
 });
 export type DesignVersion = z.infer<typeof designVersionSchema>;
+
+/**
+ * Bounded, structured input to the Designer capability.  The runtime may later
+ * replace the deterministic preview generator, but it must keep this contract.
+ */
+export const designProposalRequestSchema = z.object({
+  designerAgentId: z.string().uuid(),
+  projectId: z.string().uuid().optional(),
+  taskId: z.string().uuid().optional(),
+  brief: z.string().trim().min(1).max(10_000),
+  constraints: z.array(z.string().trim().min(1).max(500)).max(30).default([]),
+  variantCount: z.number().int().min(1).max(3).default(1),
+});
+export type DesignProposalRequest = z.infer<typeof designProposalRequestSchema>;
 export const designResolutionSchema = z.object({
   decision: z.enum(['APPROVED', 'REJECTED', 'CHANGES']),
 });

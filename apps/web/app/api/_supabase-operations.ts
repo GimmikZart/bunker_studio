@@ -30,6 +30,7 @@ import type {
   ReportScheduleRecord,
   BudgetReportRecord,
 } from './_store';
+import { createHash } from 'node:crypto';
 import { verificationCommandSchema, type ReviewFinding } from '@bunker-studio/contracts';
 
 type MeetingMinutes = NonNullable<MeetingRecord['minutes']>;
@@ -452,6 +453,11 @@ function mapDesign(value: unknown): DesignRecord {
     version: typeof item.version_number === 'number' ? item.version_number : 0,
     status: item.status as DesignRecord['status'],
     spec: spec && typeof spec === 'object' ? (spec as Record<string, unknown>) : {},
+    designRequestId: nullableString(item.design_request_id) ?? undefined,
+    rationale: typeof item.rationale === 'string' ? item.rationale : '',
+    previewArtifactIds: Array.isArray(item.preview_artifact_ids)
+      ? item.preview_artifact_ids.filter((id): id is string => typeof id === 'string')
+      : [],
     approvedAt: nullableString(item.approved_at),
     approvedBy: nullableString(item.approved_by),
   };
@@ -1149,21 +1155,96 @@ export class SupabaseOperationalRepository {
     return Array.isArray(data) ? data.map(mapDesign) : [];
   }
 
+  async listDesignPreviews(
+    organizationId: string,
+    versionId: string,
+    actorUserId: string,
+  ): Promise<{ id: string; title: string; html: string }[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const versions = await this.listDesignVersions(organizationId, actorUserId);
+    const version = versions.find((item) => item.id === versionId);
+    if (!version || !version.previewArtifactIds?.length) return [];
+    const data = await unwrap(
+      this.client.from('artifacts').select('*').eq('organization_id', organizationId),
+    );
+    if (!Array.isArray(data)) return [];
+    return data.flatMap((value) => {
+      const item = object(value);
+      if (!version.previewArtifactIds?.includes(stringValue(item.id, 'id'))) return [];
+      const metadata = object(item.metadata_json ?? {});
+      const html = typeof metadata.previewHtml === 'string' ? metadata.previewHtml : null;
+      if (!html) return [];
+      return [
+        {
+          id: stringValue(item.id, 'id'),
+          title: typeof metadata.title === 'string' ? metadata.title : 'Preview',
+          html,
+        },
+      ];
+    });
+  }
+
   async submitDesignVersion(
     organizationId: string,
     input: Pick<DesignRecord, 'version' | 'spec'> & {
       rationale?: string;
       previewArtifactIds?: string[];
+      designRequestId?: string;
+      designRequest?: {
+        designerAgentId: string;
+        brief: string;
+        projectId?: string;
+        taskId?: string;
+      };
+      previews?: { title: string; html: string }[];
     },
     actorUserId: string,
   ): Promise<DesignRecord> {
     await this.requireMember(organizationId, actorUserId);
+    let designRequestId = input.designRequestId;
+    if (input.designRequest) {
+      const agent = await unwrap(
+        this.client
+          .from('agents')
+          .select('id')
+          .eq('id', input.designRequest.designerAgentId)
+          .eq('organization_id', organizationId)
+          .maybeSingle(),
+      );
+      if (!agent) throw new Error('Designer agent was not found in this organization.');
+      const request = await unwrap(
+        this.client
+          .from('design_requests')
+          .insert({
+            organization_id: organizationId,
+            designer_agent_id: input.designRequest.designerAgentId,
+            brief: input.designRequest.brief,
+            status: 'OPEN',
+            ...(input.designRequest.projectId ? { project_id: input.designRequest.projectId } : {}),
+            ...(input.designRequest.taskId ? { task_id: input.designRequest.taskId } : {}),
+          })
+          .select('id')
+          .single(),
+      );
+      designRequestId = stringValue(object(request).id, 'design request id');
+    }
+    if (designRequestId) {
+      const request = await unwrap(
+        this.client
+          .from('design_requests')
+          .select('id')
+          .eq('id', designRequestId)
+          .eq('organization_id', organizationId)
+          .maybeSingle(),
+      );
+      if (!request) throw new Error('Design request was not found in this organization.');
+    }
     const data = await unwrap(
       this.client
         .from('design_versions')
         .insert({
           organization_id: organizationId,
-          design_request_id: null,
+          design_request_id: designRequestId ?? null,
           version_number: input.version,
           status: 'SUBMITTED',
           spec_json: input.spec,
@@ -1173,7 +1254,42 @@ export class SupabaseOperationalRepository {
         .select('*')
         .single(),
     );
-    return mapDesign(data);
+    const version = mapDesign(data);
+    const previews = input.previews ?? [];
+    if (!previews.length) return version;
+    const artifacts = await unwrap(
+      this.client
+        .from('artifacts')
+        .insert(
+          previews.map((preview) => ({
+            organization_id: organizationId,
+            artifact_type: 'DESIGN_PREVIEW_HTML',
+            storage_path: `design-previews/${version.id}/${crypto.randomUUID()}.html`,
+            mime_type: 'text/html',
+            sha256: createHash('sha256').update(preview.html).digest('hex'),
+            size_bytes: Buffer.byteLength(preview.html, 'utf8'),
+            metadata_json: {
+              designVersionId: version.id,
+              title: preview.title,
+              previewHtml: preview.html,
+            },
+          })),
+        )
+        .select('id'),
+    );
+    const previewArtifactIds = Array.isArray(artifacts)
+      ? artifacts.map((artifact) => stringValue(object(artifact).id, 'artifact id'))
+      : [];
+    const updated = await unwrap(
+      this.client
+        .from('design_versions')
+        .update({ preview_artifact_ids: previewArtifactIds })
+        .eq('id', version.id)
+        .eq('organization_id', organizationId)
+        .select('*')
+        .single(),
+    );
+    return mapDesign(updated);
   }
 
   async approveDesignVersion(

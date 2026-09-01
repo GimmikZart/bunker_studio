@@ -22,6 +22,7 @@ import {
   getMemories,
   getRepository,
   listDesignVersions,
+  listDesignPreviews,
   listApprovals,
   listCosts,
   listMeetings,
@@ -70,6 +71,7 @@ import {
   type TaskRecord,
   type TaskCreateRecord,
   type ActivityRecord,
+  type DesignPreviewArtifact,
   type WorkflowRecord,
   type BudgetPolicyRecord,
   type ReportScheduleRecord,
@@ -207,11 +209,24 @@ type LocalOperationalRepository = {
   listMemories: (organizationId: string, actorUserId: string) => MemoryUnit[];
   deleteMemory: (organizationId: string, memoryId: string, actorUserId: string) => boolean;
   listDesignVersions: (organizationId: string, actorUserId: string) => DesignRecord[];
+  listDesignPreviews: (
+    organizationId: string,
+    versionId: string,
+    actorUserId: string,
+  ) => DesignPreviewArtifact[];
   submitDesignVersion: (
     organizationId: string,
     input: Pick<DesignRecord, 'version' | 'spec'> & {
       rationale?: string;
       previewArtifactIds?: string[];
+      designRequestId?: string;
+      designRequest?: {
+        designerAgentId: string;
+        brief: string;
+        projectId?: string;
+        taskId?: string;
+      };
+      previews?: Omit<DesignPreviewArtifact, 'id'>[];
     },
     actorUserId: string,
   ) => DesignRecord;
@@ -355,8 +370,8 @@ const localOperationalRepository: LocalOperationalRepository = {
   listMemories: (organizationId) => getMemories(organizationId),
   deleteMemory: (organizationId, memoryId) => deleteMemory(organizationId, memoryId),
   listDesignVersions: (organizationId) => listDesignVersions(organizationId),
-  submitDesignVersion: (organizationId, input) =>
-    submitDesignVersion(organizationId, { version: input.version, spec: input.spec }),
+  listDesignPreviews: (organizationId, versionId) => listDesignPreviews(organizationId, versionId),
+  submitDesignVersion: (organizationId, input) => submitDesignVersion(organizationId, input),
   approveDesignVersion: (organizationId, versionId, actorUserId) => {
     const versions = listDesignVersions(organizationId);
     const approved = applyDesignApproval(versions, versionId, actorUserId);

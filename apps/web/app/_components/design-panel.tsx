@@ -5,13 +5,25 @@ import { useEffect, useState } from 'react';
 import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
-type Design = { id: string; version: number; status: string; rationale?: string };
+type Agent = { id: string; name: string; roleKey: string; status: string };
+type DesignPreview = { id: string; title: string; html: string };
+type Design = {
+  id: string;
+  version: number;
+  status: string;
+  rationale?: string;
+  previews?: DesignPreview[];
+};
 
 export function DesignPanel() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationId, setOrganizationId] = useState('');
   const [versions, setVersions] = useState<Design[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [designerAgentId, setDesignerAgentId] = useState('');
   const [brief, setBrief] = useState('');
+  const [constraints, setConstraints] = useState('');
+  const [variantCount, setVariantCount] = useState(1);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   async function load(id: string) {
@@ -22,6 +34,11 @@ export function DesignPanel() {
       return;
     }
     setVersions(((await response.json()) as { versions?: Design[] }).versions ?? []);
+    const agentsResponse = await fetch('/api/agents', { headers: apiHeaders(id) });
+    if (agentsResponse.ok) {
+      const available = ((await agentsResponse.json()) as { agents?: Agent[] }).agents ?? [];
+      setAgents(available.filter((agent) => agent.status === 'ACTIVE'));
+    }
   }
   useEffect(() => {
     void fetch('/api/organizations', { headers: apiHeaders() })
@@ -38,8 +55,8 @@ export function DesignPanel() {
       .catch(() => setError('Create an organization before proposing a design.'));
   }, []);
   async function submit() {
-    if (!brief.trim() || !organizationId) {
-      setError('Describe the interface or flow that needs approval.');
+    if (!brief.trim() || !organizationId || !designerAgentId) {
+      setError('Choose a Designer agent and describe the interface or flow that needs approval.');
       return;
     }
     setError('');
@@ -47,11 +64,13 @@ export function DesignPanel() {
       method: 'POST',
       headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
       body: JSON.stringify({
-        versionNumber: versions.length + 1,
-        status: 'SUBMITTED',
-        spec: { brief },
-        rationale: brief,
-        previewArtifactIds: [],
+        designerAgentId,
+        brief,
+        constraints: constraints
+          .split('\n')
+          .map((constraint) => constraint.trim())
+          .filter(Boolean),
+        variantCount,
       }),
     });
     if (!response.ok) {
@@ -59,7 +78,10 @@ export function DesignPanel() {
       return;
     }
     setBrief('');
-    setNotice('Design submitted. An owner can now approve it for frontend work.');
+    setConstraints('');
+    setNotice(
+      'Safe static design proposal(s) created. An owner can now approve one for frontend work.',
+    );
     await load(organizationId);
   }
   async function resolve(version: Design, decision: 'APPROVED' | 'REJECTED' | 'CHANGES') {
@@ -108,6 +130,24 @@ export function DesignPanel() {
         </div>
       )}
       <div className="resource-form">
+        <label htmlFor="design-agent">Designer agent</label>
+        <select
+          id="design-agent"
+          value={designerAgentId}
+          onChange={(event) => setDesignerAgentId(event.target.value)}
+        >
+          <option value="">Choose an active agent</option>
+          {agents.map((agent) => (
+            <option key={agent.id} value={agent.id}>
+              {agent.name} ({agent.roleKey})
+            </option>
+          ))}
+        </select>
+        {agents.length === 0 && organizationId && (
+          <p className="field-help">
+            Create and activate a Designer agent before submitting a request.
+          </p>
+        )}
         <label htmlFor="design-brief">Design brief</label>
         <textarea
           id="design-brief"
@@ -117,15 +157,34 @@ export function DesignPanel() {
           maxLength={10_000}
           placeholder="User flow, required states, and constraints."
         />
+        <label htmlFor="design-constraints">Constraints (one per line)</label>
+        <textarea
+          id="design-constraints"
+          value={constraints}
+          onChange={(event) => setConstraints(event.target.value)}
+          rows={3}
+          maxLength={10_000}
+          placeholder="Accessibility: keyboard navigation\nBrand: use the existing design tokens"
+        />
+        <label htmlFor="design-variants">Variants</label>
+        <select
+          id="design-variants"
+          value={variantCount}
+          onChange={(event) => setVariantCount(Number(event.target.value))}
+        >
+          <option value={1}>1 proposal</option>
+          <option value={2}>2 proposals</option>
+          <option value={3}>3 proposals</option>
+        </select>
         <p className="field-help">
-          Submitting preserves a versioned proposal. Approving it is an owner-only gate for frontend
-          tasks.
+          Each proposal includes a bounded, sandboxed static HTML preview. No script or remote
+          content runs in the preview. Approving one is the owner-only gate for frontend tasks.
         </p>
         <button
           className="primary-button"
           type="button"
           onClick={() => void submit()}
-          disabled={!organizationId}
+          disabled={!organizationId || !designerAgentId}
         >
           Submit design for approval
         </button>
@@ -152,6 +211,23 @@ export function DesignPanel() {
               <strong>Design v{version.version}</strong>
               <small>{version.status}</small>
             </span>
+            {version.rationale && <p>{version.rationale}</p>}
+            {version.previews?.map((preview) => (
+              <figure key={preview.id}>
+                <figcaption>{preview.title}</figcaption>
+                <iframe
+                  title={`${version.id}-${preview.title}`}
+                  sandbox=""
+                  srcDoc={preview.html}
+                  style={{
+                    border: '1px solid #d7dce5',
+                    borderRadius: 8,
+                    height: 280,
+                    width: '100%',
+                  }}
+                />
+              </figure>
+            ))}
             {version.status === 'SUBMITTED' && (
               <span className="approval-actions">
                 <button
