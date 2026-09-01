@@ -14,12 +14,15 @@
   },
   "dependencies": {
     "@bunker-studio/agent-runtime": "workspace:*",
-    "@bunker-studio/core": "workspace:*",
     "@bunker-studio/config": "workspace:*",
+    "@bunker-studio/core": "workspace:*",
     "@bunker-studio/db": "workspace:*",
     "@bunker-studio/notifications": "workspace:*",
     "@bunker-studio/orchestration": "workspace:*",
+    "@bunker-studio/provider-anthropic": "workspace:*",
+    "@bunker-studio/provider-openai": "workspace:*",
     "@bunker-studio/provider-openai-compatible": "workspace:*",
+    "@openai/codex-sdk": "0.151.0",
     "@supabase/supabase-js": "^2.57.0",
     "pg-boss": "^12.29.0"
   },

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
@@ -24,12 +25,12 @@ type SettingsPayload = {
   }[];
   runtime: {
     mode: string;
-    providerType: string;
-    endpointConfigured: boolean;
-    apiKeyConfigured: boolean;
-    model: string | null;
+    providerSelection: string;
+    workerRequired: boolean;
   };
 };
+
+type ProviderType = 'OPENAI' | 'ANTHROPIC' | 'OPENAI_COMPATIBLE';
 
 type NotificationPreferences = Record<
   'APPROVAL' | 'SECURITY' | 'BUDGET' | 'QUOTA' | 'WORKFLOW',
@@ -106,6 +107,19 @@ export function SettingsPanel() {
     recipients: '',
     enabled: true,
   });
+  const [providerForm, setProviderForm] = useState({
+    providerType: 'OPENAI' as ProviderType,
+    displayName: 'OpenAI',
+    apiKey: '',
+    apiBaseUrl: '',
+    manualModels: '',
+  });
+  const [savingProvider, setSavingProvider] = useState(false);
+  const [workerScopes, setWorkerScopes] = useState('');
+  const [workerRegistration, setWorkerRegistration] = useState<{
+    token: string;
+    expiresAt: string;
+  } | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -285,6 +299,72 @@ export function SettingsPanel() {
     setNotice('Weekly report schedule saved.');
   }
 
+  async function connectProvider(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!organizationId || !providerForm.apiKey.trim()) return;
+    setError('');
+    setNotice('');
+    setSavingProvider(true);
+    try {
+      const response = await fetch('/api/providers', {
+        method: 'POST',
+        headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
+        body: JSON.stringify({
+          providerType: providerForm.providerType,
+          displayName: providerForm.displayName,
+          apiKey: providerForm.apiKey,
+          apiBaseUrl: providerForm.apiBaseUrl || undefined,
+          manualModels: providerForm.manualModels
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean),
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? 'Provider setup failed.');
+      setProviderForm((current) => ({ ...current, apiKey: '' }));
+      await load(organizationId);
+      setNotice('Provider connected. Its models are now available when creating an agent.');
+    } catch (providerError) {
+      setError(
+        providerError instanceof Error
+          ? providerError.message
+          : 'The provider could not be connected.',
+      );
+    } finally {
+      setSavingProvider(false);
+    }
+  }
+
+  async function createWorkerRegistration() {
+    if (!organizationId) return;
+    setError('');
+    setNotice('');
+    const response = await fetch('/api/workers/registration-tokens', {
+      method: 'POST',
+      headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
+      body: JSON.stringify({
+        allowedScopes: workerScopes
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+        maxConcurrent: 1,
+        expiresInMinutes: 60,
+      }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      token?: string;
+      expiresAt?: string;
+      error?: string;
+    };
+    if (!response.ok || !payload.token || !payload.expiresAt) {
+      setError(payload.error ?? 'The worker registration token could not be created.');
+      return;
+    }
+    setWorkerRegistration({ token: payload.token, expiresAt: payload.expiresAt });
+    setNotice('One-time worker token created. Run the command on the PC before it expires.');
+  }
+
   return (
     <section className="live-panel" aria-label="Settings live view">
       <div className="live-panel-toolbar">
@@ -312,32 +392,102 @@ export function SettingsPanel() {
         <div className="settings-grid">
           <div className="getting-started live-panel-card" id="providers">
             <div>
-              <h2>Runtime</h2>
-              <p>
-                {settings.runtime.mode} · {settings.runtime.providerType}
-              </p>
-              <p className="live-summary">
-                Endpoint {settings.runtime.endpointConfigured ? 'configured' : 'missing'} · API key{' '}
-                {settings.runtime.apiKeyConfigured ? 'configured' : 'missing'}
-              </p>
-              {settings.runtime.model && <small>Model: {settings.runtime.model}</small>}
-            </div>
-          </div>
-          <div className="getting-started live-panel-card">
-            <div>
               <h2>Providers</h2>
+              <p>
+                Connect one account per provider. The key is sent only to the server, encrypted, and
+                never shown again. Reading the model catalog does not run a model or consume
+                inference tokens.
+              </p>
+              <form
+                className="settings-form-grid"
+                onSubmit={(event) => void connectProvider(event)}
+              >
+                <label>
+                  Provider
+                  <select
+                    value={providerForm.providerType}
+                    onChange={(event) => {
+                      const providerType = event.target.value as ProviderType;
+                      setProviderForm({
+                        ...providerForm,
+                        providerType,
+                        displayName:
+                          providerType === 'OPENAI'
+                            ? 'OpenAI'
+                            : providerType === 'ANTHROPIC'
+                              ? 'Anthropic'
+                              : 'OpenAI-compatible provider',
+                        apiBaseUrl: '',
+                        manualModels: '',
+                      });
+                    }}
+                  >
+                    <option value="OPENAI">OpenAI</option>
+                    <option value="ANTHROPIC">Anthropic</option>
+                    <option value="OPENAI_COMPATIBLE">OpenAI-compatible</option>
+                  </select>
+                </label>
+                <label>
+                  Display name
+                  <input
+                    value={providerForm.displayName}
+                    onChange={(event) =>
+                      setProviderForm({ ...providerForm, displayName: event.target.value })
+                    }
+                    required
+                  />
+                </label>
+                <label>
+                  API key
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={providerForm.apiKey}
+                    onChange={(event) =>
+                      setProviderForm({ ...providerForm, apiKey: event.target.value })
+                    }
+                    required
+                  />
+                </label>
+                {providerForm.providerType === 'OPENAI_COMPATIBLE' && (
+                  <>
+                    <label>
+                      API base URL
+                      <input
+                        type="url"
+                        placeholder="http://127.0.0.1:11434/v1"
+                        value={providerForm.apiBaseUrl}
+                        onChange={(event) =>
+                          setProviderForm({ ...providerForm, apiBaseUrl: event.target.value })
+                        }
+                        required
+                      />
+                    </label>
+                    <label>
+                      Model IDs (comma separated)
+                      <input
+                        placeholder="model-a, model-b"
+                        value={providerForm.manualModels}
+                        onChange={(event) =>
+                          setProviderForm({ ...providerForm, manualModels: event.target.value })
+                        }
+                        required
+                      />
+                    </label>
+                  </>
+                )}
+                <button className="secondary-button" type="submit" disabled={savingProvider}>
+                  {savingProvider ? 'Connecting…' : 'Connect provider'}
+                </button>
+              </form>
               <div className="live-records">
                 {settings.providers.length === 0 && (
                   <div className="actionable-empty-state">
                     <strong>No provider connection is ready.</strong>
                     <span>
-                      This deployment does not expose credential entry in the browser: secrets must
-                      be encrypted and configured server-side by an owner or deployment
-                      administrator.
+                      Add OpenAI now, or leave any provider you do not use unconfigured. A local
+                      model can be added later without blocking the cloud providers.
                     </span>
-                    <a className="secondary-button" href="#provider-requirements">
-                      View provider setup requirements
-                    </a>
                   </div>
                 )}
                 {settings.providers.map((provider) => (
@@ -354,20 +504,60 @@ export function SettingsPanel() {
                   </div>
                 ))}
               </div>
-              <details className="advanced-section" id="provider-requirements">
-                <summary>Provider setup requirements</summary>
-                <p className="field-help">
-                  Configure an approved provider connection and its model catalog through the secure
-                  server-side deployment flow. API keys are never displayed, stored in browser
-                  state, or copied into agent forms. Once its connection status is Ready, models
-                  become selectable when creating an agent.
-                </p>
-              </details>
+            </div>
+          </div>
+          <div className="getting-started live-panel-card">
+            <div>
+              <h2>Execution</h2>
+              <p>{settings.runtime.mode}</p>
+              <p className="live-summary">
+                {settings.runtime.providerSelection}.{' '}
+                {settings.runtime.workerRequired
+                  ? 'Repository jobs run on an authenticated worker, such as your PC.'
+                  : 'No worker is required.'}
+              </p>
             </div>
           </div>
           <div className="getting-started live-panel-card">
             <div>
               <h2>Workers</h2>
+              <p>
+                The PC worker connects outward to this app. No router port or public IP is needed,
+                and queued work waits safely while the PC is off.
+              </p>
+              <label htmlFor="worker-scopes">Allowed repository paths</label>
+              <input
+                id="worker-scopes"
+                value={workerScopes}
+                onChange={(event) => setWorkerScopes(event.target.value)}
+                placeholder="apps, packages, docs"
+              />
+              <p className="field-help">
+                Comma-separated paths this worker may read or change. Leave empty only for tasks
+                whose read/write scopes are also empty.
+              </p>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => void createWorkerRegistration()}
+              >
+                Create PC worker command
+              </button>
+              {workerRegistration && (
+                <div className="actionable-empty-state">
+                  <strong>Run these lines in PowerShell from the Bunker Studio folder</strong>
+                  <code>{`$env:WORKER_CONTROL_PLANE_URL='${typeof window === 'undefined' ? '' : window.location.origin}'`}</code>
+                  <code>{`$env:WORKER_REGISTRATION_TOKEN='${workerRegistration.token}'`}</code>
+                  <code>{`$env:WORKER_CAPABILITIES='chat,repository,codex'`}</code>
+                  <code>{`$env:WORKER_WORKSPACE_ROOT="$PWD\\.bunker\\workspaces"`}</code>
+                  <code>pnpm --filter @bunker-studio/worker dev</code>
+                  <small>
+                    Token valid until {new Date(workerRegistration.expiresAt).toLocaleString()} and
+                    shown only here. After the first start, the worker saves its own credential in
+                    .bunker and no longer needs this token.
+                  </small>
+                </div>
+              )}
               <div className="live-records">
                 {settings.workers.length === 0 && (
                   <span className="empty-state">No registered workers.</span>

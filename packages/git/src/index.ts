@@ -100,6 +100,10 @@ export type GitHubPullRequest = {
 };
 
 export type GitHubApi = {
+  verifyRepositoryAccess: (
+    repository: GitHubRepositoryRef,
+    branch: string,
+  ) => Promise<{ repositoryId: string; defaultBranch: string; canPush: boolean }>;
   createBranch: (
     repository: GitHubRepositoryRef,
     branch: string,
@@ -178,6 +182,19 @@ export function createGitHubApi(input: {
   }
 
   return {
+    verifyRepositoryAccess: async (repository, branch) => {
+      const metadata = await request<{
+        id: number | string;
+        default_branch: string;
+        permissions?: { push?: boolean };
+      }>(githubPath(repository, ''));
+      await request(githubPath(repository, `/branches/${encodeURIComponent(branch)}`));
+      return {
+        repositoryId: String(metadata.id),
+        defaultBranch: metadata.default_branch,
+        canPush: metadata.permissions?.push === true,
+      };
+    },
     createBranch: async (repository, branch, baseCommitSha) => {
       await request(githubPath(repository, '/git/refs'), {
         method: 'POST',

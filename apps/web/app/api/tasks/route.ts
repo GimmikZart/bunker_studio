@@ -2,7 +2,11 @@ import { taskCreateSchema, taskStateSchema, taskTransitionSchema } from '@bunker
 import { canWrite, evaluateBudgetPolicies } from '@bunker-studio/core';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../_auth';
-import { getWebOperationalRepository, getWebTenancyRepository } from '../_data';
+import {
+  getWebAgentRepository,
+  getWebOperationalRepository,
+  getWebTenancyRepository,
+} from '../_data';
 
 export async function GET(request: Request) {
   const actorId = await resolveActorId(request);
@@ -32,7 +36,8 @@ export async function POST(request: Request) {
     );
   const operations = await getWebOperationalRepository();
   const tenancy = await getWebTenancyRepository();
-  if (!operations || !tenancy)
+  const agents = await getWebAgentRepository();
+  if (!operations || !tenancy || !agents)
     return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
     const input = taskCreateSchema.parse(await request.json());
@@ -40,6 +45,8 @@ export async function POST(request: Request) {
       (item) => item.id === input.projectId,
     );
     if (!project) return NextResponse.json({ error: 'Project not found.' }, { status: 404 });
+    if (input.assignedAgentId)
+      await agents.getAgent(input.assignedAgentId, organizationId, actorId);
     if (input.taskType === 'FRONTEND' && !input.approvedDesignVersionId)
       return NextResponse.json(
         { error: 'Every frontend task requires an approved design version.' },
@@ -79,7 +86,8 @@ export async function PATCH(request: Request) {
       { status: 401 },
     );
   const operations = await getWebOperationalRepository();
-  if (!operations)
+  const agents = await getWebAgentRepository();
+  if (!operations || !agents)
     return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   const role = await operations.getRole(organizationId, actorId);
   if (!role) return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
@@ -96,6 +104,38 @@ export async function PATCH(request: Request) {
         (candidate) => candidate.id === taskId,
       );
       if (!task) return NextResponse.json({ error: 'Task not found.' }, { status: 404 });
+      if (!task.assignedAgentId)
+        return NextResponse.json(
+          { error: 'Assign an agent before queueing this task.' },
+          { status: 409 },
+        );
+      const assignedAgent = await agents.getAgent(task.assignedAgentId, organizationId, actorId);
+      if (
+        assignedAgent.providerConnectionId === 'unbound' ||
+        assignedAgent.providerModelId === 'unconfigured' ||
+        assignedAgent.runtimeType === 'UNCONFIGURED'
+      )
+        return NextResponse.json(
+          { error: 'The assigned agent needs a provider, model, and runtime before queueing.' },
+          { status: 409 },
+        );
+      if (assignedAgent.runtimeType === 'CODEX_SDK') {
+        if (!task.writeScope.length)
+          return NextResponse.json(
+            { error: 'A Codex repository task requires at least one write scope.' },
+            { status: 409 },
+          );
+        const repository = await operations.getRepository(task.projectId, organizationId, actorId);
+        if (
+          !repository ||
+          repository.providerType !== 'GITHUB' ||
+          repository.status !== 'CONNECTED'
+        )
+          return NextResponse.json(
+            { error: 'Connect a writable GitHub repository before queueing a Codex task.' },
+            { status: 409 },
+          );
+      }
       const budget = evaluateBudgetPolicies({
         policies: await operations.listBudgetPolicies(organizationId, actorId),
         entries: await operations.listCosts(organizationId, actorId),

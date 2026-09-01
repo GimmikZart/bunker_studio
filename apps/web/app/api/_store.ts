@@ -358,6 +358,7 @@ export type TaskRecord = {
   id: string;
   organizationId: string;
   projectId: string;
+  assignedAgentId?: string;
   workflowId?: string;
   title: string;
   description: string;
@@ -370,6 +371,9 @@ export type TaskRecord = {
   parallelGroupId?: string;
   approvedDesignVersionId?: string;
   definitionOfDone?: string[];
+  candidateBranch?: string;
+  candidateCommitSha?: string;
+  workerResult?: Record<string, unknown>;
   estimatedCost: number;
   priority: number;
   createdAt: string;

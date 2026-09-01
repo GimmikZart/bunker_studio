@@ -27,7 +27,10 @@ async function setup() {
         name: 'Chat Agent',
         roleKey: 'assistant',
         title: 'Chat Assistant',
-        providerBindingId: 'local-fake',
+        providerConnectionId: '00000000-0000-4000-8000-000000000001',
+        providerModelId: 'fake-default',
+        runtimeType: 'OPENAI_COMPATIBLE',
+        reasoningEffort: 'medium',
       }),
     }),
   );
@@ -105,7 +108,7 @@ describe('direct chat budget gate', () => {
       amount: 0.01,
       agentId,
       provider: 'fake',
-      model: 'local-fake',
+      model: 'fake-default',
     });
     expect(entries[0].runId).toEqual(expect.any(String));
     expect(entries[0].inputTokens).toEqual(expect.any(Number));

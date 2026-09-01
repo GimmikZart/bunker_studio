@@ -6,6 +6,7 @@ import { POST as approveDesign } from '../designs/[versionId]/approve/route';
 import { PATCH, POST } from './route';
 import { POST as createPolicy } from '../budgets/policies/route';
 import { GET as listNotifications } from '../notifications/route';
+import { POST as createAgent } from '../agents/route';
 
 describe('task design reference policy', () => {
   it('requires and accepts an approved design for frontend tasks', async () => {
@@ -29,7 +30,6 @@ describe('task design reference policy', () => {
       { params: Promise.resolve({ organizationId }) },
     );
     const projectId = (await projectResponse.json()).project.id as string;
-
     const withoutDesign = await POST(
       new Request('http://localhost/api/tasks', {
         method: 'POST',
@@ -94,6 +94,22 @@ describe('task design reference policy', () => {
       { params: Promise.resolve({ organizationId }) },
     );
     const projectId = (await projectResponse.json()).project.id as string;
+    const agentResponse = await createAgent(
+      new Request('http://localhost/api/agents', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          name: 'Budget Builder',
+          roleKey: 'backend',
+          title: 'Backend Engineer',
+          providerConnectionId: '00000000-0000-4000-8000-000000000001',
+          providerModelId: 'fake-default',
+          runtimeType: 'OPENAI_COMPATIBLE',
+          reasoningEffort: 'medium',
+        }),
+      }),
+    );
+    const assignedAgentId = (await agentResponse.json()).agent.id as string;
     const policyResponse = await createPolicy(
       new Request('http://localhost/api/budgets/policies', {
         method: 'POST',
@@ -120,6 +136,7 @@ describe('task design reference policy', () => {
           projectId,
           title: 'Soft threshold task',
           taskType: 'BACKEND',
+          assignedAgentId,
           estimatedCost: 4.5,
         }),
       }),
@@ -156,6 +173,7 @@ describe('task design reference policy', () => {
           projectId,
           title: 'Expensive task',
           taskType: 'BACKEND',
+          assignedAgentId,
           estimatedCost: 10,
         }),
       }),

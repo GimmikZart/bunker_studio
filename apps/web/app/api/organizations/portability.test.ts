@@ -48,7 +48,10 @@ describe('organization portability routes', () => {
           roleKey: 'backend',
           title: 'Backend Engineer',
           personality: {},
-          providerBindingId: 'local-ollama',
+          providerConnectionId: '00000000-0000-4000-8000-000000000001',
+          providerModelId: 'fake-default',
+          runtimeType: 'OPENAI_COMPATIBLE',
+          reasoningEffort: 'medium',
         }),
       }),
     );

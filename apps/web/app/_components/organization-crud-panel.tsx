@@ -14,6 +14,11 @@ export function OrganizationCrudPanel({ kind }: { kind: 'projects' | 'teams' }) 
   const [editingId, setEditingId] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [repositoryProjectId, setRepositoryProjectId] = useState('');
+  const [repositoryOwner, setRepositoryOwner] = useState('');
+  const [repositoryName, setRepositoryName] = useState('');
+  const [repositoryBranch, setRepositoryBranch] = useState('main');
+  const [repositoryToken, setRepositoryToken] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -29,7 +34,12 @@ export function OrganizationCrudPanel({ kind }: { kind: 'projects' | 'teams' }) 
       return;
     }
     const payload = (await response.json()) as Record<string, unknown>;
-    setRecords((payload[kind] ?? []) as RecordItem[]);
+    const nextRecords = (payload[kind] ?? []) as RecordItem[];
+    setRecords(nextRecords);
+    if (kind === 'projects')
+      setRepositoryProjectId((current) =>
+        nextRecords.some((record) => record.id === current) ? current : (nextRecords[0]?.id ?? ''),
+      );
   }
 
   useEffect(() => {
@@ -105,6 +115,38 @@ export function OrganizationCrudPanel({ kind }: { kind: 'projects' | 'teams' }) 
     setNotice('Archived.');
   }
 
+  async function connectRepository(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!repositoryProjectId) return;
+    setError('');
+    setNotice('');
+    const response = await fetch(`/api/projects/${repositoryProjectId}/repository`, {
+      method: 'POST',
+      headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerType: 'GITHUB',
+        owner: repositoryOwner,
+        name: repositoryName,
+        defaultBranch: repositoryBranch,
+        accessToken: repositoryToken || undefined,
+      }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      repository?: { status?: string };
+      error?: string;
+    };
+    if (!response.ok) {
+      setError(payload.error ?? 'The GitHub repository could not be connected.');
+      return;
+    }
+    setRepositoryToken('');
+    setNotice(
+      payload.repository?.status === 'CONNECTED'
+        ? 'GitHub repository connected. The token was encrypted and is no longer displayed.'
+        : 'Repository metadata saved, but a token is still required before agents can push.',
+    );
+  }
+
   return (
     <section className="live-panel" aria-label={`${kind} management`}>
       <div className="live-panel-toolbar">
@@ -159,6 +201,66 @@ export function OrganizationCrudPanel({ kind }: { kind: 'projects' | 'teams' }) 
           )}
         </div>
       </form>
+      {kind === 'projects' && (
+        <form className="resource-form" onSubmit={(event) => void connectRepository(event)}>
+          <h2>GitHub repository</h2>
+          <p className="field-help">
+            Connect the remote repository the PC worker will clone, edit on a dedicated branch, and
+            push. Bunker Studio never merges automatically.
+          </p>
+          <label htmlFor="repository-project">Project</label>
+          <select
+            id="repository-project"
+            value={repositoryProjectId}
+            onChange={(event) => setRepositoryProjectId(event.target.value)}
+            disabled={!records.length}
+          >
+            {!records.length && <option value="">Create a project first</option>}
+            {records.map((record) => (
+              <option key={record.id} value={record.id}>
+                {record.name}
+              </option>
+            ))}
+          </select>
+          <label htmlFor="repository-owner">GitHub owner or organization</label>
+          <input
+            id="repository-owner"
+            value={repositoryOwner}
+            onChange={(event) => setRepositoryOwner(event.target.value)}
+            required
+          />
+          <label htmlFor="repository-name">Repository name</label>
+          <input
+            id="repository-name"
+            value={repositoryName}
+            onChange={(event) => setRepositoryName(event.target.value)}
+            required
+          />
+          <label htmlFor="repository-branch">Default branch</label>
+          <input
+            id="repository-branch"
+            value={repositoryBranch}
+            onChange={(event) => setRepositoryBranch(event.target.value)}
+            required
+          />
+          <label htmlFor="repository-token">GitHub fine-grained access token</label>
+          <input
+            id="repository-token"
+            type="password"
+            autoComplete="new-password"
+            value={repositoryToken}
+            onChange={(event) => setRepositoryToken(event.target.value)}
+            required
+          />
+          <p className="field-help">
+            Use a fine-grained token limited to this repository, with Contents read/write and Pull
+            requests read/write. It is sent to the server over HTTPS and stored encrypted.
+          </p>
+          <button className="secondary-button" type="submit" disabled={!repositoryProjectId}>
+            Connect GitHub repository
+          </button>
+        </form>
+      )}
       {notice && (
         <p className="live-summary" role="status">
           {notice}

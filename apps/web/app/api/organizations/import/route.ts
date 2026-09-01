@@ -142,7 +142,6 @@ export async function POST(request: Request) {
         skills: agent.skills ?? [],
         tools: agent.tools ?? [],
         permissions: agent.permissions ?? [],
-        providerBindingId: 'REQUIRES_REAUTH',
       });
       agentIds.set(agent.id, created.id);
     }

@@ -1,7 +1,8 @@
 import { createRequestSupabaseClient } from './_supabase';
+import { usesSupabasePersistence } from './_persistence';
 
 export async function resolveActorId(request: Request): Promise<string | null> {
-  if (process.env.NODE_ENV !== 'production') {
+  if (!usesSupabasePersistence()) {
     const fixtureId = request.headers.get('x-bunker-user-id')?.trim();
     if (fixtureId) return fixtureId;
   }

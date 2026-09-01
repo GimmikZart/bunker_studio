@@ -38,12 +38,29 @@ describe('Supabase agent repository', () => {
           title: 'Lead',
           personality_json: { tone: 'calm' },
           archived_at: null,
-          agent_bindings: [{ id: 'binding-1', active_to: null }],
+          agent_bindings: [
+            {
+              id: 'binding-1',
+              provider_connection_id: 'connection-1',
+              provider_model_id: 'model-1',
+              runtime_type: 'OPENAI',
+              reasoning_effort: 'high',
+              active_to: null,
+              provider_connections: { provider_type: 'OPENAI' },
+            },
+          ],
         },
       ]),
     );
     await expect(repository.listAgents('org-1', 'user-1')).resolves.toMatchObject([
-      { id: 'agent-1', providerBindingId: 'binding-1', personality: { tone: 'calm' } },
+      {
+        id: 'agent-1',
+        providerBindingId: 'binding-1',
+        providerConnectionId: 'connection-1',
+        providerModelId: 'model-1',
+        reasoningEffort: 'high',
+        personality: { tone: 'calm' },
+      },
     ]);
   });
 });

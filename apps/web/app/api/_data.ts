@@ -1,10 +1,12 @@
 import {
   SupabaseAgentRepository,
   SupabaseTenancyRepository,
+  decryptSecret,
+  type EncryptedSecret,
   type SupabaseDataClient,
   type TenantStore,
 } from '@bunker-studio/db';
-import { createRequestSupabaseClient } from './_supabase';
+import { createRequestSupabaseClient, createWorkerServiceSupabaseClient } from './_supabase';
 import { SupabaseOperationalRepository, type ProviderRecord } from './_supabase-operations';
 import {
   addCost,
@@ -78,17 +80,18 @@ import {
   approveDesignVersion as applyDesignApproval,
   resolveDesignVersion as applyDesignResolution,
 } from '@bunker-studio/core';
-import type { BudgetPolicy, DesignRecord } from '@bunker-studio/core';
+import type { Agent, BudgetPolicy, DesignRecord } from '@bunker-studio/core';
 import { FakeRuntime, type AgentRuntime } from '@bunker-studio/agent-runtime';
 import { createAnthropicRuntime } from '@bunker-studio/provider-anthropic';
 import { createOpenAIRuntime } from '@bunker-studio/provider-openai';
 import { createCompatibleRuntime } from '@bunker-studio/provider-openai-compatible';
 import { canTransition, type TaskState } from '@bunker-studio/orchestration';
+import { usesSupabasePersistence } from './_persistence';
 
 export type WebTenancyRepository = TenantStore | SupabaseTenancyRepository;
 
 export async function getWebTenancyRepository(): Promise<WebTenancyRepository | null> {
-  if (process.env.NODE_ENV !== 'production') return tenantStore;
+  if (!usesSupabasePersistence()) return tenantStore;
   const client = await createRequestSupabaseClient();
   return client ? new SupabaseTenancyRepository(client as unknown as SupabaseDataClient) : null;
 }
@@ -96,7 +99,7 @@ export async function getWebTenancyRepository(): Promise<WebTenancyRepository | 
 export type WebAgentRepository = TenantStore | SupabaseAgentRepository;
 
 export async function getWebAgentRepository(): Promise<WebAgentRepository | null> {
-  if (process.env.NODE_ENV !== 'production') return tenantStore;
+  if (!usesSupabasePersistence()) return tenantStore;
   const client = await createRequestSupabaseClient();
   return client ? new SupabaseAgentRepository(client as unknown as SupabaseDataClient) : null;
 }
@@ -191,7 +194,11 @@ type LocalOperationalRepository = {
     organizationId: string,
     actorUserId: string,
   ) => RepositoryRecord | null;
-  saveRepository: (input: RepositoryRecord, actorUserId: string) => RepositoryRecord;
+  saveRepository: (
+    input: RepositoryRecord,
+    actorUserId: string,
+    encryptedCredential?: Record<string, unknown>,
+  ) => RepositoryRecord;
   addMemory: (
     organizationId: string,
     input: Omit<MemoryUnit, 'id' | 'deletedAt'>,
@@ -308,8 +315,8 @@ const localOperationalRepository: LocalOperationalRepository = {
   listMeetings: (organizationId) => listMeetings(organizationId),
   listProviders: () => [
     {
-      id: 'local-fake-provider',
-      providerType: 'fake',
+      id: '00000000-0000-4000-8000-000000000001',
+      providerType: 'FAKE',
       displayName: 'Local fake provider',
       status: 'READY',
       capabilities: ['chat', 'structured-output'],
@@ -407,28 +414,44 @@ const localOperationalRepository: LocalOperationalRepository = {
 };
 
 export async function getWebOperationalRepository(): Promise<WebOperationalRepository | null> {
-  if (process.env.NODE_ENV !== 'production') return localOperationalRepository;
+  if (!usesSupabasePersistence()) return localOperationalRepository;
   const client = await createRequestSupabaseClient();
   return client ? new SupabaseOperationalRepository(client as unknown as SupabaseDataClient) : null;
 }
 
-export function getWebAgentRuntime(providerBindingId?: string): AgentRuntime | null {
-  const isProduction = process.env.NODE_ENV === 'production';
-  const endpoint = isProduction
-    ? process.env.AGENT_PROVIDER_ENDPOINT
-    : process.env.LOCAL_PROVIDER_ENDPOINT;
-  if (!endpoint) return isProduction ? null : new FakeRuntime({});
+export async function getWebAgentRuntime(agent: Agent): Promise<AgentRuntime | null> {
+  if (!usesSupabasePersistence()) return new FakeRuntime({});
+  const client = createWorkerServiceSupabaseClient();
+  const masterKey = process.env.STUDIO_MASTER_KEY;
+  if (!client || !masterKey) return null;
+  const { data, error } = await client
+    .from('provider_connections')
+    .select('provider_type, encrypted_secret_blob, api_base_url, status')
+    .eq('id', agent.providerConnectionId)
+    .eq('organization_id', agent.organizationId)
+    .eq('status', 'READY')
+    .maybeSingle();
+  if (error || !data) return null;
+  const record = data as Record<string, unknown>;
+  if (!record.encrypted_secret_blob || typeof record.encrypted_secret_blob !== 'object')
+    return null;
+  const baseUrl =
+    typeof record.api_base_url === 'string' ? record.api_base_url.replace(/\/$/, '') : '';
+  const providerType = typeof record.provider_type === 'string' ? record.provider_type : '';
+  if (!baseUrl) return null;
   const options = {
-    endpoint,
-    apiKey: isProduction ? process.env.AGENT_PROVIDER_API_KEY : process.env.LOCAL_PROVIDER_API_KEY,
-    model:
-      (isProduction ? process.env.AGENT_PROVIDER_MODEL : process.env.LOCAL_PROVIDER_MODEL) ||
-      providerBindingId,
+    apiKey: decryptSecret(record.encrypted_secret_blob as EncryptedSecret, masterKey),
+    model: agent.providerModelId,
   };
-  const provider = isProduction
-    ? (process.env.AGENT_PROVIDER_TYPE ?? 'openai-compatible')
-    : (process.env.LOCAL_PROVIDER_TYPE ?? 'openai-compatible');
-  if (provider === 'openai') return createOpenAIRuntime(options);
-  if (provider === 'anthropic') return createAnthropicRuntime(options);
-  return createCompatibleRuntime(options);
+  if (providerType === 'OPENAI')
+    return createOpenAIRuntime({
+      endpoint: `${baseUrl}/responses`,
+      reasoningEffort: agent.reasoningEffort,
+      ...options,
+    });
+  if (providerType === 'ANTHROPIC')
+    return createAnthropicRuntime({ endpoint: `${baseUrl}/messages`, ...options });
+  if (providerType === 'OPENAI_COMPATIBLE')
+    return createCompatibleRuntime({ endpoint: `${baseUrl}/chat/completions`, ...options });
+  return null;
 }

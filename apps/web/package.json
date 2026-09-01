@@ -17,6 +17,7 @@
     "@bunker-studio/config": "workspace:*",
     "@bunker-studio/contracts": "workspace:*",
     "@bunker-studio/db": "workspace:*",
+    "@bunker-studio/git": "workspace:*",
     "@bunker-studio/orchestration": "workspace:*",
     "@bunker-studio/provider-anthropic": "workspace:*",
     "@bunker-studio/provider-openai": "workspace:*",

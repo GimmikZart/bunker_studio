@@ -10,62 +10,104 @@ riavvio di due worker, GitHub/CI protetto e notifica Web Push su un dispositivo.
 Sono controlli di qualita' per una release; non richiedono di cambiare il
 codice applicativo.
 
-## Prima di pubblicare: prova locale con OpenAI reale
+## Prima di pubblicare: prova locale completa
 
-Questo e' il percorso consigliato per controllare l'app sul tuo PC prima di
-usare Vercel. Il browser e il server girano in locale, mentre soltanto le
-richieste del modello vanno all'API OpenAI. Il database locale di sviluppo e'
-temporaneo e viene mantenuto in memoria: serve per provare velocemente
-schermate, account di test, agenti e chat senza creare utenti pubblici.
+Questa e' la prova da fare per prima. Il sito e il worker girano sul tuo PC,
+Supabase conserva i dati nel cloud e OpenAI viene usato solo quando invii
+realmente una chat o esegui un task. Non serve alcun modello installato sul PC.
 
-1. Crea il file `.env.local` copiando `.env.example` nella cartella principale
-   del progetto. `.env.local` e' ignorato da Git e non deve essere inviato in
-   chat.
-2. Nel file `.env.local` lascia `NODE_ENV=development` e inserisci soltanto
-   questi valori locali:
+### 1. Prepara Supabase Cloud
+
+Completa la sezione **A. Crea Supabase nel cloud** piu' sotto e applica le
+migrazioni con `supabase db push`. Poi crea `.env.local` nella cartella
+principale. Il file e' ignorato da Git e non va mai inviato in chat.
+
+Inserisci questi valori:
 
 ~~~text
+NODE_ENV=development
+BUNKER_PERSISTENCE_MODE=supabase
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-LOCAL_PROVIDER_TYPE=openai
-LOCAL_PROVIDER_ENDPOINT=https://api.openai.com/v1/chat/completions
-LOCAL_PROVIDER_API_KEY=<chiave API OpenAI>
-LOCAL_PROVIDER_MODEL=<ID esatto del modello disponibile>
+STUDIO_MASTER_KEY=<chiave generata col comando indicato sotto>
+SUPABASE_URL=<Project URL>
+SUPABASE_ANON_KEY=<chiave anon>
+SUPABASE_SERVICE_ROLE_KEY=<chiave service_role>
+DATABASE_URL=<stringa PostgreSQL>
 ~~~
 
-3. Apri PowerShell nella cartella del progetto ed esegui:
+Genera `STUDIO_MASTER_KEY` una sola volta e conserva sempre lo stesso valore
+per questo ambiente:
 
 ~~~powershell
-pnpm dev
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ~~~
 
-4. Apri [http://localhost:3000](http://localhost:3000). Crea un account di
-   prova, un'organizzazione, un progetto e un agente. Apri la chat dell'agente
-   e invia un messaggio breve.
-5. Controlla **Settings**: il runtime deve risultare
-   `local-configured-runtime`, il provider deve essere OpenAI e la chiave non
-   deve essere visualizzata.
-6. Quando hai finito, torna alla PowerShell e premi `Ctrl+C` per fermare il
-   server.
+Non aggiungere API key o model ID OpenAI nel file. Le vecchie variabili
+`AGENT_PROVIDER_*` e `LOCAL_PROVIDER_*` non sono piu' usate: provider, modello,
+runtime e reasoning vengono scelti dall'app per ogni singolo agente.
 
-Se lasci vuote le variabili `LOCAL_PROVIDER_*`, il progetto usa il fake runtime:
-utile per testare l'interfaccia senza consumare credito OpenAI, ma non dimostra
-che OpenAI funzioni. Con `LOCAL_PROVIDER_*` valorizzate, invece, il test della
-chat usa davvero l'endpoint OpenAI. Questa configurazione locale non cambia le
-variabili di produzione `AGENT_PROVIDER_*`.
-
-Per provare anche autenticazione, RLS e persistenza reale prima di Vercel, puoi
-usare un progetto Supabase di test e avviare il web in modalita' production
-locale dopo aver configurato le variabili `SUPABASE_*` e `AGENT_PROVIDER_*`:
+### 2. Avvia il sito sul PC
 
 ~~~powershell
-$env:NODE_ENV = 'production'
-pnpm build
-pnpm --filter @bunker-studio/web start
+cd "C:\Users\gm.115\Desktop\PROGETTI PERSONALI\BUNKER-STUDIO"
+pnpm --filter @bunker-studio/web dev
 ~~~
 
-Questo secondo test e' facoltativo per il primo giro. Il percorso piu' semplice
-e' iniziare con `pnpm dev` e `LOCAL_PROVIDER_*`, poi passare a Supabase cloud,
-infine a Vercel.
+Apri [http://localhost:3000](http://localhost:3000), registrati, crea
+un'organizzazione e un progetto. I dati rimarranno in Supabase anche dopo aver
+spento il server locale.
+
+### 3. Collega OpenAI dall'app
+
+1. Apri **Settings**.
+2. Nella sezione provider scegli **OpenAI**, scrivi un nome come `OpenAI
+   principale` e incolla la API key.
+3. Salva. Bunker Studio chiama l'endpoint del catalogo modelli: questa chiamata
+   non genera testo e non consuma token di inferenza.
+4. La chiave viene cifrata prima di essere salvata e non viene piu' mostrata.
+5. Apri **Agents**, scegli prima l'account provider, poi uno dei modelli
+   restituiti da OpenAI, il runtime e il livello di reasoning.
+
+Usa **OpenAI API** per chat o inferenze semplici. Usa **Codex SDK** per un
+agente che deve modificare un repository. Una chat reale o un task reale usa
+token API e quindi puo' avere un costo; il solo recupero del catalogo no.
+
+### 4. Collega un repository GitHub
+
+Nel progetto apri la configurazione repository e inserisci proprietario, nome,
+branch predefinito e un fine-grained personal access token GitHub limitato a
+quel repository, con permessi di lettura dei contenuti e scrittura dei
+contenuti. Bunker Studio verifica subito repository, branch e permesso push;
+se la verifica fallisce non segna la connessione come pronta.
+
+### 5. Avvia il worker che lavora sul repository
+
+1. In **Settings -> Local PC worker**, inserisci gli scope repository che il
+   worker puo' modificare, per esempio `apps, packages, docs`.
+2. Crea il token monouso.
+3. Copia nella stessa PowerShell i comandi mostrati dall'app ed eseguili. Il
+   worker salva la propria credenziale in `.bunker/worker-identity.json`; ai
+   riavvii successivi il token monouso non serve piu'.
+4. Lascia aperto il processo worker mentre vuoi far lavorare gli agenti.
+
+Ogni task Codex deve avere un agente assegnato, almeno uno scope di scrittura e
+un repository GitHub connesso. Il worker clona un workspace isolato, crea un
+branch `bunker/...`, rinnova il lease durante i lavori lunghi, verifica che
+nessun file esca dagli scope autorizzati e pubblica soltanto il branch. Non fa
+merge e non effettua deploy.
+
+### 6. Prova dal telefono
+
+Sulla stessa rete Wi-Fi puoi aprire `http://<IP-del-PC>:3000`; trova l'IPv4 con
+`ipconfig`. Se Windows chiede il permesso firewall, abilita soltanto la rete
+privata. Il worker sul PC deve continuare a usare
+`WORKER_CONTROL_PLANE_URL=http://localhost:3000`.
+
+Per usare il telefono anche fuori casa, pubblica soltanto il web come descritto
+nella sezione C. Il worker resta sul PC e apre connessioni in uscita verso
+l'URL HTTPS: non devi pubblicare porte del router e non devi pagare un hosting
+separato per il worker. Se il PC e' spento i task restano in coda e ripartono
+quando il worker torna online.
 
 ## Percorso unico per mettere online Bunker Studio
 
@@ -139,10 +181,9 @@ dashboard: il repository deve restare la fonte delle migrazioni.
 3. Vai in **API keys**, crea una nuova chiave segreta e copiala subito in un
    password manager. Non metterla in `.env.example`, nel codice, su GitHub o
    nella chat.
-4. Apri la pagina [Models](https://developers.openai.com/api/docs/models) e
-   scegli un modello che il tuo account puo' usare. Copia l'identificativo
-   esatto del modello, senza virgolette aggiuntive. Non inventare il nome del
-   modello: se e' sbagliato, l'app ricevera' un errore API.
+4. Non devi copiare a mano un model ID: Bunker Studio recupera automaticamente
+   i modelli disponibili per quella API key e li mostra durante la creazione
+   dell'agente.
 5. Imposta un budget/limite basso nel progetto OpenAI. L'API viene fatturata a
    consumo: un abbonamento ChatGPT non configura automaticamente l'API.
 
@@ -151,23 +192,16 @@ comando la tiene solo temporaneamente nella sessione e la rimuove alla fine:
 
 ~~~powershell
 $env:OPENAI_TEST_KEY = Read-Host "Incolla la chiave OpenAI"
-$body = @{
-  model = '<ID esatto del modello>'
-  messages = @(@{ role = 'user'; content = 'Rispondi soltanto OK' })
-  max_tokens = 8
-} | ConvertTo-Json -Depth 5
-Invoke-RestMethod -Method Post `
-  -Uri 'https://api.openai.com/v1/chat/completions' `
-  -Headers @{ Authorization = "Bearer $env:OPENAI_TEST_KEY" } `
-  -ContentType 'application/json' `
-  -Body $body
+$catalog = Invoke-RestMethod -Method Get `
+  -Uri 'https://api.openai.com/v1/models' `
+  -Headers @{ Authorization = "Bearer $env:OPENAI_TEST_KEY" }
+$catalog.data | Select-Object -First 10 -ExpandProperty id
 Remove-Item Env:OPENAI_TEST_KEY
 ~~~
 
-Se vedi una risposta con un messaggio dell'assistente, chiave, modello e
-fatturazione funzionano. Se ricevi un errore `insufficient_quota`, devi
-configurare il credito/budget del progetto OpenAI; se ricevi `model_not_found`,
-usa l'ID esatto mostrato dalla pagina Models.
+Se vedi una lista di ID, la chiave puo' leggere il catalogo. Questo controllo
+non genera testo e non consuma token di inferenza. Il primo messaggio o task
+reale verifichera' anche credito e accesso al modello scelto.
 
 ### C. Pubblica il web gratuitamente con Vercel
 
@@ -187,16 +221,13 @@ L'hosting gratuito e' pensato per uso personale e include HTTPS automatico.
    selezionare anche Preview per avere anteprime funzionanti):
 
    - `NODE_ENV`: non aggiungerla manualmente; Vercel la imposta a `production`;
+   - `BUNKER_PERSISTENCE_MODE` = `supabase`;
    - `SUPABASE_URL` = Project URL di Supabase;
    - `SUPABASE_ANON_KEY` = chiave anon legacy;
    - `SUPABASE_SERVICE_ROLE_KEY` = chiave service_role legacy;
-   - `STUDIO_MASTER_KEY` = una stringa casuale lunga, generata con il comando
-     indicato sotto;
-   - `AGENT_PROVIDER_TYPE` = `openai`;
-   - `AGENT_PROVIDER_ENDPOINT` =
-     `https://api.openai.com/v1/chat/completions`;
-   - `AGENT_PROVIDER_API_KEY` = la chiave creata su OpenAI;
-   - `AGENT_PROVIDER_MODEL` = l'ID esatto scelto nella pagina Models.
+   - `STUDIO_MASTER_KEY` = la chiave base64url di 32 byte generata con il
+     comando indicato sotto. Se Vercel e il test locale usano lo stesso
+     database Supabase, devono usare lo stesso valore.
 
    Genera `STUDIO_MASTER_KEY` localmente cosi':
 
@@ -234,13 +265,15 @@ Apri l'URL Vercel e segui questo ordine:
    apri l'email ricevuta e conferma l'account, poi apri `/login`.
 2. Apri `/onboarding` e crea un'organizzazione.
 3. Apri `/projects` e crea un progetto.
-4. Apri `/agents`, scegli un template e, nel campo provider/modello, seleziona
-   il runtime OpenAI configurato. Crea l'agente.
-5. Apri il dettaglio dell'agente, invia un messaggio breve e verifica che arrivi
+4. Apri `/settings`, aggiungi l'account OpenAI con la sua API key e attendi il
+   caricamento automatico del catalogo modelli.
+5. Apri `/agents`, scegli un template, l'account provider, il modello, il
+   runtime e il reasoning. Crea l'agente.
+6. Apri il dettaglio dell'agente, invia un messaggio breve e verifica che arrivi
    una risposta.
-6. Apri `/settings`: devono risultare configurati tipo provider, endpoint e
-   modello, ma non deve comparire la chiave.
-7. Apri `/api/health`: deve restituire una risposta JSON senza errore.
+7. Torna in `/settings`: devono comparire provider e catalogo, ma non la
+   chiave in chiaro.
+8. Apri `/api/health`: deve restituire una risposta JSON senza errore.
 
 Se un passaggio fallisce, guarda **Vercel -> Deployments -> ultimo deployment
 -> Logs**. In chat invia solo l'URL pubblico e il testo dell'errore dopo aver
@@ -254,13 +287,10 @@ ma non rende gratuito l'utilizzo del modello OpenAI. Il piano gratuito di
 Supabase puo' inoltre mettere in pausa un progetto inattivo; se l'app sembra
 "spenta" dopo molto tempo, controlla il dashboard Supabase.
 
-Per la Definition of Done completa, il processo `apps/worker` deve essere
-eseguito separatamente su un servizio sempre attivo con `DATABASE_URL`,
-`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `STUDIO_MASTER_KEY`. Un servizio
-free che va in sleep non e' sufficiente per code, report pianificati e
-notifiche affidabili. Puoi rimandare questo costo: non e' necessario per il
-primo test web/chat, ma e' necessario per dichiarare completati tutti i
-flussi asincroni.
+Per il percorso iniziale non devi pagare un hosting worker: esegui il worker
+sul PC e collegalo al web HTTPS con il token monouso creato nelle Settings. Il
+worker ospitato e' un'opzione futura se vorrai esecuzione 24/7 anche a PC
+spento; non e' un prerequisito per provare il flusso richiesto.
 
 ## Regola fondamentale per le password
 
@@ -315,7 +345,7 @@ $env:SUPABASE_URL = '<project-url>'
 $env:SUPABASE_ANON_KEY = '<anon-key>'
 $env:SUPABASE_SERVICE_ROLE_KEY = '<service-role-key>'
 $env:DATABASE_URL = '<postgres-connection-string>'
-$env:STUDIO_MASTER_KEY = '<random-long-value>'
+$env:STUDIO_MASTER_KEY = node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ~~~
 
 5. Accedi alla CLI e collega il progetto. Il browser ti chiedera' di

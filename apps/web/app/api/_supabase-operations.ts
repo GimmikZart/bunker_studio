@@ -298,6 +298,9 @@ function mapTask(value: unknown): TaskRecord {
     id: stringValue(item.id, 'id'),
     organizationId: stringValue(item.organization_id, 'organization_id'),
     projectId: stringValue(item.project_id, 'project_id'),
+    ...(typeof item.assigned_agent_id === 'string'
+      ? { assignedAgentId: item.assigned_agent_id }
+      : {}),
     ...(typeof item.workflow_id === 'string' ? { workflowId: item.workflow_id } : {}),
     title: stringValue(item.title, 'title'),
     description: stringValue(item.description ?? '', 'description'),
@@ -320,6 +323,16 @@ function mapTask(value: unknown): TaskRecord {
     definitionOfDone: definitionItems.filter(
       (entry: unknown): entry is string => typeof entry === 'string',
     ),
+    ...(typeof item.candidate_branch === 'string'
+      ? { candidateBranch: item.candidate_branch }
+      : {}),
+    ...(typeof item.candidate_commit_sha === 'string'
+      ? { candidateCommitSha: item.candidate_commit_sha }
+      : {}),
+    workerResult:
+      item.worker_result_json && typeof item.worker_result_json === 'object'
+        ? (item.worker_result_json as Record<string, unknown>)
+        : {},
     estimatedCost: Number(definition.estimated_cost ?? 0),
     priority: typeof item.priority === 'number' ? item.priority : 0,
     createdAt: stringValue(item.created_at, 'created_at'),
@@ -1020,7 +1033,11 @@ export class SupabaseOperationalRepository {
     return data ? mapRepository(data) : null;
   }
 
-  async saveRepository(input: RepositoryRecord, actorUserId: string): Promise<RepositoryRecord> {
+  async saveRepository(
+    input: RepositoryRecord,
+    actorUserId: string,
+    encryptedCredential?: Record<string, unknown>,
+  ): Promise<RepositoryRecord> {
     await this.requireWrite(input.organizationId, actorUserId);
     const data = await unwrap(
       this.client
@@ -1035,6 +1052,7 @@ export class SupabaseOperationalRepository {
             repo_external_id: `${input.owner}/${input.name}`,
             default_branch: input.defaultBranch,
             status: input.status,
+            ...(encryptedCredential ? { encrypted_auth_blob: encryptedCredential } : {}),
           },
           { onConflict: 'organization_id,project_id' } as unknown as Record<string, unknown>,
         )
@@ -1529,6 +1547,7 @@ export class SupabaseOperationalRepository {
           ...(input.id ? { id: input.id } : {}),
           organization_id: input.organizationId,
           project_id: input.projectId,
+          ...(input.assignedAgentId ? { assigned_agent_id: input.assignedAgentId } : {}),
           ...(input.workflowId ? { workflow_id: input.workflowId } : {}),
           title: input.title,
           description: input.description,

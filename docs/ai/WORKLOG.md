@@ -1,5 +1,36 @@
 # Development Worklog
 
+## 2026-09-01 — Binding per-agent e worker Codex/GitHub locale
+
+### Lavoro svolto
+
+- Sostituita la configurazione provider/modello globale via env con account
+  provider cifrati, catalogo automatico e binding provider/model/runtime/
+  reasoning per agente.
+- Aggiunti persistence mode esplicito, Settings provider, assegnazione agente
+  ai task e gate queue per repository Codex.
+- Integrati Codex SDK, identita' worker persistente, workspace Git isolato,
+  branch/commit/push scoped, lease renewal e risultato atomico con evidenza
+  dei comandi.
+- Aggiunta verifica GitHub repository/branch/permesso push e protezione HTTPS
+  del control plane remoto.
+- Aggiornate migrazioni `20..22`, guide local-first, deployment e smoke worker.
+
+### Verifiche
+
+- `pnpm verify`: PASS (format, lint, typecheck, 26 task test, build 15/15,
+  audit high).
+- `pnpm test:e2e`: PASS 11/11 dopo aggiornamento del contratto agente.
+- `supabase db reset --local`: PASS con migrazioni `00000000000000..22` e seed.
+- Web 37/37, worker 22/22, Git 8/8, DB 14/14 e provider contract test PASS.
+
+### Stato finale
+
+Checkpoint stabile e riprendibile. Prossima attivita' unica: verifica
+deterministica bounded del branch candidato come descritta in
+`docs/ai/NEXT_STEPS.md`. Le prove OpenAI/GitHub/VAPID reali richiedono account
+esterni ma non bloccano l'implementazione indipendente.
+
 ## 2026-08-31 — Modalita' locale OpenAI opt-in
 
 ### Lavoro svolto

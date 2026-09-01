@@ -1,4 +1,9 @@
-import { AuthorizationError, type Agent, type AgentAssignment } from '@bunker-studio/core';
+import {
+  AuthorizationError,
+  type Agent,
+  type AgentAssignment,
+  type AgentReasoningEffort,
+} from '@bunker-studio/core';
 import { type SupabaseDataClient, type QueryResult } from './tenant-repository.js';
 
 async function unwrap(result: PromiseLike<QueryResult>): Promise<unknown> {
@@ -24,6 +29,10 @@ function mapAgent(value: unknown): Agent {
     const record = object(candidate);
     return record.active_to === null || record.active_to === undefined;
   });
+  const bindingRecord = binding ? object(binding) : null;
+  const connection = bindingRecord?.provider_connections
+    ? object(bindingRecord.provider_connections)
+    : null;
   return {
     id: stringValue(item.id, 'id'),
     organizationId: stringValue(item.organization_id, 'organization_id'),
@@ -41,7 +50,27 @@ function mapAgent(value: unknown): Agent {
     permissions: Array.isArray(item.permissions_json)
       ? item.permissions_json.filter((value): value is string => typeof value === 'string')
       : [],
-    providerBindingId: binding ? stringValue(object(binding).id, 'agent_bindings.id') : 'unbound',
+    providerBindingId: bindingRecord
+      ? stringValue(bindingRecord.id, 'agent_bindings.id')
+      : 'unbound',
+    providerConnectionId: bindingRecord
+      ? stringValue(bindingRecord.provider_connection_id, 'agent_bindings.provider_connection_id')
+      : 'unbound',
+    providerType: connection
+      ? stringValue(connection.provider_type, 'provider_connections.provider_type')
+      : 'UNCONFIGURED',
+    providerModelId: bindingRecord
+      ? stringValue(bindingRecord.provider_model_id, 'agent_bindings.provider_model_id')
+      : 'unconfigured',
+    runtimeType: bindingRecord
+      ? stringValue(bindingRecord.runtime_type, 'agent_bindings.runtime_type')
+      : 'UNCONFIGURED',
+    reasoningEffort: bindingRecord
+      ? (stringValue(
+          bindingRecord.reasoning_effort,
+          'agent_bindings.reasoning_effort',
+        ) as AgentReasoningEffort)
+      : 'medium',
     archivedAt: typeof item.archived_at === 'string' ? item.archived_at : null,
   };
 }
@@ -68,7 +97,9 @@ export class SupabaseAgentRepository {
     const data = await unwrap(
       this.client
         .from('agents')
-        .select('*, agent_bindings(id, active_to)')
+        .select(
+          '*, agent_bindings(id, provider_connection_id, provider_model_id, runtime_type, reasoning_effort, active_to, provider_connections(provider_type))',
+        )
         .eq('organization_id', organizationId),
     );
     return Array.isArray(data) ? data.map(mapAgent).filter((item) => !item.archivedAt) : [];
@@ -79,7 +110,9 @@ export class SupabaseAgentRepository {
     const data = await unwrap(
       this.client
         .from('agents')
-        .select('*, agent_bindings(id, active_to)')
+        .select(
+          '*, agent_bindings(id, provider_connection_id, provider_model_id, runtime_type, reasoning_effort, active_to, provider_connections(provider_type))',
+        )
         .eq('id', agentId)
         .eq('organization_id', organizationId)
         .maybeSingle(),
@@ -96,7 +129,10 @@ export class SupabaseAgentRepository {
     name: string;
     roleKey: string;
     title: string;
-    providerBindingId: string;
+    providerConnectionId?: string;
+    providerModelId?: string;
+    runtimeType?: string;
+    reasoningEffort?: AgentReasoningEffort;
     personality?: Record<string, unknown>;
     avatarAssetId?: string | null;
     skills?: string[];
@@ -104,14 +140,42 @@ export class SupabaseAgentRepository {
     permissions?: string[];
   }): Promise<Agent> {
     await this.requireWrite(input.organizationId, input.actorUserId);
+    if (
+      !input.providerConnectionId ||
+      !input.providerModelId ||
+      !input.runtimeType ||
+      !input.reasoningEffort
+    ) {
+      const data = await unwrap(
+        this.client
+          .from('agents')
+          .insert({
+            organization_id: input.organizationId,
+            name: input.name.trim(),
+            role_key: input.roleKey,
+            title: input.title,
+            personality_json: input.personality ?? {},
+            avatar_asset_id: input.avatarAssetId ?? null,
+            skills_json: input.skills ?? [],
+            tools_json: input.tools ?? [],
+            permissions_json: input.permissions ?? [],
+          })
+          .select('*')
+          .single(),
+      );
+      return mapAgent({ ...object(data), agent_bindings: [] });
+    }
     const data = await unwrap(
-      this.client.rpc('create_agent_with_default_binding', {
+      this.client.rpc('create_agent_with_binding', {
         target_organization_id: input.organizationId,
         input_name: input.name.trim(),
         input_role_key: input.roleKey,
         input_title: input.title,
         input_personality_json: input.personality ?? {},
-        binding_label: input.providerBindingId,
+        target_provider_connection_id: input.providerConnectionId,
+        target_provider_model_id: input.providerModelId,
+        target_runtime_type: input.runtimeType,
+        target_reasoning_effort: input.reasoningEffort,
       }),
     );
     const result = Array.isArray(data) ? data[0] : data;
@@ -134,7 +198,17 @@ export class SupabaseAgentRepository {
     return mapAgent({
       ...object(result),
       ...capabilities,
-      agent_bindings: [{ id: object(result).provider_binding_id }],
+      agent_bindings: [
+        {
+          id: object(result).provider_binding_id,
+          provider_connection_id: input.providerConnectionId,
+          provider_model_id: input.providerModelId,
+          runtime_type: input.runtimeType,
+          reasoning_effort: input.reasoningEffort,
+          active_to: null,
+          provider_connections: { provider_type: object(result).provider_type },
+        },
+      ],
     });
   }
 
@@ -153,7 +227,10 @@ export class SupabaseAgentRepository {
         | 'skills'
         | 'tools'
         | 'permissions'
-        | 'providerBindingId'
+        | 'providerConnectionId'
+        | 'providerModelId'
+        | 'runtimeType'
+        | 'reasoningEffort'
       >
     >,
   ): Promise<Agent> {
@@ -174,15 +251,26 @@ export class SupabaseAgentRepository {
           .update(values)
           .eq('id', agentId)
           .eq('organization_id', organizationId)
-          .select('*, agent_bindings(id, active_to)')
+          .select(
+            '*, agent_bindings(id, provider_connection_id, provider_model_id, runtime_type, reasoning_effort, active_to, provider_connections(provider_type))',
+          )
           .single(),
       );
     }
-    if (patch.providerBindingId !== undefined) {
+    if (
+      patch.providerConnectionId !== undefined ||
+      patch.providerModelId !== undefined ||
+      patch.runtimeType !== undefined ||
+      patch.reasoningEffort !== undefined
+    ) {
+      const current = await this.getAgent(agentId, organizationId, actorUserId);
       await unwrap(
-        this.client.rpc('switch_agent_binding', {
+        this.client.rpc('switch_agent_binding_v2', {
           target_agent_id: agentId,
-          binding_label: patch.providerBindingId,
+          target_provider_connection_id: patch.providerConnectionId ?? current.providerConnectionId,
+          target_provider_model_id: patch.providerModelId ?? current.providerModelId,
+          target_runtime_type: patch.runtimeType ?? current.runtimeType,
+          target_reasoning_effort: patch.reasoningEffort ?? current.reasoningEffort,
         }),
       );
     }

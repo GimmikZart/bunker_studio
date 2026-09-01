@@ -4,12 +4,16 @@ import type { LocalWorkerTask, RuntimeWorkerClient, RuntimeWorkerIdentity } from
 
 export type LocalTaskRunStatus = 'IDLE' | 'COMPLETED' | 'RETRY_SCHEDULED' | 'FAILED';
 export type LocalTaskExecutor = (task: LocalWorkerTask) => Promise<Record<string, unknown>>;
+export type RuntimeFactory = (task: LocalWorkerTask) => AgentRuntime;
 
 export function createRuntimeTaskExecutor(runtime: AgentRuntime): LocalTaskExecutor {
   return async (task) => {
     const result = await collectRun(runtime, {
-      agentId: task.taskId,
+      agentId: task.agent.id,
       prompt: [
+        `You are ${task.agent.name}, ${task.agent.title}.`,
+        `Role: ${task.agent.role_key}`,
+        `Personality configuration: ${JSON.stringify(task.agent.personality_json)}`,
         `Task: ${task.title}`,
         task.description,
         `Read scope: ${task.readScope.join(', ') || '(none)'}`,
@@ -18,9 +22,12 @@ export function createRuntimeTaskExecutor(runtime: AgentRuntime): LocalTaskExecu
       ].join('\n\n'),
       correlationId: crypto.randomUUID(),
       capabilities: {
-        skills: task.requiredCapability ? [task.requiredCapability] : [],
-        tools: [],
-        permissions: [],
+        skills: [
+          ...task.agent.skills_json,
+          ...(task.requiredCapability ? [task.requiredCapability] : []),
+        ],
+        tools: task.agent.tools_json,
+        permissions: task.agent.permissions_json,
       },
     });
     return {
@@ -32,18 +39,40 @@ export function createRuntimeTaskExecutor(runtime: AgentRuntime): LocalTaskExecu
   };
 }
 
+export function createBoundRuntimeTaskExecutor(runtimeFor: RuntimeFactory): LocalTaskExecutor {
+  return async (task) => createRuntimeTaskExecutor(runtimeFor(task))(task);
+}
+
 export class LocalWorkerTaskLoop {
   constructor(
     private readonly client: RuntimeWorkerClient,
     private readonly identity: RuntimeWorkerIdentity,
     private readonly execute: LocalTaskExecutor,
+    private readonly leaseRenewalIntervalMs = 30_000,
   ) {}
 
   async runOnce(): Promise<LocalTaskRunStatus> {
     const task = await this.client.claimTask(this.identity.nodeId, this.identity.credential);
     if (!task) return 'IDLE';
+    let renewalError: unknown = null;
+    const renew = () => {
+      void this.client
+        .renewLease({
+          nodeId: this.identity.nodeId,
+          credential: this.identity.credential,
+          leaseId: task.leaseId,
+        })
+        .then(() => {
+          renewalError = null;
+        })
+        .catch((error) => {
+          renewalError = error;
+        });
+    };
+    const renewalTimer = setInterval(renew, this.leaseRenewalIntervalMs);
     try {
       const result = await this.execute(task);
+      if (renewalError) throw renewalError;
       await this.client.completeTask({
         nodeId: this.identity.nodeId,
         credential: this.identity.credential,
@@ -61,6 +90,8 @@ export class LocalWorkerTaskLoop {
         error: error instanceof Error ? error.message.slice(0, 2_000) : 'Local task failed.',
       });
       return completion.state === 'FAILED_FINAL' ? 'FAILED' : 'RETRY_SCHEDULED';
+    } finally {
+      clearInterval(renewalTimer);
     }
   }
 }

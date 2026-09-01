@@ -146,7 +146,15 @@ test('meetings, approvals, costs, notifications and repository metadata are tena
     ['Lead', 'Reviewer'].map((title) =>
       request.post('/api/agents', {
         headers,
-        data: { name: title, roleKey: title.toLowerCase(), title, providerBindingId: 'fake' },
+        data: {
+          name: title,
+          roleKey: title.toLowerCase(),
+          title,
+          providerConnectionId: '00000000-0000-4000-8000-000000000001',
+          providerModelId: 'fake-default',
+          runtimeType: 'OPENAI',
+          reasoningEffort: 'medium',
+        },
       }),
     ),
   );
@@ -179,9 +187,9 @@ test('meetings, approvals, costs, notifications and repository metadata are tena
   expect((await review.json()).verificationRuns).toHaveLength(1);
   const editedAgent = await request.patch(`/api/agents/${agentIds[0]}`, {
     headers,
-    data: { name: 'Lead Architect', providerBindingId: 'new-model' },
+    data: { name: 'Lead Architect', providerModelId: 'fake-alternate' },
   });
-  expect((await editedAgent.json()).agent.providerBindingId).toBe('new-model');
+  expect((await editedAgent.json()).agent.providerModelId).toBe('fake-alternate');
   const chat = await request.post(`/api/agents/${agentIds[0]}/chat`, {
     headers,
     data: { content: 'Summarize the architecture boundary.' },

@@ -242,7 +242,10 @@ export class TenantStore {
     name: string;
     roleKey: string;
     title: string;
-    providerBindingId: string;
+    providerConnectionId?: string;
+    providerModelId?: string;
+    runtimeType?: string;
+    reasoningEffort?: Agent['reasoningEffort'];
     personality?: Record<string, unknown>;
     avatarAssetId?: string | null;
     skills?: string[];
@@ -261,7 +264,12 @@ export class TenantStore {
       skills: [...(input.skills ?? [])],
       tools: [...(input.tools ?? [])],
       permissions: [...(input.permissions ?? [])],
-      providerBindingId: input.providerBindingId,
+      providerBindingId: crypto.randomUUID(),
+      providerConnectionId: input.providerConnectionId ?? 'unbound',
+      providerType: 'FAKE',
+      providerModelId: input.providerModelId ?? 'unconfigured',
+      runtimeType: input.runtimeType ?? 'UNCONFIGURED',
+      reasoningEffort: input.reasoningEffort ?? 'medium',
       archivedAt: null,
     };
     this.state.agents.push(agent);
@@ -318,6 +326,11 @@ export class TenantStore {
         | 'tools'
         | 'permissions'
         | 'providerBindingId'
+        | 'providerConnectionId'
+        | 'providerType'
+        | 'providerModelId'
+        | 'runtimeType'
+        | 'reasoningEffort'
       >
     >,
   ): Agent {

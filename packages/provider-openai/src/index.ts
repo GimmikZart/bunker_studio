@@ -6,8 +6,50 @@ type OpenAIRuntimeOptions = {
   endpoint: string;
   apiKey?: string;
   model?: string;
+  reasoningEffort?: 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
   fetchFn?: typeof fetch;
 };
+
+export type DiscoveredOpenAIModel = {
+  id: string;
+  capabilities: string[];
+};
+
+const NON_TEXT_MODEL_MARKERS = [
+  'audio',
+  'dall-e',
+  'embedding',
+  'image',
+  'moderation',
+  'realtime',
+  'sora',
+  'speech',
+  'transcribe',
+  'tts',
+  'video',
+  'whisper',
+];
+
+export async function discoverOpenAITextModels(input: {
+  apiKey: string;
+  apiBaseUrl?: string;
+  fetchFn?: typeof fetch;
+}): Promise<DiscoveredOpenAIModel[]> {
+  const baseUrl = (input.apiBaseUrl ?? 'https://api.openai.com/v1').replace(/\/$/, '');
+  const response = await (input.fetchFn ?? fetch)(`${baseUrl}/models`, {
+    headers: { authorization: `Bearer ${input.apiKey}` },
+  });
+  if (!response.ok) throw new Error(`OpenAI model catalog returned status ${response.status}.`);
+  const payload = (await response.json()) as { data?: { id?: unknown }[] };
+  if (!Array.isArray(payload.data)) throw new Error('OpenAI model catalog response is invalid.');
+  return payload.data
+    .map((model) => model.id)
+    .filter((id): id is string => typeof id === 'string')
+    .filter((id) => !NON_TEXT_MODEL_MARKERS.some((marker) => id.toLowerCase().includes(marker)))
+    .filter((id) => /^(chatgpt-|codex-|gpt-|o\d)/i.test(id))
+    .map((id) => ({ id, capabilities: ['text', 'streaming', 'tool-calling'] }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
 
 export function createOpenAIRuntime(
   options: OpenAIRuntimeOptions | undefined = undefined,
@@ -24,11 +66,12 @@ export function createOpenAIRuntime(
           },
           body: JSON.stringify({
             model: context.model,
-            messages: [{ role: 'user', content: input.prompt }],
+            input: input.prompt,
             stream: true,
-            stream_options: { include_usage: true },
-            ...(context.resume && input.sessionId ? { session_id: input.sessionId } : {}),
-            capabilities: input.capabilities ?? { skills: [], tools: [], permissions: [] },
+            ...(options.reasoningEffort && options.reasoningEffort !== 'none'
+              ? { reasoning: { effort: options.reasoningEffort } }
+              : {}),
+            ...(context.resume && input.sessionId ? { previous_response_id: input.sessionId } : {}),
           }),
         }),
         parseResponse: parseOpenAIResponse,
@@ -40,31 +83,43 @@ export function createOpenAIRuntime(
 
 function parseOpenAIResponse(payload: unknown) {
   const item = payload as {
-    choices?: { message?: { content?: string } }[];
-    usage?: { prompt_tokens?: number; completion_tokens?: number };
+    output_text?: string;
+    output?: { content?: { type?: string; text?: string }[] }[];
+    usage?: { input_tokens?: number; output_tokens?: number };
   };
+  const text =
+    item.output_text ??
+    item.output
+      ?.flatMap((output) => output.content ?? [])
+      .filter((content) => content.type === 'output_text')
+      .map((content) => content.text ?? '')
+      .join('') ??
+    '';
   return {
-    text: item.choices?.[0]?.message?.content ?? '',
+    text,
     usage:
-      typeof item.usage?.prompt_tokens === 'number' &&
-      typeof item.usage?.completion_tokens === 'number'
-        ? { inputTokens: item.usage.prompt_tokens, outputTokens: item.usage.completion_tokens }
+      typeof item.usage?.input_tokens === 'number' && typeof item.usage?.output_tokens === 'number'
+        ? { inputTokens: item.usage.input_tokens, outputTokens: item.usage.output_tokens }
         : undefined,
   };
 }
 
 function parseOpenAIStreamChunk(payload: unknown) {
   const item = payload as {
-    choices?: { delta?: { content?: string }; finish_reason?: string | null }[];
-    usage?: { prompt_tokens?: number; completion_tokens?: number };
+    type?: string;
+    delta?: string;
+    response?: { usage?: { input_tokens?: number; output_tokens?: number } };
   };
   return {
-    text: item.choices?.[0]?.delta?.content,
-    done: Boolean(item.choices?.[0]?.finish_reason),
+    text: item.type === 'response.output_text.delta' ? item.delta : undefined,
+    done: item.type === 'response.completed',
     usage:
-      typeof item.usage?.prompt_tokens === 'number' &&
-      typeof item.usage?.completion_tokens === 'number'
-        ? { inputTokens: item.usage.prompt_tokens, outputTokens: item.usage.completion_tokens }
+      typeof item.response?.usage?.input_tokens === 'number' &&
+      typeof item.response.usage.output_tokens === 'number'
+        ? {
+            inputTokens: item.response.usage.input_tokens,
+            outputTokens: item.response.usage.output_tokens,
+          }
         : undefined,
   };
 }

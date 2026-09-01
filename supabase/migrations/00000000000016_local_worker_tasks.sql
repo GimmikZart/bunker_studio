@@ -129,6 +129,14 @@ begin
       candidate.required_capability is null
       or coalesce(worker.capabilities_json -> 'items', '[]'::jsonb) ? candidate.required_capability
     )
+    and exists (
+      select 1
+      from public.agent_bindings binding
+      where binding.agent_id = candidate.assigned_agent_id
+        and binding.active_to is null
+        and coalesce(worker.capabilities_json -> 'items', '[]'::jsonb) ?
+          case when binding.runtime_type = 'CODEX_SDK' then 'codex' else 'chat' end
+    )
     and not exists (
       select 1
       from jsonb_array_elements_text(

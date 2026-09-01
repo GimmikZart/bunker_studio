@@ -6,9 +6,11 @@ import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
 type Project = { id: string; name: string };
+type Agent = { id: string; name: string; title: string; providerModelId: string };
 type Task = {
   id: string;
   projectId: string;
+  assignedAgentId?: string;
   title: string;
   description: string;
   taskType: string;
@@ -18,6 +20,9 @@ type Task = {
   dependencies?: string[];
   readScope?: string[];
   writeScope?: string[];
+  candidateBranch?: string;
+  candidateCommitSha?: string;
+  workerResult?: { checks?: { command?: string; status?: string; exitCode?: number | null }[] };
 };
 type Design = { id: string; version: number; status: string };
 
@@ -42,10 +47,12 @@ export function TaskBoard() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationId, setOrganizationId] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [designs, setDesigns] = useState<Design[]>([]);
   const [approvedDesignVersionId, setApprovedDesignVersionId] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [assignedAgentId, setAssignedAgentId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dependencies, setDependencies] = useState<string[]>([]);
@@ -60,18 +67,20 @@ export function TaskBoard() {
     if (!nextOrganizationId) return;
     setError('');
     const headers = apiHeaders(nextOrganizationId);
-    const [projectsResponse, tasksResponse, designsResponse] = await Promise.all([
+    const [projectsResponse, tasksResponse, designsResponse, agentsResponse] = await Promise.all([
       fetch(`/api/organizations/${nextOrganizationId}/projects`, { headers }),
       fetch('/api/tasks', { headers }),
       fetch('/api/designs', { headers }),
+      fetch('/api/agents', { headers }),
     ]);
-    if (!projectsResponse.ok || !tasksResponse.ok || !designsResponse.ok) {
+    if (!projectsResponse.ok || !tasksResponse.ok || !designsResponse.ok || !agentsResponse.ok) {
       setError('Could not load projects and tasks for this organization.');
       return;
     }
     const projectsPayload = (await projectsResponse.json()) as { projects?: Project[] };
     const tasksPayload = (await tasksResponse.json()) as { tasks?: Task[] };
     const designsPayload = (await designsResponse.json()) as { versions?: Design[] };
+    const agentsPayload = (await agentsResponse.json()) as { agents?: Agent[] };
     const nextProjects = projectsPayload.projects ?? [];
     setProjects(nextProjects);
     setProjectId((current) =>
@@ -80,6 +89,13 @@ export function TaskBoard() {
         : (nextProjects[0]?.id ?? ''),
     );
     setTasks(tasksPayload.tasks ?? []);
+    const nextAgents = (agentsPayload.agents ?? []).filter(
+      (agent) => agent.providerModelId !== 'unconfigured',
+    );
+    setAgents(nextAgents);
+    setAssignedAgentId((current) =>
+      nextAgents.some((agent) => agent.id === current) ? current : (nextAgents[0]?.id ?? ''),
+    );
     const approved = (designsPayload.versions ?? []).filter(
       (design) => design.status === 'APPROVED',
     );
@@ -118,6 +134,7 @@ export function TaskBoard() {
       headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
       body: JSON.stringify({
         projectId,
+        assignedAgentId,
         title,
         description,
         taskType,
@@ -237,6 +254,30 @@ export function TaskBoard() {
           maxLength={10_000}
           placeholder="Outcome, constraints, and acceptance checks for this work."
         />
+        <label htmlFor="task-agent">Assigned agent</label>
+        <select
+          id="task-agent"
+          value={assignedAgentId}
+          onChange={(event) => setAssignedAgentId(event.target.value)}
+          disabled={!agents.length}
+          required
+        >
+          {!agents.length && <option value="">Create and configure an agent first</option>}
+          {agents.map((agent) => (
+            <option key={agent.id} value={agent.id}>
+              {agent.name} · {agent.title} · {agent.providerModelId}
+            </option>
+          ))}
+        </select>
+        {!agents.length && (
+          <div className="actionable-empty-state">
+            <strong>An executable task needs an agent.</strong>
+            <span>Connect a provider, then create an agent with its model and runtime.</span>
+            <Link className="secondary-button" href="/agents">
+              Create agent
+            </Link>
+          </div>
+        )}
         <label htmlFor="task-type">Type</label>
         <select
           id="task-type"
@@ -328,6 +369,7 @@ export function TaskBoard() {
           disabled={
             !organizationId ||
             !projectId ||
+            !assignedAgentId ||
             !title.trim() ||
             (taskType === 'FRONTEND' && !approvedDesignVersionId)
           }
@@ -357,6 +399,26 @@ export function TaskBoard() {
                 <small>
                   {task.taskType} · {task.state} · ${task.estimatedCost.toFixed(2)}
                 </small>
+                <small>
+                  Agent:{' '}
+                  {agents.find((agent) => agent.id === task.assignedAgentId)?.name ?? 'Unassigned'}
+                </small>
+                {task.candidateBranch && (
+                  <small>
+                    Branch: {task.candidateBranch}
+                    {task.candidateCommitSha ? ` · ${task.candidateCommitSha.slice(0, 12)}` : ''}
+                  </small>
+                )}
+                {task.workerResult?.checks?.length ? (
+                  <small>
+                    Checks: {task.workerResult.checks.length} recorded ·{' '}
+                    {task.workerResult.checks.every(
+                      (check) => check.status === 'completed' && check.exitCode === 0,
+                    )
+                      ? 'all passed'
+                      : 'review required'}
+                  </small>
+                ) : null}
               </span>
               {transitions.length > 0 && (
                 <select

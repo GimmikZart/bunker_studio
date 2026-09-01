@@ -16,9 +16,21 @@ type Agent = {
   tools: string[];
   permissions: string[];
   providerBindingId: string;
+  providerConnectionId: string;
+  providerType: string;
+  providerModelId: string;
+  runtimeType: string;
+  reasoningEffort: ReasoningEffort;
 };
-type Provider = { id: string; displayName: string; status: string; models: string[] };
+type Provider = {
+  id: string;
+  displayName: string;
+  providerType: string;
+  status: string;
+  models: string[];
+};
 type TemplateKey = 'lead' | 'frontend' | 'backend' | 'reviewer' | 'designer' | 'hr' | 'custom';
+type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 const AVATARS = [
   { id: '', label: 'Default' },
@@ -100,7 +112,10 @@ export function AgentCrudPanel() {
   const [skills, setSkills] = useState(TEMPLATES.frontend.skills.join(', '));
   const [tools, setTools] = useState(TEMPLATES.frontend.tools.join(', '));
   const [permissions, setPermissions] = useState(TEMPLATES.frontend.permissions.join(', '));
-  const [providerBindingId, setProviderBindingId] = useState('');
+  const [providerConnectionId, setProviderConnectionId] = useState('');
+  const [providerModelId, setProviderModelId] = useState('');
+  const [runtimeType, setRuntimeType] = useState('');
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>('medium');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -152,7 +167,10 @@ export function AgentCrudPanel() {
     setEditingId('');
     setName('');
     setAvatarAssetId('');
-    setProviderBindingId('');
+    setProviderConnectionId('');
+    setProviderModelId('');
+    setRuntimeType('');
+    setReasoningEffort('medium');
     setShowAdvanced(false);
     applyTemplate('frontend');
   }
@@ -175,7 +193,10 @@ export function AgentCrudPanel() {
     setSkills(agent.skills.join(', '));
     setTools(agent.tools.join(', '));
     setPermissions(agent.permissions.join(', '));
-    setProviderBindingId(agent.providerBindingId);
+    setProviderConnectionId(agent.providerConnectionId);
+    setProviderModelId(agent.providerModelId);
+    setRuntimeType(agent.runtimeType);
+    setReasoningEffort(agent.reasoningEffort);
     setShowAdvanced(true);
     setNotice('');
   }
@@ -183,7 +204,14 @@ export function AgentCrudPanel() {
     event.preventDefault();
     setError('');
     setNotice('');
-    if (!organizationId || !name.trim() || !title.trim() || !providerBindingId) {
+    if (
+      !organizationId ||
+      !name.trim() ||
+      !title.trim() ||
+      !providerConnectionId ||
+      !providerModelId ||
+      !runtimeType
+    ) {
       setError(
         'Enter a name and choose a provider model. The template supplies the remaining safe defaults.',
       );
@@ -200,7 +228,10 @@ export function AgentCrudPanel() {
         skills: split(skills),
         tools: split(tools),
         permissions: split(permissions),
-        providerBindingId,
+        providerConnectionId,
+        providerModelId,
+        runtimeType,
+        reasoningEffort,
         personality: {},
       }),
     });
@@ -233,12 +264,32 @@ export function AgentCrudPanel() {
     await load(organizationId);
     setNotice('Agent archived.');
   }
-  const choices = providers.flatMap((provider) =>
-    provider.models.map((model) => ({
-      value: `${provider.id}:${model}`,
-      label: `${provider.displayName} · ${model}`,
-    })),
-  );
+  const selectedProvider = providers.find((provider) => provider.id === providerConnectionId);
+  const runtimeChoices = selectedProvider
+    ? selectedProvider.providerType === 'OPENAI'
+      ? [
+          { value: 'OPENAI', label: 'OpenAI API (general purpose)' },
+          { value: 'CODEX_SDK', label: 'Codex SDK (repository work)' },
+        ]
+      : selectedProvider.providerType === 'ANTHROPIC'
+        ? [{ value: 'ANTHROPIC', label: 'Anthropic API' }]
+        : [{ value: 'OPENAI_COMPATIBLE', label: 'OpenAI-compatible API' }]
+    : [];
+
+  function selectProvider(id: string) {
+    const provider = providers.find((candidate) => candidate.id === id);
+    setProviderConnectionId(id);
+    setProviderModelId('');
+    setRuntimeType(
+      provider?.providerType === 'OPENAI'
+        ? 'OPENAI'
+        : provider?.providerType === 'ANTHROPIC'
+          ? 'ANTHROPIC'
+          : provider
+            ? 'OPENAI_COMPATIBLE'
+            : '',
+    );
+  }
 
   return (
     <section className="live-panel" aria-label="Agent management">
@@ -306,24 +357,41 @@ export function AgentCrudPanel() {
           required
           disabled={!organizationId}
         />
-        <label htmlFor="agent-provider">Provider and model</label>
+        <label htmlFor="agent-provider">Provider</label>
         <select
           id="agent-provider"
-          value={providerBindingId}
-          onChange={(event) => setProviderBindingId(event.target.value)}
+          value={providerConnectionId}
+          onChange={(event) => selectProvider(event.target.value)}
           required
-          disabled={!organizationId || !choices.length}
+          disabled={!organizationId || !providers.length}
         >
           <option value="">
-            {choices.length ? 'Choose a provider model' : 'No provider model available'}
+            {providers.length ? 'Choose a provider' : 'No provider available'}
           </option>
-          {choices.map((choice) => (
-            <option key={choice.value} value={choice.value}>
-              {choice.label}
+          {providers.map((provider) => (
+            <option key={provider.id} value={provider.id}>
+              {provider.displayName} · {provider.providerType}
             </option>
           ))}
         </select>
-        {!choices.length && (
+        <label htmlFor="agent-model">Model</label>
+        <select
+          id="agent-model"
+          value={providerModelId}
+          onChange={(event) => setProviderModelId(event.target.value)}
+          required
+          disabled={!selectedProvider}
+        >
+          <option value="">
+            {selectedProvider ? 'Choose a model' : 'Choose a provider first'}
+          </option>
+          {selectedProvider?.models.map((model) => (
+            <option key={model} value={model}>
+              {model}
+            </option>
+          ))}
+        </select>
+        {!providers.length && (
           <>
             <p className="field-help">
               No ready provider is configured for this organization. Credentials remain server-side
@@ -360,6 +428,37 @@ export function AgentCrudPanel() {
             onChange={(event) => setRoleKey(event.target.value)}
             required
           />
+          <label htmlFor="agent-runtime">Execution runtime</label>
+          <select
+            id="agent-runtime"
+            value={runtimeType}
+            onChange={(event) => setRuntimeType(event.target.value)}
+            required
+            disabled={!selectedProvider}
+          >
+            {runtimeChoices.map((runtime) => (
+              <option key={runtime.value} value={runtime.value}>
+                {runtime.label}
+              </option>
+            ))}
+          </select>
+          <p className="field-help">
+            Choose Codex SDK for agents that must inspect, edit, and test repositories on the PC
+            worker. The direct API runtime is suitable for planning, chat, and structured work.
+          </p>
+          <label htmlFor="agent-reasoning">Reasoning effort</label>
+          <select
+            id="agent-reasoning"
+            value={reasoningEffort}
+            onChange={(event) => setReasoningEffort(event.target.value as ReasoningEffort)}
+          >
+            <option value="none">None</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="xhigh">Extra high</option>
+            <option value="max">Maximum</option>
+          </select>
           <label htmlFor="agent-skills">Skills</label>
           <input
             id="agent-skills"
@@ -386,7 +485,13 @@ export function AgentCrudPanel() {
           <button
             className="primary-button"
             type="submit"
-            disabled={!organizationId || !choices.length}
+            disabled={
+              !organizationId ||
+              !providers.length ||
+              !providerConnectionId ||
+              !providerModelId ||
+              !runtimeType
+            }
           >
             {editingId ? 'Save changes' : 'Create agent'}
           </button>

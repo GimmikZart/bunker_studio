@@ -2,6 +2,28 @@ import { describe, expect, it, vi } from 'vitest';
 import { createGitHubApi, GitHubApiError } from './index';
 
 describe('GitHub API adapter', () => {
+  it('verifies repository, branch, and push permission before saving a credential', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ id: 42, default_branch: 'main', permissions: { push: true } }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ name: 'main' }), { status: 200 }));
+    await expect(
+      createGitHubApi({ token: 'token', fetchImpl }).verifyRepositoryAccess(
+        { owner: 'acme', name: 'studio' },
+        'main',
+      ),
+    ).resolves.toEqual({ repositoryId: '42', defaultBranch: 'main', canPush: true });
+    expect(fetchImpl).toHaveBeenLastCalledWith(
+      new URL('https://api.github.com/repos/acme/studio/branches/main'),
+      expect.anything(),
+    );
+  });
+
   it('creates branches without leaking credentials into requests or errors', async () => {
     const fetchImpl = vi.fn<typeof fetch>(async (_input, init) => {
       expect(init?.headers).toMatchObject({ authorization: 'Bearer secret-token' });

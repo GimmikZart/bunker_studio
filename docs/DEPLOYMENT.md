@@ -14,14 +14,14 @@ keys or `STUDIO_MASTER_KEY` between environments.
    supabase db push
    ```
 
-2. Configure the quality web deployment with `SUPABASE_URL`,
+2. Configure the quality web deployment with `BUNKER_PERSISTENCE_MODE=supabase`, `SUPABASE_URL`,
    `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, and a
    unique random `STUDIO_MASTER_KEY`.
    Configure `WEB_PUSH_VAPID_SUBJECT`, `WEB_PUSH_VAPID_PUBLIC_KEY`,
    `WEB_PUSH_VAPID_PRIVATE_KEY`, and expose only
    `NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY` to the browser when Web Push is
-   enabled. Configure `GITHUB_API_TOKEN` only in the server/worker secret
-   store.
+   enabled. Provider and repository credentials are added per organization or
+   project in the application and encrypted before database persistence.
 3. Deploy the web container or Next.js application and a separate worker
    deployment. Run `pnpm verify` and `pnpm test:e2e` against the quality URL.
 4. Run the quality-only external checks in
@@ -49,15 +49,17 @@ Local worker bootstrap:
    local machine through a secure channel.
 2. Start the worker with `WORKER_CONTROL_PLANE_URL`,
    `WORKER_REGISTRATION_TOKEN`, `WORKER_NAME`, and comma-separated
-   `WORKER_CAPABILITIES`. The exchange returns a node credential; store the
-   returned node id and credential in the machine's secret store for later
-   starts as `WORKER_NODE_ID` and `WORKER_CREDENTIAL`.
+   `WORKER_CAPABILITIES`. For repository work also set an explicit
+   `WORKER_WORKSPACE_ROOT`. The exchange stores the node credential in
+   `.bunker/worker-identity.json` (or `WORKER_IDENTITY_FILE`) for later starts;
+   the one-time registration token is not reused.
 3. The daemon calls the authenticated runtime heartbeat endpoint. A revoked or
    invalid credential never falls back to the user-authenticated administrative
-   endpoint. To execute compatible local tasks, also configure
-   `LOCAL_PROVIDER_ENDPOINT`, `LOCAL_PROVIDER_MODEL` (and, if required,
-   `LOCAL_PROVIDER_API_KEY`); the daemon then pulls scoped `QUEUED` tasks and
-   reports their result through the authenticated lease endpoint.
+   endpoint. The daemon pulls scoped `QUEUED` tasks, receives the assigned
+   agent's encrypted-at-rest provider/repository execution context over the
+   authenticated HTTPS boundary, renews the lease while active, and reports
+   the result through the completion endpoint. Provider and model selection
+   belongs to each agent binding, never to worker environment variables.
 
 Required production checks:
 

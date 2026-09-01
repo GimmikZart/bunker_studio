@@ -31,6 +31,7 @@ describe('runtime worker control-plane client', () => {
 
   it('rejects invalid control-plane URLs and failed responses', async () => {
     expect(() => createRuntimeWorkerClient({ baseUrl: 'file:///worker' })).toThrow(/HTTP/);
+    expect(() => createRuntimeWorkerClient({ baseUrl: 'http://studio.example' })).toThrow(/HTTPS/);
     const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 401 }));
     await expect(
       createRuntimeWorkerClient({ baseUrl: 'https://studio.example', fetchImpl }).heartbeat(
@@ -60,6 +61,9 @@ describe('runtime worker control-plane client', () => {
               definitionOfDone: {},
               attemptNumber: 1,
               leaseExpiresAt: new Date().toISOString(),
+              agent: { id: '66666666-6666-4666-8666-666666666666' },
+              binding: { providerModelId: 'test-model' },
+              provider: { apiKey: 'provider-secret' },
             },
           }),
           { status: 200 },
@@ -91,6 +95,25 @@ describe('runtime worker control-plane client', () => {
     ).resolves.toMatchObject({ state: 'IMPLEMENTED' });
     expect(fetchImpl).toHaveBeenLastCalledWith(
       'http://localhost:3000/api/workers/runtime/tasks/complete',
+      expect.objectContaining({
+        headers: expect.objectContaining({ authorization: 'Bearer credential' }),
+      }),
+    );
+  });
+
+  it('renews an active lease through the authenticated control plane', async () => {
+    const fetchImpl = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify({ leaseExpiresAt: '2026-09-01T12:00:00.000Z' }), {
+          status: 200,
+        }),
+    );
+    const client = createRuntimeWorkerClient({ baseUrl: 'http://localhost:3000', fetchImpl });
+    await expect(
+      client.renewLease({ nodeId: 'node-1', credential: 'credential', leaseId: 'lease-1' }),
+    ).resolves.toBe('2026-09-01T12:00:00.000Z');
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://localhost:3000/api/workers/runtime/tasks/renew',
       expect.objectContaining({
         headers: expect.objectContaining({ authorization: 'Bearer credential' }),
       }),

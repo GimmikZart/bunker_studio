@@ -1,31 +1,37 @@
 # Next Steps
 
-## Completato — UI audit
+## Prossima attivita' precisa — verifica deterministica del branch candidato
 
-L’audit funzionale Playwright UI-001–UI-008 passa tutti i 13 checkpoint: CTA home, onboarding, progetto, agente da template/provider, task DRAFT→READY, design gate, Settings/provider, navigazione desktop/mobile, hard refresh e responsive. L’audit attende ora la hydration client prima dei click e usa selettori coerenti con il markup accessibile.
-
-## Prossima attività precisa
-
-Eseguire la prova locale con OpenAI descritta nella sezione "Prima di pubblicare" di [`docs/quality/QUALITY_SETUP_GUIDE.md`](../quality/QUALITY_SETUP_GUIDE.md): creare `.env.local` con `LOCAL_PROVIDER_*`, avviare `pnpm dev` e verificare signup, organizzazione, progetto, agente e chat. Poi passare al test Supabase cloud senza Vercel e solo dopo al deploy Vercel.
-
-Il codice locale, incluso il piano Lead persistito in `POST /api/workflows/plan`, è verificato; dopo AC-001 procedere con AC-006, AC-009 e AC-011. Non cambiare `CURRENT_STATE.md` a `IMPLEMENTAZIONE COMPLETATA` finché queste quattro verifiche esterne e il backup/restore drill non sono concluse. AC-013 local worker è esplicitamente non bloccante: resta pronto per una futura macchina con hardware adeguato.
-
-## Prossima attività
-
-Eseguire nella quality isolata i quattro scenari `PARTIAL` bloccanti della matrice (PC loss cloud, restart multi-processo pg-boss, GitHub/CI protetto e VAPID/device), registrando evidenze e RPO/RTO del backup drill. Non serve predisporre ora Ollama o LM Studio.
+Completare la parte restante di M5 prima di ampliare altre milestone: il worker
+deve eseguire un piano di verifica dichiarato dal task dopo il run Codex e
+prima di considerare l'implementazione pronta.
 
 ### Area interessata
 
-`docs/quality/ACCEPTANCE_MATRIX.md`, `docs/quality/BACKUP_RESTORE_DRILL.md` e `docs/DEPLOYMENT.md`.
+`packages/contracts`, task persistence/UI, `apps/worker`, API completion,
+verification runs e migrazioni Supabase.
 
 ### Comportamento atteso
 
-Le richieste production devono usare client Supabase SSR con RLS; lo store in-memory è ammesso solo per fixture non-production. Nessun test deve bypassare autorizzazioni, budget o approval gate.
+- Il task contiene comandi di verifica espliciti e bounded (per esempio lint,
+  typecheck e test), non inventati dal modello durante l'esecuzione.
+- Il worker esegue i comandi nel workspace candidato con timeout, limite di
+  output, ambiente sanitizzato e senza shell interpolation.
+- Comando, exit code, durata e stato vengono persistiti come verification
+  evidence; secret e output sensibile non vengono salvati.
+- Un check fallito impedisce lo stato `IMPLEMENTED` e segue il retry/escalation
+  deterministico esistente.
+- Il resoconto dell'LLM resta informativo e non puo' trasformare un check
+  fallito in PASS.
 
 ### Definition of Done locale
 
-AC-001..AC-014 tracciati con esito, test verdi, eventuali blocker esterni separati dal codice e documentazione backup/restore/accessi quality aggiornata. Nessuna modifica al codice è richiesta prima di disporre degli accessi quality/device/runtime indicati.
+Unit e integration test coprono PASS, failure, timeout, restart/lease renewal e
+assenza di secret leakage. Task UI mostra l'esito dei check. Migrazioni da zero,
+`pnpm verify` e `pnpm test:e2e` passano.
 
-### Verifica
+### Verifica successiva
 
-Eseguire `pnpm verify`, `pnpm test:e2e`, `pnpm audit --audit-level high`, `supabase db reset --local` e il controllo manuale dei flussi che richiedono credenziali/device.
+Dopo questa attivita', implementare la preparazione GitHub PR/CI idempotente di
+M6. Le prove con OpenAI/GitHub reali restano un controllo esterno separato e
+non bloccano il lavoro indipendente.

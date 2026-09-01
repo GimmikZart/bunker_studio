@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { collectRun } from '@bunker-studio/agent-runtime';
-import { createAnthropicRuntime } from './index';
+import { createAnthropicRuntime, discoverAnthropicModels } from './index';
 
 describe('Anthropic adapter contract', () => {
   it('returns normalized runtime output', async () => {
@@ -79,5 +79,30 @@ describe('Anthropic adapter contract', () => {
 
     expect(result.text).toBe('ok');
     expect(result.usage).toEqual({ inputTokens: 5, outputTokens: 6 });
+  });
+});
+
+describe('Anthropic model discovery', () => {
+  it('normalizes the provider model catalog', async () => {
+    const models = await discoverAnthropicModels({
+      apiKey: 'secret',
+      fetchFn: async (_input, init) => {
+        expect(init?.headers).toMatchObject({
+          'anthropic-version': '2023-06-01',
+          'x-api-key': 'secret',
+        });
+        return new Response(
+          JSON.stringify({ data: [{ id: 'claude-test', display_name: 'Claude Test' }] }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      },
+    });
+    expect(models).toEqual([
+      {
+        id: 'claude-test',
+        displayName: 'Claude Test',
+        capabilities: ['text', 'streaming', 'tool-calling'],
+      },
+    ]);
   });
 });

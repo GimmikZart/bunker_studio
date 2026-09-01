@@ -11,11 +11,16 @@ The expected sequence is:
    scope;
 2. create a `QUEUED` task with a matching `required_capability` and scopes;
 3. claim it with node A and verify the second claim is blocked by capacity;
-4. complete it and verify the task is `IMPLEMENTED` and `active_jobs` returns
+4. renew its authenticated lease and verify another node cannot reclaim it;
+5. complete it and verify the task is `IMPLEMENTED`, execution evidence is
+   persisted atomically, and `active_jobs` returns
    to zero;
-5. claim another task with node A, expire its lease, and verify node B can
+6. claim another task with node A, expire its lease, and verify node B can
    reclaim it while the task returns to `QUEUED` before the new claim.
 
-The worker daemon executes a claimed task only when
-`LOCAL_PROVIDER_ENDPOINT` is configured. Provider credentials remain local to
-the daemon and are never returned by the control plane.
+The worker daemon executes a claimed task from the provider/model/runtime
+binding of its assigned agent. A Codex task additionally requires a connected
+GitHub repository, explicit write scopes, an allowed workspace root, and a
+worker advertising the `codex` capability. Credentials are encrypted at rest
+and sent only to the authenticated worker over HTTPS (or HTTP loopback during
+local development); they are never returned to the browser or agent prompt.

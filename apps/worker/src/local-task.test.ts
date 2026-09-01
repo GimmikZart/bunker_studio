@@ -17,6 +17,30 @@ const task = {
   requiredCapability: 'ollama',
   attemptNumber: 1,
   leaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+  agent: {
+    id: '66666666-6666-4666-8666-666666666666',
+    name: 'Builder',
+    role_key: 'backend',
+    title: 'Backend Engineer',
+    personality_json: {},
+    skills_json: ['backend'],
+    tools_json: ['repository.workspace'],
+    permissions_json: ['repo.read', 'repo.write'],
+  },
+  binding: {
+    id: '77777777-7777-4777-8777-777777777777',
+    providerConnectionId: '88888888-8888-4888-8888-888888888888',
+    providerModelId: 'test-model',
+    runtimeType: 'OPENAI' as const,
+    reasoningEffort: 'medium' as const,
+  },
+  provider: {
+    type: 'OPENAI' as const,
+    displayName: 'OpenAI',
+    apiBaseUrl: 'https://api.openai.com/v1',
+    apiKey: 'provider-secret',
+  },
+  repository: null,
 };
 
 function client(overrides: Partial<RuntimeWorkerClient> = {}): RuntimeWorkerClient {
@@ -24,6 +48,7 @@ function client(overrides: Partial<RuntimeWorkerClient> = {}): RuntimeWorkerClie
     register: vi.fn(),
     heartbeat: vi.fn(),
     claimTask: vi.fn(),
+    renewLease: vi.fn(),
     completeTask: vi.fn(),
     ...overrides,
   } as unknown as RuntimeWorkerClient;
@@ -69,5 +94,39 @@ describe('local worker task loop', () => {
         error: 'provider unavailable',
       }),
     );
+  });
+
+  it('renews a task lease while an agent run is still active', async () => {
+    vi.useFakeTimers();
+    try {
+      let resolveExecution!: (value: Record<string, unknown>) => void;
+      const execution = new Promise<Record<string, unknown>>((resolve) => {
+        resolveExecution = resolve;
+      });
+      const renewLease = vi.fn(async () => new Date(Date.now() + 120_000).toISOString());
+      const completeTask = vi.fn(async () => ({
+        id: task.taskId,
+        state: 'IMPLEMENTED',
+        retryCount: 0,
+      }));
+      const controlPlane = client({
+        claimTask: vi.fn(async () => task),
+        renewLease,
+        completeTask,
+      });
+      const loop = new LocalWorkerTaskLoop(
+        controlPlane,
+        { nodeId: '55555555-5555-4555-8555-555555555555', credential: 'secret' },
+        async () => execution,
+        1_000,
+      );
+      const run = loop.runOnce();
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(renewLease).toHaveBeenCalledWith(expect.objectContaining({ leaseId: task.leaseId }));
+      resolveExecution({ text: 'done' });
+      await expect(run).resolves.toBe('COMPLETED');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

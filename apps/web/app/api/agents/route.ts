@@ -49,6 +49,9 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.name === 'AuthorizationError')
       return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
-    return NextResponse.json({ error: 'Invalid agent payload.' }, { status: 400 });
+    if (error instanceof Error && error.name === 'ZodError')
+      return NextResponse.json({ error: 'Invalid agent payload.' }, { status: 400 });
+    console.error('Agent creation failed.', error);
+    return NextResponse.json({ error: 'Agent creation failed.' }, { status: 500 });
   }
 }

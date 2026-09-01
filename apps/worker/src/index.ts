@@ -1,5 +1,7 @@
 import { getWorkerHealth } from './health.js';
 import { createCompatibleRuntime } from '@bunker-studio/provider-openai-compatible';
+import { createOpenAIRuntime } from '@bunker-studio/provider-openai';
+import { createAnthropicRuntime } from '@bunker-studio/provider-anthropic';
 import { createStudioServiceClient } from '@bunker-studio/db';
 import {
   createVapidPushClient,
@@ -8,7 +10,10 @@ import {
 import { createSupabaseNotificationSource } from './notification-source.js';
 import { createSupabaseReportSource } from './report-source.js';
 import { dispatchDueWeeklyReports } from './report-scheduler.js';
-import { LocalWorkerTaskLoop, createRuntimeTaskExecutor } from './local-task.js';
+import { LocalWorkerTaskLoop, createBoundRuntimeTaskExecutor } from './local-task.js';
+import type { LocalWorkerTask } from './runtime-client.js';
+import { loadWorkerIdentity, saveWorkerIdentity } from './identity-store.js';
+import { createCodexTaskExecutor } from './codex-task.js';
 import { createRuntimeWorkerClient } from './runtime-client.js';
 
 const intervalMs = Number(process.env.WORKER_HEARTBEAT_INTERVAL_MS ?? 60_000);
@@ -97,14 +102,36 @@ function startNotificationDispatcher() {
 }
 
 function startTaskLoop(client: ReturnType<typeof createRuntimeWorkerClient>) {
-  const endpoint = process.env.LOCAL_PROVIDER_ENDPOINT?.trim();
-  if (!endpoint || !runtimeIdentity) return;
-  const runtime = createCompatibleRuntime({
-    endpoint,
-    apiKey: process.env.LOCAL_PROVIDER_API_KEY,
-    model: process.env.LOCAL_PROVIDER_MODEL,
+  if (!runtimeIdentity) return;
+  const runtimeFor = (task: LocalWorkerTask) => {
+    const baseUrl = task.provider.apiBaseUrl.replace(/\/$/, '');
+    const common = { apiKey: task.provider.apiKey, model: task.binding.providerModelId };
+    if (task.binding.runtimeType === 'OPENAI')
+      return createOpenAIRuntime({
+        endpoint: `${baseUrl}/responses`,
+        reasoningEffort: task.binding.reasoningEffort,
+        ...common,
+      });
+    if (task.binding.runtimeType === 'ANTHROPIC')
+      return createAnthropicRuntime({ endpoint: `${baseUrl}/messages`, ...common });
+    if (task.binding.runtimeType === 'OPENAI_COMPATIBLE')
+      return createCompatibleRuntime({ endpoint: `${baseUrl}/chat/completions`, ...common });
+    throw new Error('The selected coding runtime is not installed on this worker yet.');
+  };
+  const directExecutor = createBoundRuntimeTaskExecutor(runtimeFor);
+  const workspaceRoot = process.env.WORKER_WORKSPACE_ROOT?.trim();
+  const codexExecutor = workspaceRoot
+    ? createCodexTaskExecutor({
+        workspaceRoot,
+        networkAccessEnabled: process.env.WORKER_CODEX_NETWORK_ACCESS === 'true',
+      })
+    : null;
+  const loop = new LocalWorkerTaskLoop(client, runtimeIdentity, (task) => {
+    if (task.binding.runtimeType !== 'CODEX_SDK') return directExecutor(task);
+    if (!codexExecutor)
+      throw new Error('WORKER_WORKSPACE_ROOT is required for Codex repository tasks.');
+    return codexExecutor(task);
   });
-  const loop = new LocalWorkerTaskLoop(client, runtimeIdentity, createRuntimeTaskExecutor(runtime));
   const poll = () => {
     void loop
       .runOnce()
@@ -128,6 +155,7 @@ async function start() {
   console.log(JSON.stringify({ event: 'worker.started', ...getWorkerHealth(), intervalMs }));
   startNotificationDispatcher();
   startReportDispatcher();
+  runtimeIdentity ??= await loadWorkerIdentity();
   if (!controlPlaneUrl || (!runtimeIdentity && !registrationToken)) {
     heartbeat = setInterval(() => {
       console.log(JSON.stringify({ event: 'worker.heartbeat', ...getWorkerHealth() }));
@@ -136,11 +164,14 @@ async function start() {
   }
   try {
     const client = createRuntimeWorkerClient({ baseUrl: controlPlaneUrl });
-    runtimeIdentity ??= await client.register({
-      name: workerName,
-      capabilities,
-      registrationToken: registrationToken!,
-    });
+    if (!runtimeIdentity) {
+      runtimeIdentity = await client.register({
+        name: workerName,
+        capabilities,
+        registrationToken: registrationToken!,
+      });
+      await saveWorkerIdentity(runtimeIdentity);
+    }
     console.log(JSON.stringify({ event: 'worker.registered', nodeId: runtimeIdentity.nodeId }));
     const beat = async () => {
       try {

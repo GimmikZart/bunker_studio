@@ -10,6 +10,38 @@ type AnthropicRuntimeOptions = {
   fetchFn?: typeof fetch;
 };
 
+export type DiscoveredAnthropicModel = {
+  id: string;
+  displayName: string;
+  capabilities: string[];
+};
+
+export async function discoverAnthropicModels(input: {
+  apiKey: string;
+  apiBaseUrl?: string;
+  fetchFn?: typeof fetch;
+}): Promise<DiscoveredAnthropicModel[]> {
+  const baseUrl = (input.apiBaseUrl ?? 'https://api.anthropic.com/v1').replace(/\/$/, '');
+  const response = await (input.fetchFn ?? fetch)(`${baseUrl}/models?limit=1000`, {
+    headers: {
+      'anthropic-version': '2023-06-01',
+      'x-api-key': input.apiKey,
+    },
+  });
+  if (!response.ok) throw new Error(`Anthropic model catalog returned status ${response.status}.`);
+  const payload = (await response.json()) as {
+    data?: { id?: unknown; display_name?: unknown; capabilities?: unknown }[];
+  };
+  if (!Array.isArray(payload.data)) throw new Error('Anthropic model catalog response is invalid.');
+  return payload.data
+    .filter((model): model is typeof model & { id: string } => typeof model.id === 'string')
+    .map((model) => ({
+      id: model.id,
+      displayName: typeof model.display_name === 'string' ? model.display_name : model.id,
+      capabilities: ['text', 'streaming', 'tool-calling'],
+    }));
+}
+
 export function createAnthropicRuntime(
   options: AnthropicRuntimeOptions | undefined = undefined,
 ): AgentRuntime {

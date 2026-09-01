@@ -1,88 +1,83 @@
 # Current Project State
 
-## Checkpoint 2026-08-31 — Test locale con provider remoto opzionale
+## Checkpoint 2026-09-01 — Binding per-agent e worker Codex/GitHub
 
-Il web locale ora supporta un provider remoto esplicito tramite `LOCAL_PROVIDER_*`.
-Con `pnpm dev` e queste variabili compilate e' possibile provare la chat con
-OpenAI reale senza pubblicare l'app; se restano vuote, il comportamento rimane
-il fake runtime locale senza consumo API. La configurazione di produzione
-continua a usare esclusivamente `AGENT_PROVIDER_*`.
+Bunker Studio non usa piu' un modello globale configurato negli env. In
+Supabase ogni agente conserva un binding versionato a uno specifico account
+provider, model ID, runtime e reasoning effort. OpenAI e Anthropic recuperano
+il catalogo modelli tramite le API di elenco (senza inferenza); le API key sono
+cifrate AES-256-GCM prima della persistenza. Anthropic e provider compatibili
+restano opzionali. Il modello locale futuro non e' un prerequisito.
 
-La guida quality documenta prima la prova locale, poi il test production-like
-con Supabase e infine Vercel. Il runtime Ollama/LM Studio resta opzionale e non
-bloccante.
+Il percorso iniziale supportato e' web locale o ospitato + Supabase Cloud +
+worker sul PC. Il worker si registra con token monouso, conserva localmente la
+propria credenziale, preleva task assegnati, rinnova il lease durante run
+lunghi e seleziona il runtime dal binding dell'agente. Per `CODEX_SDK` clona il
+repository GitHub in un workspace isolato, applica sandbox e scope, registra i
+comandi eseguiti, crea un branch task, commit e push senza merge o deploy.
 
-Verifica checkpoint: `pnpm verify` PASS (format, lint, typecheck, test, build,
-security audit); 15 package task lint/typecheck/build, 25 task test e 37 test
-web.
+Il repository GitHub e il branch vengono verificati via API prima di salvare
+il token; e' richiesto il permesso push. Provider e credenziali repository
+sono decifrati soltanto nel confine server/worker autenticato. HTTP per il
+control plane e' ammesso solo su loopback; un endpoint remoto deve usare HTTPS.
 
-## Stato sintetico
+## Implementato e verificato in questo checkpoint
 
-### Checkpoint 2026-08-31
+- Modalita' di persistenza esplicita `BUNKER_PERSISTENCE_MODE=memory|supabase`,
+  indipendente da esecuzione locale o hosting.
+- UI/API Settings per account OpenAI, Anthropic e OpenAI-compatible; una sola
+  connessione per provider per organizzazione e catalogo modelli persistito.
+- Creazione/modifica agente con selezione provider -> modello -> runtime ->
+  reasoning; vincoli SQL impediscono accoppiamenti provider/runtime errati.
+- Chat diretta legata al modello dell'agente; OpenAI usa Responses API.
+- Task assegnabile a un agente; il queue gate richiede binding completo e, per
+  Codex, repository GitHub connesso e write scope esplicito.
+- Worker Codex SDK con ambiente child allowlist, sandbox `workspace-write`,
+  approval `never`, web disabilitato, rete opt-in e prompt scoped.
+- Workspace Git effimero, path traversal protection, credenziale fuori da URL
+  e argomenti, validazione di ogni file modificato, commit/push su branch
+  candidato e cleanup.
+- Lease rinnovabile autenticato; risultato, branch, SHA ed evidenza comandi
+  persistiti atomicamente con la transizione task. Notifica in-app a
+  Owner/Admin per implementazione pronta o fallimento finale.
+- Migrazioni `00000000000020..22` per provider/catalogo/binding, risultati
+  worker e lease renewal. La claim seleziona solo worker con capability
+  compatibile (`codex` o `chat`).
+- Guida locale-first aggiornata: le vecchie variabili `AGENT_PROVIDER_*` e
+  `LOCAL_PROVIDER_*` sono deprecate e ignorate.
 
-Sono stati completati e verificati gli assegnamenti agenti tenant-scoped (team/progetto/reporting line), il dettaglio agente, metriche deterministiche e la baseline activity append-only. Studio Labs ora dispone di inizializzazione Owner-only del progetto protetto, analisi deterministica, selezione task+approval e gate reviewer/CI/Owner/human con `productionDeploy: false`. Il Lead ora persiste il piano strutturato e materializza il DAG in task DRAFT con dipendenze rimappate, read/write scope, parallel group, workflow link e Definition of Done; gli stessi metadati sono preservati dall’export/import. Il runner esegue batch concorrenti solo su scope disgiunti, serializza scope sovrapposti e usa il resume della sessione quando una quota interrompe un provider dopo l’avvio. Gli adapter HTTP conservano anche gli eventi SSE terminali di solo usage e normalizzano l’usage Anthropic distribuito tra eventi. Le migrazioni Supabase `00000000000012_domain_event_triggers.sql` e `00000000000013_workflow_plan.sql` registrano eventi e metadati del piano.
+## Stato milestone
 
-Bootstrap, fondazioni domain e vertical slices principali sono implementati; il progetto non è ancora alla Definition of Done finale perché la matrice acceptance AC-001..AC-014 non è completamente verificata e alcune integrazioni richiedono credenziali quality.
+M0-M4 e le vertical slice gia' elencate nella specifica restano presenti. Il
+checkpoint completa il binding provider/model richiesto da M3 e rende
+concretamente eseguibile la parte repository worker di M5/M14. M5-M6 non sono
+ancora completi: serve ancora un verificatore deterministico separato dal
+resoconto dell'LLM e la preparazione PR/CI idempotente. Le successive milestone
+e gli Acceptance Criteria esterni restano da completare; non e' corretto usare
+la stringa di completamento finale.
 
-## Lavoro completato e verificato
+## Verifiche correnti
 
-- M0: monorepo pnpm/Turborepo, web/worker, package condivisi, strict TypeScript, ESLint, Prettier, Vitest, Playwright, env Zod, Dockerfile, CI, Supabase locale e shell Office responsive.
-- M1-M3: tenancy con ruoli/RLS, auth API fail-closed, CRUD organizzazioni/team/progetti/agenti/membri, progetti assegnabili a più team tramite `project_teams`, agent registry, binding-preserving identity, runtime fake/HTTP e adapter OpenAI/Anthropic/OpenAI-compatible con payload/header nativi, SSE e usage normalizzato.
-- M4: state machine task, dependency DAG, parallel scope grouping, lease/reclaim, `DurableQueue`, adapter `PgBossQueue` compatibile con pg-boss v12 con retry esplicito deterministico e composition worker persistente, outbox dispatcher in-memory e Supabase con claim atomico, workflow runner concorrente con serializzazione degli scope, budget gate persistito (BLOCKED/WAITING_BUDGET_APPROVAL) con notifica e quota resume con session preservation. Anche la chat diretta applica il preflight budget prima del runtime e registra run, provider, modello e usage nel cost ledger; il worker genera e persiste i report settimanali scaduti con deduplicazione per finestra e avanzamento condizionale della schedulazione. `WorkerTaskScheduler` assegna in modo deterministico solo a nodi online, compatibili, entro concurrency e con scope autorizzati; il control plane locale aggiunge claim autenticato atomico, lease/reclaim, completion e pull loop verso runtime OpenAI-compatible.
-- M5-M6: Lead/verification/review contracts, workspace/artifact Git, safe parallelism, risultati di verifica persistiti, report review tenant-scoped e reviewer fix loop con limite cicli. Il package Git espone ora un adapter GitHub HTTP token-injected per branch, check-run CI e pull request, con errori sanitizzati.
-- M7-M14 verticali: design submission/owner approval, staffing proposal/confirmation, bounded meetings, bounded memory/search con provenance e delete, archivio conversazioni tenant-scoped ricercabile via API/UI, PWA/push adapter, worker registry/API, export/import ID remap di task e dipendenze, AES-256-GCM secrets e protected Studio policy. Le notifiche includono un adapter Web Push VAPID server-only, dispatcher worker con retry/revoca subscription e flusso browser per registrare la subscription nel service worker. Il local worker ora supporta token monouso, scambio server-side per credenziale hashata, client control-plane, heartbeat autenticato tramite RPC Supabase, pull dei task compatibili e completamento con risultato.
-- M2 capability envelope: avatar statici, skills/tools/permissions persistiti e trasferiti al runtime senza esporre segreti; migrazione compatibile per i record agent esistenti.
-- UI/API: login/signup/onboarding, PWA manifest/service worker, CRUD tenancy (including reversible project/team archive), agent registry create/edit/archive, design/staffing/memory/conversation archive/worker, meetings/minutes, approvals, cost ledger/report, notification inbox/subscription/preferences, repository metadata, task verification, review report, Lead workflow-plan endpoint con DAG persistito e gate design approvato per task FRONTEND, e virgin template export endpoints.
-- Persistenza production: repository Supabase SSR/RLS-aware per tenancy, agenti/provider binding, design gate, memorie, meetings/minutes, approval, cost ledger, budget policies/report schedules, notifiche/push, repository metadata e worker registry; lo store globale resta una fixture esclusivamente non-production.
-- Hardening release: singleton runtime per route bundle in sviluppo, budget cumulativo sui batch concorrenti, trigger Supabase per profilo e membership Owner, Docker context workspace, runbook quality/production e dataset demo Supabase locale idempotente.
-- Cost/design gates: budget policies per run/task/daily/monthly con hard/soft action, fallback consent, escalation threshold e report weekly schedulato; design resolution owner-only Approve/Reject/Changes, riferimenti di versione approvata sui task e review escalation nel domain-event ledger.
+- `pnpm verify`: PASS — format, lint 15/15, typecheck 15/15, test 26/26,
+  build 15/15 (Next.js 57 pagine/API), audit high senza vulnerabilita' note.
+- `pnpm test:e2e` con `BUNKER_PERSISTENCE_MODE=memory`: PASS, 11/11.
+- Web route suite: PASS, 22 file / 37 test.
+- Worker suite: PASS, 10 file / 22 test.
+- Test mirati config 2/2, Git 8/8, DB 14/14, OpenAI 3/3, Anthropic 4/4.
+- `supabase db reset --local`: PASS; migrazioni `00000000000000..22` e seed
+  applicati da zero.
+- Dev web/worker ripristinati dopo E2E; `/api/health` restituisce `status: ok`.
 
-## Lavoro in corso
+## Limiti e verifiche esterne pendenti
 
-Eseguire in un ambiente quality isolato i quattro scenari ancora `PARTIAL` e bloccanti (PC loss cloud, restart multi-process pg-boss, GitHub/CI protetto e VAPID/device) e registrare gli esiti nella matrice. Il runtime locale Ollama/LM Studio resta implementato come capacita futura opzionale: la sua verifica e' rinviata a quando sara' disponibile un computer adeguato e non blocca la release iniziale.
-
-## Verifiche
-
-- `pnpm format:check`: PASS.
-- `pnpm lint`: PASS, 15 package task.
-- `pnpm typecheck`: PASS, 15 package task.
-- `pnpm test`: PASS, 25 task Turborepo.
-- `pnpm build`: PASS, 15 package task; Next genera 54 route/pagine, inclusi archivio conversazioni e API di ricerca bounded.
-- `pnpm test:e2e`: PASS, 11 test (health, onboarding, login/signup, PWA, tenancy/isolation, design/staffing/memory, worker, operations/review/portability, virgin template, smoke responsive/accessibility e performance); p95 pagine core sotto 800 ms.
-- `pnpm exec node scripts/ui-functional-audit.mjs`: PASS, 13 checkpoint UI-001--UI-008 su CTA, onboarding, progetto, agente da template/provider, task DRAFT->READY, design gate, Settings/provider, navigazione desktop/mobile, hard refresh e responsive.
-- `pnpm audit --audit-level high`: PASS, nessuna vulnerabilità nota.
-- `supabase db reset --local`: PASS; migrations `00000000000000..00000000000019` applicate, inclusi RLS assignments, trigger domain events, metadati workflow plan, worker registration RPC, stato delivery push, task claim/lease locali, outbox transazionale per task `QUEUED`, budget/report schedules e storico report settimanali.
-- Test mirati post-hardening: Lead workflow plan 2/2, AgentRuntime 6/6, Anthropic adapter 2/2, Git 7/7, Notifications 4/4, Worker 12/12 (incluso dispatcher report), Web routes 35/35 (inclusi archivio conversazioni, budget/design/task gates e chat budget/ledger), DB worker scheduler 3/3, typecheck 15/15: PASS.
-- Smoke SQL local worker: PASS; claim con capability/scope/dependency, capacity gate, completion e reassignment su lease scaduta sono stati verificati su PostgreSQL Supabase locale con rollback finale.
-- Smoke SQL outbox: PASS; la transizione `QUEUED` crea un evento `task.run`, gli update non di stato non duplicano eventi e un nuovo passaggio `RUNNING → QUEUED` crea il retry event, con rollback finale.
-- Smoke pg-boss v12 su PostgreSQL Supabase locale (queue init, send/fetch batch, complete): PASS; `pnpm quality:pg-boss-restart` verifica anche il recupero dello stesso job con due processi dopo timeout: PASS. Il restart sul database multi-processo quality resta da eseguire.
-- Seed Supabase locale: PASS; `supabase db reset --local` carica il dataset demo (1 utente, 1 organizzazione, 3 agenti, 2 task, 1 memoria) senza credential o secret provider. Web route suite: 20 file / 35 test PASS, inclusi archivio conversazioni, budget/report, design resolution, escalation review e gate task/design.
-
-## Problemi aperti
-
-- Provider reali, Supabase cloud, GitHub, VAPID/Web Push e pg-boss multi-process quality richiedono configurazione/credenziali; gli adapter GitHub, Web Push VAPID, il protocollo token/heartbeat/task pull worker e pg-boss concreto, fake e contract test sono disponibili. Il runtime locale non e' un blocker: adapter, scheduler, control plane, fake e contract test sono pronti e la prova Ollama/LM Studio verra' eseguita solo quando sara' disponibile hardware idoneo.
-- La chat production seleziona un runtime HTTP configurato, usa il binding come modello di fallback e salva conversazioni/messaggi tenant-scoped; il fake runtime resta ammesso solo per fixture locali.
-- Office, Agent registry, Meetings, Approvals, Cost Center e Activity hanno pannelli client live con organization selector e stati/errori espliciti; Projects e Teams espongono create/edit/archive tenant-scoped, mentre Settings mostra runtime, provider senza segreti, worker/heartbeat, preferenze notifiche, budget policy e report settimanale configurabile.
-- Mancano ancora le verifiche quality esterne dei criteri `PARTIAL` e il drill backup/restore su un progetto quality; la UI task/workflow supporta create, transizioni controllate, gate budget con notifica e persistenza del piano Lead, mentre l’endpoint di esecuzione resta soggetto ai gate esistenti.
-- Security: Gitleaks eseguito in Docker con 60 commit e nessun leak; `pnpm audit --audit-level high` è verde. Semgrep ruleset JavaScript in Docker non ha prodotto un risultato terminale utile entro la finestra quality e osv-scanner non è disponibile nell'host.
+- Nessuna chiamata di inferenza OpenAI a pagamento e nessun push su un
+  repository reale sono stati eseguiti automaticamente: richiedono le
+  credenziali/account dell'utente. Adapter, fake e contract test sono verdi.
+- Restano le prove quality/device della matrice (cloud recovery, pg-boss
+  multi-process, GitHub/CI protetto, VAPID push e backup/restore).
+- Ollama/LM Studio resta una capacita' futura non bloccante per espressa
+  decisione utente; non e' stato rimosso dall'architettura.
 
 ## Ultimo aggiornamento
 
-2026-08-31
-
-## Checkpoint 2026-08-31 — Percorso online Supabase/OpenAI/Vercel
-
-La guida quality ora contiene un percorso unico per utenti non tecnici:
-Supabase cloud, migrazioni, OpenAI API, deploy web gratuito su Vercel,
-variabili ambiente, URL pubblico e smoke test online. Il runtime locale
-Ollama/LM Studio resta opzionale e non bloccante.
-
-In produzione `/api/settings` espone il runtime OpenAI/Anthropic configurato
-tramite variabili server come provider selezionabile, senza restituire chiavi.
-La funzione e' isolata in `apps/web/app/api/settings/runtime-provider.ts` con
-test dedicati.
-
-Verifiche del checkpoint: format:check PASS, lint 15/15 PASS, typecheck 15/15
-PASS, test 25 task / 37 test web PASS, build 15/15 PASS, audit high PASS.
-Restano da eseguire dall'utente le verifiche cloud/device e il worker sempre
-attivo richiesti dalla Definition of Done; il modello locale non e' richiesto.
+2026-09-01

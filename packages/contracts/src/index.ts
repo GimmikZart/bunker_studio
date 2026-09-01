@@ -144,7 +144,10 @@ export const agentCreateSchema = z.object({
   skills: z.array(z.string().trim().min(1)).max(50).default([]),
   tools: z.array(z.string().trim().min(1)).max(50).default([]),
   permissions: z.array(z.string().trim().min(1)).max(50).default([]),
-  providerBindingId: z.string().min(1),
+  providerConnectionId: z.string().uuid(),
+  providerModelId: z.string().trim().min(1).max(200),
+  runtimeType: z.enum(['OPENAI', 'ANTHROPIC', 'OPENAI_COMPATIBLE', 'CODEX_SDK']),
+  reasoningEffort: z.enum(['none', 'low', 'medium', 'high', 'xhigh', 'max']).default('medium'),
 });
 export type AgentCreateInput = z.infer<typeof agentCreateSchema>;
 export const staffingConfirmationSchema = z.object({
@@ -155,6 +158,15 @@ export type StaffingConfirmation = z.infer<typeof staffingConfirmationSchema>;
 export const agentUpdateSchema = agentCreateSchema
   .partial()
   .extend({ name: z.string().trim().min(1).max(120).optional() });
+
+export const providerConnectionCreateSchema = z.object({
+  providerType: z.enum(['OPENAI', 'ANTHROPIC', 'OPENAI_COMPATIBLE']),
+  displayName: z.string().trim().min(1).max(120),
+  apiKey: z.string().trim().min(1).max(1_000),
+  apiBaseUrl: z.string().url().optional(),
+  manualModels: z.array(z.string().trim().min(1).max(200)).max(100).default([]),
+});
+export type ProviderConnectionCreateInput = z.infer<typeof providerConnectionCreateSchema>;
 
 export const agentAssignmentSchema = z
   .object({
@@ -226,6 +238,11 @@ export const workerTaskCompletionSchema = z.object({
   success: z.boolean(),
   result: z.record(z.unknown()).default({}),
   error: z.string().trim().max(2_000).optional(),
+});
+
+export const workerLeaseRenewalSchema = z.object({
+  nodeId: z.string().uuid(),
+  leaseId: z.string().uuid(),
 });
 
 export const memoryCreateSchema = z.object({
@@ -348,6 +365,7 @@ export const repositoryConnectionSchema = z.object({
   owner: z.string().trim().min(1).max(120),
   name: z.string().trim().min(1).max(200),
   defaultBranch: z.string().trim().min(1).max(120).default('main'),
+  accessToken: z.string().trim().min(1).max(1_000).optional(),
 });
 
 export const taskStateSchema = z.enum([
@@ -372,6 +390,7 @@ export const taskStateSchema = z.enum([
 
 export const taskCreateSchema = z.object({
   projectId: z.string().uuid(),
+  assignedAgentId: z.string().uuid().optional(),
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().max(10_000).default(''),
   taskType: z.enum(['FRONTEND', 'BACKEND', 'DESIGN', 'TEST', 'DOCS', 'REVIEW']),

@@ -65,6 +65,7 @@ export type AgentCapabilities = {
   tools: string[];
   permissions: string[];
 };
+export type AgentReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type Agent = {
   id: string;
   organizationId: string;
@@ -77,6 +78,11 @@ export type Agent = {
   tools: string[];
   permissions: string[];
   providerBindingId: string;
+  providerConnectionId: string;
+  providerType: string;
+  providerModelId: string;
+  runtimeType: string;
+  reasoningEffort: AgentReasoningEffort;
   archivedAt: string | null;
 };
 

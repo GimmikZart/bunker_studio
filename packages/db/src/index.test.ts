@@ -31,23 +31,41 @@ describe('TenantStore', () => {
       name: 'Maya',
       roleKey: 'frontend',
       title: 'Frontend Engineer',
-      providerBindingId: 'binding-v1',
+      providerConnectionId: 'connection-v1',
+      providerModelId: 'model-v1',
+      runtimeType: 'OPENAI_COMPATIBLE',
+      reasoningEffort: 'medium',
       avatarAssetId: '00000000-0000-0000-0000-000000000001',
       skills: ['frontend'],
       tools: ['repository workspace'],
       permissions: ['repo.read'],
     });
     expect(store.listAgents(organization.id, 'owner')[0]?.id).toBe(agent.id);
-    expect(store.listAgents(organization.id, 'owner')[0]?.providerBindingId).toBe('binding-v1');
+    const originalBindingId = agent.providerBindingId;
+    expect(store.listAgents(organization.id, 'owner')[0]?.providerModelId).toBe('model-v1');
     expect(store.listAgents(organization.id, 'owner')[0]).toMatchObject({
       avatarAssetId: '00000000-0000-0000-0000-000000000001',
       skills: ['frontend'],
       tools: ['repository workspace'],
       permissions: ['repo.read'],
     });
-    store.changeAgentBinding(agent.id, organization.id, 'owner', 'binding-v2');
+    store.updateAgent(agent.id, organization.id, 'owner', {
+      providerConnectionId: 'connection-v2',
+      providerModelId: 'model-v2',
+      runtimeType: 'OPENAI_COMPATIBLE',
+      reasoningEffort: 'high',
+      providerBindingId: 'binding-v2',
+    });
     expect(store.listAgents(organization.id, 'owner')[0]?.id).toBe(agent.id);
     expect(store.listAgents(organization.id, 'owner')[0]?.providerBindingId).toBe('binding-v2');
+    expect(store.listAgents(organization.id, 'owner')[0]?.providerBindingId).not.toBe(
+      originalBindingId,
+    );
+    expect(store.listAgents(organization.id, 'owner')[0]).toMatchObject({
+      providerConnectionId: 'connection-v2',
+      providerModelId: 'model-v2',
+      reasoningEffort: 'high',
+    });
   });
 });
 

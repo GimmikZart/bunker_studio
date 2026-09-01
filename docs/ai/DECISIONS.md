@@ -125,3 +125,13 @@
 **Motivazione:** L'utente non dispone attualmente dell'hardware necessario. Rendere obbligatoria questa prova impedirebbe senza motivo la verifica delle funzionalita indipendenti e contraddirebbe l'obiettivo cloud-first del prodotto.
 
 **Conseguenze:** Non vengono rimossi ne indeboliti i controlli del local worker e non si dichiara AC-013 `PASS` senza la prova reale futura. I blocker di release restano soltanto AC-001, AC-006, AC-009 e AC-011, oltre al backup/restore drill.
+
+## DEC-015 — Provider/model per agente e worker ibrido
+
+**Status:** Accepted — 2026-09-01
+
+**Decisione:** Provider, account, modello, runtime e reasoning sono un binding versionato del singolo agente e non variabili d'ambiente globali. La stessa app puo' girare locale o ospitata contro Supabase Cloud. Nel percorso iniziale il web puo' essere ospitato mentre il worker repository resta sul PC e comunica in pull via HTTPS.
+
+**Motivazione:** L'identita' dell'agente deve sopravvivere ai cambi di modello e agenti diversi devono poter usare modelli/provider diversi. Il worker sul PC consente lavoro concreto sui repository e controllo dal telefono senza imporre subito un costo di hosting worker.
+
+**Conseguenze:** Gli env contengono solo configurazione infrastrutturale; le credenziali provider/repository sono cifrate per organizzazione/progetto. Un task Codex usa workspace e branch isolati, non auto-merge e non auto-deploy. A PC spento i task restano durable in coda.

@@ -31,7 +31,7 @@ export async function POST(request: Request, context: { params: Promise<{ agentI
     return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
     const agent = await store.getAgent(agentId, organizationId, actorId);
-    const runtime = getWebAgentRuntime(agent.providerBindingId);
+    const runtime = await getWebAgentRuntime(agent);
     if (!runtime)
       return NextResponse.json({ error: 'Provider runtime is not configured.' }, { status: 503 });
     const input = chatMessageSchema.parse(await request.json());
@@ -110,7 +110,7 @@ export async function POST(request: Request, context: { params: Promise<{ agentI
         amount: estimatedCost,
         occurredAt: new Date().toISOString(),
         provider: result.provider,
-        model: process.env.AGENT_PROVIDER_MODEL || agent.providerBindingId,
+        model: agent.providerModelId,
         agentId: agent.id,
         runId,
         inputTokens: result.usage.inputTokens,
