@@ -1,4 +1,5 @@
 import { OrganizationCrudPanel } from '../_components/organization-crud-panel';
+import { TeamBuilderPanel } from '../_components/team-builder-panel';
 
 export default function TeamsPage() {
   return (
@@ -8,6 +9,7 @@ export default function TeamsPage() {
       <p className="hero-copy">
         Teams group persistent agents around projects, scopes, capabilities, and reporting lines.
       </p>
+      <TeamBuilderPanel />
       <OrganizationCrudPanel kind="teams" />
     </main>
   );

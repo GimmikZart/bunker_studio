@@ -167,8 +167,10 @@ export const staffingProposalSchema = z.object({
 export type StaffingProposal = z.infer<typeof staffingProposalSchema>;
 
 export const staffingRequestSchema = z.object({
+  goal: z.string().trim().min(1).max(2_000),
+  projectId: z.string().uuid().optional(),
   requiredRoles: z.array(z.string().min(1)).optional(),
-  capabilities: z.array(z.string().min(1)).optional(),
+  capabilities: z.array(z.string().trim().min(1).max(200)).max(50).optional(),
   budget: z.number().nonnegative().optional(),
 });
 export type StaffingRequest = z.infer<typeof staffingRequestSchema>;

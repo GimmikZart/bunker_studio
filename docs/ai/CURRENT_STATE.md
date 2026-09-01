@@ -59,6 +59,11 @@ flusso funzionante senza una chiamata provider o Figma. Un adapter immagine/Figm
 o un Designer provider-backed può sostituirlo senza cambiare contratti, gate o
 storage.
 
+M8 e' in corso: il flusso Teams ora raccoglie obiettivo, progetto opzionale,
+budget, capability e ruoli, restituisce proposte editabili e richiede binding
+provider/modello e conferma esplicita prima di creare gli agenti. Il test API
+staffing mirato passa; restano i controlli completi e l'E2E UI.
+
 ## Verifiche correnti
 
 - `pnpm verify`: PASS — format, lint 15/15, typecheck 15/15, test 26/26,

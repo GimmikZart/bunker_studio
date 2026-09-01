@@ -453,6 +453,7 @@ export type StaffingProposal = {
 };
 
 export function suggestStaffingTeam(input: {
+  goal?: string;
   requiredRoles?: string[];
   capabilities?: string[];
   budget?: number;
@@ -469,7 +470,7 @@ export function suggestStaffingTeam(input: {
       tools: role.roleKey === 'reviewer' ? ['CI', 'security scanner'] : ['repository workspace'],
       estimatedCost:
         role.modelTier === 'PREMIUM_REASONER' ? 8 : role.modelTier === 'BALANCED_REVIEWER' ? 4 : 2,
-      rationale: `Role ${role.title} matches the requested delivery scope.`,
+      rationale: `${role.title} matches the requested delivery scope${input.goal ? `: ${input.goal}` : ''}.`,
     }));
   if (input.budget === undefined) return proposals;
   return proposals.reduce<StaffingProposal[]>((selected, proposal) => {

@@ -59,7 +59,7 @@ test('design, staffing confirmation and bounded memory search remain gated', asy
   expect(approved.status()).toBe(200);
   const proposals = await request.post('/api/staffing/proposals', {
     headers,
-    data: { requiredRoles: ['frontend'], budget: 2 },
+    data: { goal: 'Build the frontend flow', requiredRoles: ['frontend'], budget: 2 },
   });
   expect((await proposals.json()).proposals).toHaveLength(1);
   const memory = await request.post('/api/memories', {

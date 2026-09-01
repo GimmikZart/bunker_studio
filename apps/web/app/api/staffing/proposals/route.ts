@@ -19,6 +19,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
   try {
     const input = staffingRequestSchema.parse(await request.json());
+    if (input.projectId) {
+      const project = (await tenancy.listProjects(organizationId, actorId)).find(
+        (candidate) => candidate.id === input.projectId,
+      );
+      if (!project) return NextResponse.json({ error: 'Project not found.' }, { status: 404 });
+    }
     return NextResponse.json({ proposals: suggestStaffingTeam(input) });
   } catch {
     return NextResponse.json({ error: 'Invalid staffing request.' }, { status: 400 });

@@ -906,3 +906,14 @@ idempotenti di M6; nessun push, merge o chiamata provider reale eseguiti.
 M7 completata localmente. Prossima attivita' unica: audit M8 HR + Team Builder.
 Adapter immagine/Figma e Designer provider-backed restano integrazioni esterne
 non bloccanti, dietro il contratto ora persistito.
+
+## 2026-09-02 - M8 Team Builder (checkpoint in corso)
+
+- Esteso il contratto staffing con obiettivo e project ID opzionale; la route
+  verifica l'appartenenza del progetto all'organizzazione.
+- Aggiunto Team Builder alla pagina Teams: proposta da ruolo/budget/capability,
+  modifiche per ogni hire, scelta provider/modello/reasoning e conferma esplicita.
+- Nessuna proposta persiste agenti prima di `Confirm and hire team`; resta il
+  collegamento alla creazione manuale degli agenti.
+- `staffing/staffing.test.ts`: PASS. Formattazione completata; typecheck web
+  avviato e da riconfermare insieme a lint/build/E2E nel prossimo checkpoint.

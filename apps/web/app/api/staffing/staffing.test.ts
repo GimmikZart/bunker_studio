@@ -20,7 +20,12 @@ describe('staffing API', () => {
       new Request('http://localhost', {
         method: 'POST',
         headers: { ...headers, 'x-bunker-organization-id': organizationId },
-        body: JSON.stringify({ requiredRoles: ['frontend'], budget: 2 }),
+        body: JSON.stringify({
+          goal: 'Ship an accessible frontend flow',
+          requiredRoles: ['frontend'],
+          capabilities: ['accessibility'],
+          budget: 2,
+        }),
       }),
     );
     expect((await proposalResponse.json()).proposals).toHaveLength(1);

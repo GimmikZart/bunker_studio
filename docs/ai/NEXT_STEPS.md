@@ -1,12 +1,14 @@
 # Next Steps
 
-## Prossima attivita' precisa - audit M8 HR + Team Builder
+## Prossima attivita' precisa - verificare e completare M8 HR + Team Builder
 
 M7 e' completata localmente: brief/constraint legati a un Designer, una-tre
 varianti versionate, preview HTML statiche tenant-scoped e sandboxed,
 approvazione Owner immutabile e task frontend legato alla versione esatta sono
 implementati e verificati. La prima attivita' realmente incompleta e' ora
-auditare M8 rispetto a specifica, UX, codice e test.
+L'audit ha trovato e corretto la prima lacuna: la pagina Teams ora include il
+flusso New Team. Riprendere dai controlli completi e verificare che l'UI sia
+coperta da E2E prima di considerare M8 completata.
 
 ### Area interessata
 
@@ -19,6 +21,8 @@ policy di conferma e test E2E.
 - L'utente puo' modificare la proposta prima dell'hire.
 - Nessun agente raccomandato e' persistito prima della conferma esplicita.
 - La creazione manuale degli agenti resta disponibile.
+- Il typecheck web e' stato avviato dopo il nuovo Team Builder; rieseguirlo se
+  la sessione termina prima dell'esito, quindi eseguire lint/build/E2E pertinente.
 
 ### Definition of Done locale
 
