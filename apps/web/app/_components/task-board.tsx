@@ -28,6 +28,12 @@ type Task = {
   writeScope?: string[];
   candidateBranch?: string;
   candidateCommitSha?: string;
+  candidatePullRequestNumber?: number;
+  candidatePullRequestUrl?: string;
+  candidatePullRequestState?: 'OPEN' | 'CLOSED';
+  candidatePullRequestHeadSha?: string;
+  candidateCiStatus?: 'PASS' | 'FAIL' | 'PENDING';
+  candidateCiCheckedAt?: string;
   workerResult?: {
     verification?: {
       kind?: string;
@@ -88,7 +94,7 @@ export function TaskBoard() {
   const [taskType, setTaskType] = useState('BACKEND');
   const [estimatedCost, setEstimatedCost] = useState('0');
   const [packageManager, setPackageManager] = useState('pnpm');
-  const [verificationScripts, setVerificationScripts] = useState('lint, typecheck, test');
+  const [verificationScripts, setVerificationScripts] = useState('lint, typecheck, test, security');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -218,6 +224,22 @@ export function TaskBoard() {
       return;
     }
     setNotice(`Task moved to ${state}.`);
+    await load(organizationId);
+  }
+
+  async function refreshGitHubCi(task: Task) {
+    setError('');
+    setNotice('');
+    const response = await fetch(`/api/tasks/${task.id}/github`, {
+      method: 'POST',
+      headers: apiHeaders(organizationId),
+    });
+    const payload = (await response.json()) as { error?: string; ci?: { status?: string } };
+    if (!response.ok) {
+      setError(payload.error ?? 'GitHub CI could not be refreshed.');
+      return;
+    }
+    setNotice(`GitHub CI refreshed: ${payload.ci?.status ?? 'unknown'}.`);
     await load(organizationId);
   }
 
@@ -365,7 +387,7 @@ export function TaskBoard() {
           id="task-verification-scripts"
           value={verificationScripts}
           onChange={(event) => setVerificationScripts(event.target.value)}
-          placeholder="lint, typecheck, test"
+          placeholder="lint, typecheck, test, security"
         />
         <p className="field-help">
           Comma-separated package scripts. The worker runs these checks after the agent edits and
@@ -469,6 +491,16 @@ export function TaskBoard() {
                     {task.candidateCommitSha ? ` · ${task.candidateCommitSha.slice(0, 12)}` : ''}
                   </small>
                 )}
+                {task.candidatePullRequestUrl && (
+                  <small>
+                    PR:{' '}
+                    <a href={task.candidatePullRequestUrl} target="_blank" rel="noreferrer">
+                      #{task.candidatePullRequestNumber ?? '?'} ·{' '}
+                      {task.candidatePullRequestState ?? 'OPEN'}
+                    </a>{' '}
+                    · CI {task.candidateCiStatus ?? 'PENDING'}
+                  </small>
+                )}
                 {task.workerResult?.verification?.length ? (
                   <small>
                     Verification: {task.workerResult.verification.length} recorded ·{' '}
@@ -491,6 +523,15 @@ export function TaskBoard() {
                     <option key={state}>{state}</option>
                   ))}
                 </select>
+              )}
+              {task.candidatePullRequestUrl && (
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => void refreshGitHubCi(task)}
+                >
+                  Refresh CI
+                </button>
               )}
             </div>
           );

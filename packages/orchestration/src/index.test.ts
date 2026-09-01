@@ -5,6 +5,7 @@ import {
   groupParallelTasks,
   nextQuotaRetryAt,
   transitionTask,
+  taskReviewGate,
 } from './index';
 
 describe('deterministic orchestration', () => {
@@ -74,5 +75,37 @@ describe('deterministic orchestration', () => {
         'RUNNING',
       ),
     ).toThrow();
+  });
+
+  it('requires authoritative verification, exact-SHA CI and reviewer evidence', () => {
+    const candidateSha = 'candidate-sha';
+    expect(
+      taskReviewGate({
+        target: 'DONE',
+        workerVerificationStatuses: ['PASS'],
+        verificationStatuses: ['PASS'],
+        candidateSha,
+        ciStatus: 'PENDING',
+        reviews: [{ candidateSha: 'different-sha', status: 'PASS' }],
+      }),
+    ).toEqual({ allowed: false, missing: ['CI', 'REVIEWER'] });
+    expect(
+      taskReviewGate({
+        target: 'DONE',
+        workerVerificationStatuses: ['PASS'],
+        verificationStatuses: [],
+        candidateSha,
+        ciStatus: 'PASS',
+        reviews: [{ candidateSha, status: 'PASS' }],
+      }),
+    ).toEqual({ allowed: true, missing: [] });
+    expect(
+      taskReviewGate({
+        target: 'REVIEW_PENDING',
+        workerVerificationStatuses: ['PASS', 'FAIL'],
+        verificationStatuses: ['PASS'],
+        reviews: [],
+      }).missing,
+    ).toEqual(['VERIFICATION']);
   });
 });

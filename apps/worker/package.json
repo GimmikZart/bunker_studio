@@ -18,6 +18,7 @@
     "@bunker-studio/config": "workspace:*",
     "@bunker-studio/core": "workspace:*",
     "@bunker-studio/db": "workspace:*",
+    "@bunker-studio/git": "workspace:*",
     "@bunker-studio/notifications": "workspace:*",
     "@bunker-studio/orchestration": "workspace:*",
     "@bunker-studio/provider-anthropic": "workspace:*",

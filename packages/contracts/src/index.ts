@@ -56,6 +56,16 @@ export const verificationCommandSchema = z.object({
 });
 export type VerificationCommand = z.infer<typeof verificationCommandSchema>;
 
+export const verificationEvidenceSchema = z.object({
+  kind: z.enum(['FORMAT', 'LINT', 'TYPECHECK', 'UNIT', 'INTEGRATION', 'E2E', 'SECURITY', 'BUILD']),
+  command: z.string().trim().min(1).max(1_000),
+  status: z.enum(['PASS', 'FAIL']),
+  exitCode: z.number().int().nullable(),
+  timedOut: z.boolean(),
+  durationMs: z.number().int().nonnegative().max(1_200_000),
+});
+export type VerificationEvidence = z.infer<typeof verificationEvidenceSchema>;
+
 export const leadTaskSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
@@ -90,7 +100,7 @@ export type LeadPlanSubmission = z.infer<typeof leadPlanSubmissionSchema>;
 export const verificationRunSchema = z.object({
   kind: z.enum(['FORMAT', 'LINT', 'TYPECHECK', 'UNIT', 'INTEGRATION', 'E2E', 'SECURITY', 'BUILD']),
   commandOrCheck: z.string().min(1),
-  status: z.enum(['PASS', 'FAIL', 'SKIPPED']),
+  status: z.enum(['PASS', 'FAIL', 'PENDING', 'SKIPPED']),
   artifactId: z.string().uuid().optional(),
   durationMs: z.number().int().nonnegative(),
   output: z.string().optional(),

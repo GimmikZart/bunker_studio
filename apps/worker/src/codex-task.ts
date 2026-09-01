@@ -3,6 +3,11 @@ import { cleanupGitWorkspace, prepareGitWorkspace, publishGitWorkspace } from '.
 import { TaskExecutionError, type LocalTaskExecutor } from './local-task.js';
 import type { LocalWorkerTask } from './runtime-client.js';
 import { runVerificationPlan } from './verification.js';
+import {
+  GitHubReviewPreparationError,
+  prepareGitHubReview,
+  type CandidatePublication,
+} from './github-review.js';
 import type { ThreadItem } from '@openai/codex-sdk';
 
 const SAFE_ENVIRONMENT_KEYS = [
@@ -63,6 +68,24 @@ function reasoningEffort(
   return value === 'none' ? 'minimal' : value;
 }
 
+async function finalizeGitHubPublication(
+  task: LocalWorkerTask,
+  publication: CandidatePublication,
+  evidence: Record<string, unknown>,
+) {
+  try {
+    return { ...evidence, ...publication, ...(await prepareGitHubReview({ task, publication })) };
+  } catch (error) {
+    if (error instanceof GitHubReviewPreparationError)
+      throw new TaskExecutionError(error.message, {
+        ...evidence,
+        ...publication,
+        ...error.result,
+      });
+    throw error;
+  }
+}
+
 export function createCodexTaskExecutor(input: {
   workspaceRoot: string;
   networkAccessEnabled?: boolean;
@@ -73,6 +96,19 @@ export function createCodexTaskExecutor(input: {
       throw new Error('Codex SDK tasks require an OpenAI provider binding.');
     if (!task.writeScope.length)
       throw new Error('A coding task requires at least one explicit write scope.');
+    if (task.priorPublication) {
+      const expectedBranch = `bunker/${task.taskId}`;
+      if (task.priorPublication.branch !== expectedBranch)
+        throw new Error('The prior candidate branch does not match this task.');
+      return finalizeGitHubPublication(
+        task,
+        {
+          branch: task.priorPublication.branch,
+          candidateCommitSha: task.priorPublication.candidateCommitSha,
+        },
+        { verification: task.priorPublication.verification, recoveredPublication: true },
+      );
+    }
     const workspace = await prepareGitWorkspace(task, input.workspaceRoot);
     try {
       const codex = new Codex({
@@ -101,7 +137,7 @@ export function createCodexTaskExecutor(input: {
           agentCommands: agentCommandEvidence(turn.items),
         });
       const publication = await publishGitWorkspace(task, workspace);
-      return {
+      return finalizeGitHubPublication(task, publication, {
         text: turn.finalResponse,
         provider: 'openai-codex-sdk',
         model: task.binding.providerModelId,
@@ -116,8 +152,7 @@ export function createCodexTaskExecutor(input: {
           : null,
         verification,
         agentCommands: agentCommandEvidence(turn.items),
-        ...publication,
-      };
+      });
     } finally {
       await cleanupGitWorkspace(workspace);
     }

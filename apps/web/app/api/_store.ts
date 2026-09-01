@@ -379,6 +379,12 @@ export type TaskRecord = {
   }[];
   candidateBranch?: string;
   candidateCommitSha?: string;
+  candidatePullRequestNumber?: number;
+  candidatePullRequestUrl?: string;
+  candidatePullRequestState?: 'OPEN' | 'CLOSED';
+  candidatePullRequestHeadSha?: string;
+  candidateCiStatus?: 'PASS' | 'FAIL' | 'PENDING';
+  candidateCiCheckedAt?: string;
   workerResult?: Record<string, unknown>;
   estimatedCost: number;
   priority: number;
@@ -391,6 +397,7 @@ export type VerificationRunRecord = VerificationRun & {
   id: string;
   organizationId: string;
   taskId: string;
+  externalKey?: string;
   executedAt: string;
 };
 

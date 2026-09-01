@@ -80,15 +80,16 @@ export class LocalWorkerTaskLoop {
         });
     };
     const renewalTimer = setInterval(renew, this.leaseRenewalIntervalMs);
+    let executionResult: Record<string, unknown> | undefined;
     try {
-      const result = await this.execute(task);
+      executionResult = await this.execute(task);
       if (renewalError) throw renewalError;
       await this.client.completeTask({
         nodeId: this.identity.nodeId,
         credential: this.identity.credential,
         leaseId: task.leaseId,
         success: true,
-        result,
+        result: executionResult,
       });
       return 'COMPLETED';
     } catch (error) {
@@ -97,7 +98,11 @@ export class LocalWorkerTaskLoop {
         credential: this.identity.credential,
         leaseId: task.leaseId,
         success: false,
-        ...(error instanceof TaskExecutionError ? { result: error.result } : {}),
+        ...(error instanceof TaskExecutionError
+          ? { result: error.result }
+          : executionResult
+            ? { result: executionResult }
+            : {}),
         error: error instanceof Error ? error.message.slice(0, 2_000) : 'Local task failed.',
       });
       return completion.state === 'FAILED_FINAL' ? 'FAILED' : 'RETRY_SCHEDULED';

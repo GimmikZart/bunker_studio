@@ -13,7 +13,7 @@
     "format:check": "prettier --check .",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "test:e2e": "pnpm --filter @bunker-studio/contracts build && pnpm --filter @bunker-studio/db build && pnpm --filter @bunker-studio/agent-runtime build && pnpm --filter @bunker-studio/orchestration build && playwright test",
+    "test:e2e": "pnpm --filter @bunker-studio/contracts build && pnpm --filter @bunker-studio/db build && pnpm --filter @bunker-studio/agent-runtime build && pnpm --filter @bunker-studio/orchestration build && playwright test --grep-invert \"normal page server response\" && pnpm --filter @bunker-studio/web build && playwright test tests/e2e/performance-smoke.spec.ts --config playwright.production.config.ts",
     "quality:pg-boss-restart": "pnpm --filter @bunker-studio/worker build && node apps/worker/dist/pg-boss-restart-smoke.js",
     "security": "pnpm audit --audit-level high",
     "test:watch": "turbo run test:watch",

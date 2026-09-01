@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { githubGitEnvironment, pathWithinScopes, taskWorkspace } from './git-workspace';
+import {
+  gitPushArguments,
+  githubGitEnvironment,
+  pathWithinScopes,
+  taskWorkspace,
+} from './git-workspace';
 import type { LocalWorkerTask } from './runtime-client';
 
 const task = {
@@ -35,5 +40,19 @@ describe('Git task workspace security', () => {
     const environment = githubGitEnvironment('github-secret');
     expect(environment.GIT_CONFIG_KEY_0).toContain('extraheader');
     expect(environment.GIT_CONFIG_VALUE_0).not.toContain('github-secret');
+  });
+
+  it('uses force-with-lease only for a task branch that already exists remotely', () => {
+    const workspace = taskWorkspace(task, 'C:/bunker/workspaces');
+    expect(gitPushArguments(workspace)).toEqual([
+      'push',
+      '--set-upstream',
+      'origin',
+      workspace.branch,
+    ]);
+    workspace.remoteBranchSha = 'previous-candidate-sha';
+    expect(gitPushArguments(workspace)).toContain(
+      `--force-with-lease=refs/heads/${workspace.branch}:previous-candidate-sha`,
+    );
   });
 });

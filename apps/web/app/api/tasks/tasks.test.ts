@@ -7,6 +7,8 @@ import { PATCH, POST } from './route';
 import { POST as createPolicy } from '../budgets/policies/route';
 import { GET as listNotifications } from '../notifications/route';
 import { POST as createAgent } from '../agents/route';
+import { POST as addVerification } from './[taskId]/verification/route';
+import { POST as submitReview } from '../reviews/route';
 
 describe('task design reference policy', () => {
   it('requires and accepts an approved design for frontend tasks', async () => {
@@ -279,5 +281,144 @@ describe('task design reference policy', () => {
     await expect(queued.json()).resolves.toMatchObject({
       error: expect.stringContaining('deterministic verification'),
     });
+
+    const noSecurityResponse = await POST(
+      new Request('http://localhost/api/tasks', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          projectId,
+          title: 'Implement without security scan',
+          taskType: 'BACKEND',
+          assignedAgentId,
+          writeScope: ['packages/core'],
+          verificationCommands: [
+            { kind: 'UNIT', executable: 'pnpm', args: ['test'], timeoutMs: 300_000 },
+          ],
+        }),
+      }),
+    );
+    const noSecurityTask = (await noSecurityResponse.json()).task;
+    await PATCH(
+      new Request(`http://localhost/api/tasks?taskId=${noSecurityTask.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ state: 'READY' }),
+      }),
+    );
+    const noSecurityQueued = await PATCH(
+      new Request(`http://localhost/api/tasks?taskId=${noSecurityTask.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ state: 'QUEUED' }),
+      }),
+    );
+    expect(noSecurityQueued.status).toBe(409);
+    await expect(noSecurityQueued.json()).resolves.toMatchObject({
+      error: expect.stringContaining('baseline security'),
+    });
+  });
+
+  it('blocks completion until deterministic verification and reviewer gates pass', async () => {
+    const userId = `review-gate-owner-${crypto.randomUUID()}`;
+    const baseHeaders = { 'content-type': 'application/json', 'x-bunker-user-id': userId };
+    const organizationResponse = await createOrganization(
+      new Request('http://localhost', {
+        method: 'POST',
+        headers: baseHeaders,
+        body: JSON.stringify({ name: 'Review Completion Gate' }),
+      }),
+    );
+    const organizationId = (await organizationResponse.json()).organization.id as string;
+    const headers = { ...baseHeaders, 'x-bunker-organization-id': organizationId };
+    const projectResponse = await createProject(
+      new Request('http://localhost', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name: 'Review project' }),
+      }),
+      { params: Promise.resolve({ organizationId }) },
+    );
+    const projectId = (await projectResponse.json()).project.id as string;
+    const createConfiguredAgent = async (name: string, roleKey: string) => {
+      const response = await createAgent(
+        new Request('http://localhost/api/agents', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            name,
+            roleKey,
+            title: roleKey === 'reviewer' ? 'Reviewer' : 'Engineer',
+            providerConnectionId: '00000000-0000-4000-8000-000000000001',
+            providerModelId: 'fake-default',
+            runtimeType: 'OPENAI_COMPATIBLE',
+            reasoningEffort: 'medium',
+          }),
+        }),
+      );
+      return (await response.json()).agent.id as string;
+    };
+    const assignedAgentId = await createConfiguredAgent('Builder', 'backend');
+    const reviewerAgentId = await createConfiguredAgent('Reviewer', 'reviewer');
+    const taskResponse = await POST(
+      new Request('http://localhost/api/tasks', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          projectId,
+          title: 'Gated task',
+          taskType: 'BACKEND',
+          assignedAgentId,
+        }),
+      }),
+    );
+    const task = (await taskResponse.json()).task;
+    const move = (state: string) =>
+      PATCH(
+        new Request(`http://localhost/api/tasks?taskId=${task.id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ state }),
+        }),
+      );
+    for (const state of ['READY', 'QUEUED', 'RUNNING', 'IMPLEMENTED', 'VERIFYING'])
+      expect((await move(state)).status).toBe(200);
+    expect((await move('REVIEW_PENDING')).status).toBe(409);
+    const verification = await addVerification(
+      new Request('http://localhost/api/tasks/task/verification', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          kind: 'UNIT',
+          commandOrCheck: 'deterministic test',
+          status: 'PASS',
+          durationMs: 10,
+        }),
+      }),
+      { params: Promise.resolve({ taskId: task.id }) },
+    );
+    expect(verification.status).toBe(201);
+    expect((await move('REVIEW_PENDING')).status).toBe(200);
+    expect((await move('DONE')).status).toBe(409);
+    const review = await submitReview(
+      new Request('http://localhost/api/reviews', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          projectId,
+          taskId: task.id,
+          reviewerAgentId,
+          report: {
+            candidateSha: 'manual-candidate',
+            status: 'PASS',
+            summary: 'No blocking findings.',
+            findings: [],
+            verificationRuns: [],
+          },
+        }),
+      }),
+    );
+    expect(review.status).toBe(201);
+    expect((await move('DONE')).status).toBe(200);
   });
 });

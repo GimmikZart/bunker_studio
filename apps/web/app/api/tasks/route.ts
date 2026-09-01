@@ -1,5 +1,6 @@
 import { taskCreateSchema, taskStateSchema, taskTransitionSchema } from '@bunker-studio/contracts';
 import { canWrite, evaluateBudgetPolicies } from '@bunker-studio/core';
+import { taskReviewGate } from '@bunker-studio/orchestration';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../_auth';
 import {
@@ -7,6 +8,18 @@ import {
   getWebOperationalRepository,
   getWebTenancyRepository,
 } from '../_data';
+
+function workerVerificationStatuses(task: {
+  workerResult?: Record<string, unknown>;
+}): string[] | undefined {
+  const verification = task.workerResult?.verification;
+  if (!Array.isArray(verification)) return undefined;
+  return verification.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return [];
+    const status = (entry as Record<string, unknown>).status;
+    return typeof status === 'string' ? [status] : [];
+  });
+}
 
 export async function GET(request: Request) {
   const actorId = await resolveActorId(request);
@@ -99,11 +112,11 @@ export async function PATCH(request: Request) {
   try {
     const input = taskTransitionSchema.parse(await request.json());
     const state = taskStateSchema.parse(input.state);
+    const task = (await operations.listTasks(organizationId, actorId)).find(
+      (candidate) => candidate.id === taskId,
+    );
+    if (!task) return NextResponse.json({ error: 'Task not found.' }, { status: 404 });
     if (state === 'QUEUED' || state === 'RUNNING') {
-      const task = (await operations.listTasks(organizationId, actorId)).find(
-        (candidate) => candidate.id === taskId,
-      );
-      if (!task) return NextResponse.json({ error: 'Task not found.' }, { status: 404 });
       if (!task.assignedAgentId)
         return NextResponse.json(
           { error: 'Assign an agent before queueing this task.' },
@@ -131,6 +144,11 @@ export async function PATCH(request: Request) {
               error:
                 'A Codex repository task requires at least one deterministic verification command.',
             },
+            { status: 409 },
+          );
+        if (!task.verificationCommands.some((command) => command.kind === 'SECURITY'))
+          return NextResponse.json(
+            { error: 'A Codex repository task requires a baseline security verification command.' },
             { status: 409 },
           );
         const repository = await operations.getRepository(task.projectId, organizationId, actorId);
@@ -196,6 +214,33 @@ export async function PATCH(request: Request) {
           ),
         ).catch(() => undefined);
       }
+    }
+    if (state === 'REVIEW_PENDING' || state === 'DONE' || state === 'FIX_REQUIRED') {
+      const [verificationRuns, reviews] = await Promise.all([
+        operations.listVerificationRuns(organizationId, actorId, taskId),
+        state === 'REVIEW_PENDING'
+          ? Promise.resolve([])
+          : operations.listReviews(organizationId, actorId, taskId),
+      ]);
+      const gate = taskReviewGate({
+        target: state,
+        workerVerificationStatuses: workerVerificationStatuses(task),
+        verificationStatuses: verificationRuns.map((verification) => verification.status),
+        ...(task.candidateCommitSha ? { candidateSha: task.candidateCommitSha } : {}),
+        ...(task.candidateCiStatus ? { ciStatus: task.candidateCiStatus } : {}),
+        reviews: reviews.map((review) => ({
+          candidateSha: review.candidateSha,
+          status: review.status,
+        })),
+      });
+      if (!gate.allowed)
+        return NextResponse.json(
+          {
+            error: 'Task verification, exact-candidate CI, or reviewer evidence is incomplete.',
+            gate,
+          },
+          { status: 409 },
+        );
     }
     return NextResponse.json({
       task: await operations.transitionTask(taskId, organizationId, state, actorId),

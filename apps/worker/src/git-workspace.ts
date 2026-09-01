@@ -12,6 +12,7 @@ export type TaskWorkspace = {
   branch: string;
   repositoryUrl: string;
   gitEnvironment: NodeJS.ProcessEnv;
+  remoteBranchSha?: string;
 };
 
 function safeSegment(value: string, label: string): string {
@@ -35,6 +36,14 @@ export function pathWithinScopes(path: string, scopes: string[]): boolean {
       normalized && (normalizedPath === normalized || normalizedPath.startsWith(`${normalized}/`))
     );
   });
+}
+
+export function gitPushArguments(workspace: TaskWorkspace): string[] {
+  const args = ['push'];
+  if (workspace.remoteBranchSha)
+    args.push(`--force-with-lease=refs/heads/${workspace.branch}:${workspace.remoteBranchSha}`);
+  args.push('--set-upstream', 'origin', workspace.branch);
+  return args;
 }
 
 export function githubGitEnvironment(token: string): NodeJS.ProcessEnv {
@@ -94,6 +103,16 @@ export async function prepareGitWorkspace(
     workspace.repositoryUrl,
     workspace.path,
   ]);
+  const remoteBranch = (
+    await git(workspace.path, workspace.gitEnvironment, [
+      'ls-remote',
+      '--heads',
+      'origin',
+      `refs/heads/${workspace.branch}`,
+    ])
+  ).trim();
+  const remoteBranchSha = remoteBranch.split(/\s+/)[0];
+  if (remoteBranchSha) workspace.remoteBranchSha = remoteBranchSha;
   await git(workspace.path, workspace.gitEnvironment, ['checkout', '-b', workspace.branch]);
   return workspace;
 }
@@ -143,12 +162,7 @@ export async function publishGitWorkspace(
   const candidateCommitSha = (
     await git(workspace.path, workspace.gitEnvironment, ['rev-parse', 'HEAD'])
   ).trim();
-  await git(workspace.path, workspace.gitEnvironment, [
-    'push',
-    '--set-upstream',
-    'origin',
-    workspace.branch,
-  ]);
+  await git(workspace.path, workspace.gitEnvironment, gitPushArguments(workspace));
   return { branch: workspace.branch, candidateCommitSha, changedFiles, diff };
 }
 

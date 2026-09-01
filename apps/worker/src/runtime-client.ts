@@ -1,4 +1,4 @@
-import type { VerificationCommand } from '@bunker-studio/contracts';
+import type { VerificationCommand, VerificationEvidence } from '@bunker-studio/contracts';
 
 export type RuntimeWorkerIdentity = {
   nodeId: string;
@@ -18,6 +18,11 @@ export type LocalWorkerTask = {
   writeScope: string[];
   definitionOfDone: Record<string, unknown>;
   verificationCommands: VerificationCommand[];
+  priorPublication?: {
+    branch: string;
+    candidateCommitSha: string;
+    verification: VerificationEvidence[];
+  };
   requiredCapability?: string | null;
   attemptNumber: number;
   leaseExpiresAt: string;

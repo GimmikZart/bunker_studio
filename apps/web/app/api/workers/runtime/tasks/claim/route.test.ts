@@ -49,6 +49,21 @@ describe('local worker task claim route', () => {
             },
           ],
         },
+        candidate_branch: 'bunker/22222222-2222-4222-8222-222222222222',
+        candidate_commit_sha: 'candidate-sha',
+        worker_result_json: {
+          publicationStage: 'BRANCH_PUSHED',
+          verification: [
+            {
+              kind: 'UNIT',
+              command: 'pnpm (1 args)',
+              status: 'PASS',
+              exitCode: 0,
+              timedOut: false,
+              durationMs: 42,
+            },
+          ],
+        },
       },
       agents: {
         id: '66666666-6666-4666-8666-666666666666',
@@ -103,6 +118,11 @@ describe('local worker task claim route', () => {
       task: {
         taskId: '22222222-2222-4222-8222-222222222222',
         verificationCommands: [{ kind: 'UNIT', executable: 'pnpm' }],
+        priorPublication: {
+          branch: 'bunker/22222222-2222-4222-8222-222222222222',
+          candidateCommitSha: 'candidate-sha',
+          verification: [{ kind: 'UNIT', status: 'PASS' }],
+        },
       },
     });
     expect(rpc).toHaveBeenCalledWith(

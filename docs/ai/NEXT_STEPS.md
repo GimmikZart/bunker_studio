@@ -1,37 +1,36 @@
 # Next Steps
 
-## Prossima attivita' precisa — PR GitHub e ingestione CI idempotenti
+## Prossima attività precisa — completare il runtime Designer con preview artifact
 
-Completare la parte restante di M6: dopo il push verificato del branch candidato,
-il worker deve preparare una pull request GitHub ripetibile senza duplicati e il
-control plane deve acquisire lo stato CI come evidenza deterministica.
+Completare M7 oltre alla slice di approvazione già esistente: un agente Designer
+deve trasformare un brief in una proposta versionata con 1–3 varianti bounded,
+structured design spec, rationale, stati principali e almeno un preview artifact
+sicuro (prototipo HTML statico e/o immagine). Il contenuto approvato deve restare
+immutabile e referenziabile dal task frontend.
 
 ### Area interessata
 
-`packages/git`, task persistence/UI, `apps/worker`, API completion, verification
-runs e migrazioni Supabase.
+`packages/contracts`, `packages/agent-runtime` / orchestration, persistence
+design/artifact, API e UI `/designs`, storage adapter e test E2E.
 
 ### Comportamento atteso
 
-- Una operation key stabile per task/branch/base cerca prima una PR esistente;
-  retry e restart aggiornano la stessa PR anziche' crearne altre.
-- Titolo e body sono deterministicamente derivati dal task e non contengono
-  secret; base branch e head SHA devono corrispondere al repository connesso.
-- Numero, URL, stato e head SHA della PR vengono persistiti nel task/risultato.
-- Check run e stato combinato GitHub vengono normalizzati in evidence CI bounded
-  e tenant-scoped; output/log remoti non vengono copiati integralmente.
-- CI pending o failure non puo' diventare PASS per testo LLM. Nessun percorso
-  effettua merge o deploy automatico.
+- Il contratto Designer distingue brief/constraint, variante, spec strutturata,
+  rationale, states e preview artifact; nessun output libero LLM decide lo stato.
+- Artefatti HTML sono sanitizzati, bounded, tenant-scoped e serviti come preview
+  senza eseguire script; l'adapter immagine è facoltativo e fake/contract-first.
+- Submit/Reject/Changes crea nuove versioni senza mutare una versione APPROVED.
+- Il task frontend conserva il riferimento esatto a una versione APPROVED;
+  nessun task gated può partire senza quel riferimento.
 
 ### Definition of Done locale
 
-Contract/unit/integration test coprono create, lookup/update, retry/restart senza
-duplicati, CI pending/pass/fail e assenza di secret leakage. Task UI mostra PR e
-CI. Migrazioni da zero, `pnpm verify` e `pnpm test:e2e` passano.
+Test unit/contract coprono varianti 1–3, sanitizzazione/bound dei preview,
+immutabilità e policy Owner. API/UI/E2E coprono brief → preview → approvazione →
+task frontend con ref esatto. `pnpm verify`, `pnpm test:e2e`, reset/lint Supabase
+passano.
 
 ### Verifica successiva
 
-Dopo questa attivita', completare il restante reviewer loop/baseline security di
-M6 e passare alla prima milestone successiva realmente incompleta. Le prove con
-OpenAI/GitHub reali restano un controllo esterno separato e non bloccano il
-lavoro indipendente.
+Dopo M7, audit M8 (HR + Team Builder) per la prima parte realmente mancante.
+Le prove provider immagine/Figma reali restano adapter esterni non bloccanti.

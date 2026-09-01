@@ -60,6 +60,14 @@ describe('contracts', () => {
         durationMs: 1,
       }).success,
     ).toBe(false);
+    expect(
+      verificationRunSchema.parse({
+        kind: 'INTEGRATION',
+        commandOrCheck: 'GitHub CI: checks pending',
+        status: 'PENDING',
+        durationMs: 0,
+      }).status,
+    ).toBe('PENDING');
   });
 
   it('keeps local worker registration credentials out of the persisted node contract', () => {

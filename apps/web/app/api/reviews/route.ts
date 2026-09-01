@@ -62,6 +62,11 @@ export async function POST(request: Request) {
       : undefined;
     if (input.taskId && (!task || task.projectId !== input.projectId))
       return NextResponse.json({ error: 'Task not found.' }, { status: 404 });
+    if (task?.candidateCommitSha && input.report.candidateSha !== task.candidateCommitSha)
+      return NextResponse.json(
+        { error: 'The review candidate SHA does not match the task candidate.' },
+        { status: 409 },
+      );
     const reviewer = await agents.getAgent(input.reviewerAgentId, organizationId, actorId);
     if (reviewer.roleKey !== 'reviewer')
       return NextResponse.json({ error: 'A reviewer agent is required.' }, { status: 400 });
@@ -129,7 +134,7 @@ export async function POST(request: Request) {
                     title: `Fix review finding: ${finding.title}`,
                     description: finding.recommendation,
                     taskType: 'REVIEW',
-                    dependencies: input.taskId ? [input.taskId] : [],
+                    dependencies: task?.dependencies ?? [],
                     writeScope: finding.filePath ? [finding.filePath] : [],
                     estimatedCost: 0,
                     priority: 100,

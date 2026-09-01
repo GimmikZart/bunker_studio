@@ -299,6 +299,7 @@ function mapTask(value: unknown): TaskRecord {
     .array()
     .max(20)
     .safeParse(Array.isArray(verification.commands) ? verification.commands : []);
+  const candidatePullRequestNumber = Number(item.candidate_pr_number);
   return {
     id: stringValue(item.id, 'id'),
     organizationId: stringValue(item.organization_id, 'organization_id'),
@@ -334,6 +335,26 @@ function mapTask(value: unknown): TaskRecord {
       : {}),
     ...(typeof item.candidate_commit_sha === 'string'
       ? { candidateCommitSha: item.candidate_commit_sha }
+      : {}),
+    ...(Number.isSafeInteger(candidatePullRequestNumber) && candidatePullRequestNumber > 0
+      ? { candidatePullRequestNumber }
+      : {}),
+    ...(typeof item.candidate_pr_url === 'string'
+      ? { candidatePullRequestUrl: item.candidate_pr_url }
+      : {}),
+    ...(item.candidate_pr_state === 'OPEN' || item.candidate_pr_state === 'CLOSED'
+      ? { candidatePullRequestState: item.candidate_pr_state }
+      : {}),
+    ...(typeof item.candidate_pr_head_sha === 'string'
+      ? { candidatePullRequestHeadSha: item.candidate_pr_head_sha }
+      : {}),
+    ...(item.candidate_ci_status === 'PASS' ||
+    item.candidate_ci_status === 'FAIL' ||
+    item.candidate_ci_status === 'PENDING'
+      ? { candidateCiStatus: item.candidate_ci_status }
+      : {}),
+    ...(typeof item.candidate_ci_checked_at === 'string'
+      ? { candidateCiCheckedAt: item.candidate_ci_checked_at }
       : {}),
     workerResult:
       item.worker_result_json && typeof item.worker_result_json === 'object'
@@ -382,6 +403,7 @@ function mapVerificationRun(value: unknown): VerificationRunRecord {
     status: item.status as VerificationRunRecord['status'],
     artifactId: nullableString(item.artifact_id),
     durationMs: Number(item.duration_ms ?? 0),
+    ...(typeof item.external_key === 'string' ? { externalKey: item.external_key } : {}),
     executedAt: stringValue(item.executed_at, 'executed_at'),
   };
 }
@@ -1664,6 +1686,7 @@ export class SupabaseOperationalRepository {
           status: input.status,
           artifact_id: input.artifactId ?? null,
           duration_ms: input.durationMs,
+          external_key: input.externalKey ?? null,
         })
         .select('*')
         .single(),

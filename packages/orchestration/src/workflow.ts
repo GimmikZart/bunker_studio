@@ -96,6 +96,7 @@ export class WorkflowRunner {
             await this.handler(task, job);
             task.state = move(task, 'IMPLEMENTED').state;
             task.state = move(task, 'VERIFYING').state;
+            task.state = move(task, 'REVIEW_PENDING').state;
             task.state = move(task, 'DONE').state;
             this.queue.complete(job.id);
             return { task, completed: true };

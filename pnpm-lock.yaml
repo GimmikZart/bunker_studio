@@ -108,6 +108,9 @@ importers:
       '@bunker-studio/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@bunker-studio/git':
+        specifier: workspace:*
+        version: link:../../packages/git
       '@bunker-studio/notifications':
         specifier: workspace:*
         version: link:../../packages/notifications

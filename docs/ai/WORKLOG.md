@@ -855,3 +855,35 @@ Checkpoint compilabile ma audit UI non ancora chiuso. Priorità: isolare e corre
 
 Checkpoint stabile. Prossima attivita' unica: PR GitHub e ingestione CI
 idempotenti di M6; nessun push, merge o chiamata provider reale eseguiti.
+
+## 2026-09-01 — M6 PR GitHub/CI idempotenti e gate completion
+
+### Lavoro svolto
+
+- Aggiunta preparazione PR GitHub idempotente per task/branch/base: lookup,
+  aggiornamento/riapertura e controllo dello SHA candidato prima della review.
+- Normalizzati check-run e commit-status GitHub in evidence CI per SHA esatto,
+  bounded a 200, senza persistere log/output remoti o credenziali.
+- Persistiti branch/SHA/PR/CI nel task; UI task mostra PR, CI e refresh CI
+  protetto server-side.
+- Applicati gate condivisi: verification deterministica, CI exact-SHA e
+  reviewer exact-SHA sono necessari per review/complete/fix; il queue Codex
+  richiede inoltre una verifica `SECURITY`.
+- Corretto con migrazione forward-only il lint della funzione SQL di rinnovo
+  lease (`00000000000025`). Separato l'E2E funzionale dev dal p95 production,
+  senza modificare la soglia di 800 ms.
+
+### Verifiche
+
+- `pnpm verify`: PASS — lint/typecheck/build 15/15, Turbo test 26/26, web
+  23 file/41 test, worker 12 file/32 test, audit high senza vulnerabilità note.
+- `pnpm test:e2e` in memory mode: PASS — 10 flussi funzionali dev e 1 test p95
+  su build production.
+- `supabase db reset --local`: PASS con migrazioni `00..25` e seed.
+- `supabase db lint --local`: PASS.
+
+### Stato finale
+
+M6 completata localmente e checkpoint stabile. Prossima attività unica: runtime
+Designer con preview artifact/versioni bounded di M7. Nessun push, merge, deploy
+o chiamata provider reale eseguiti.

@@ -61,7 +61,7 @@ const transitions: Record<TaskState, TaskState[]> = {
   WAITING_BUDGET_APPROVAL: ['READY', 'CANCELED'],
   BLOCKED: ['READY', 'CANCELED'],
   IMPLEMENTED: ['VERIFYING'],
-  VERIFYING: ['REVIEW_PENDING', 'DONE', 'FIX_REQUIRED'],
+  VERIFYING: ['REVIEW_PENDING', 'FAILED_RETRYABLE', 'FAILED_FINAL'],
   REVIEW_PENDING: ['DONE', 'FIX_REQUIRED'],
   FIX_REQUIRED: ['READY', 'CANCELED'],
   FAILED_RETRYABLE: ['QUEUED', 'FAILED_FINAL', 'CANCELED'],
@@ -78,6 +78,33 @@ export function transitionTask(task: TaskDefinition, to: TaskState): TaskDefinit
   if (!canTransition(task.state, to))
     throw new Error(`Invalid task transition: ${task.state} -> ${to}`);
   return { ...task, state: to };
+}
+
+export function taskReviewGate(input: {
+  target: 'REVIEW_PENDING' | 'DONE' | 'FIX_REQUIRED';
+  workerVerificationStatuses?: string[];
+  verificationStatuses: string[];
+  candidateSha?: string;
+  ciStatus?: 'PASS' | 'FAIL' | 'PENDING';
+  reviews: { candidateSha: string; status: 'PASS' | 'FIX_REQUIRED' }[];
+}): { allowed: boolean; missing: ('VERIFICATION' | 'CI' | 'REVIEWER')[] } {
+  const missing: ('VERIFICATION' | 'CI' | 'REVIEWER')[] = [];
+  const statuses = input.workerVerificationStatuses ?? input.verificationStatuses;
+  if (!statuses.length || statuses.some((status) => status !== 'PASS'))
+    missing.push('VERIFICATION');
+  if (input.candidateSha && input.ciStatus !== 'PASS') missing.push('CI');
+  if (input.target === 'DONE' || input.target === 'FIX_REQUIRED') {
+    const expected = input.target === 'DONE' ? 'PASS' : 'FIX_REQUIRED';
+    if (
+      !input.reviews.some(
+        (review) =>
+          review.status === expected &&
+          (!input.candidateSha || review.candidateSha === input.candidateSha),
+      )
+    )
+      missing.push('REVIEWER');
+  }
+  return { allowed: missing.length === 0, missing };
 }
 
 export function eligibleTasks(tasks: TaskDefinition[], remainingBudget: number): TaskDefinition[] {

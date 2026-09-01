@@ -125,6 +125,27 @@ describe('local worker task loop', () => {
     );
   });
 
+  it('preserves a completed publication if the first completion call is interrupted', async () => {
+    const result = {
+      branch: 'bunker/task',
+      candidateCommitSha: 'candidate-sha',
+      publicationStage: 'REVIEW_READY',
+    };
+    const completeTask = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('control plane unavailable'))
+      .mockResolvedValueOnce({ id: task.taskId, state: 'QUEUED', retryCount: 1 });
+    const loop = new LocalWorkerTaskLoop(
+      client({ claimTask: vi.fn(async () => task), completeTask }),
+      { nodeId: '55555555-5555-4555-8555-555555555555', credential: 'secret' },
+      async () => result,
+    );
+    await expect(loop.runOnce()).resolves.toBe('RETRY_SCHEDULED');
+    expect(completeTask).toHaveBeenLastCalledWith(
+      expect.objectContaining({ success: false, result }),
+    );
+  });
+
   it('renews a task lease while an agent run is still active', async () => {
     vi.useFakeTimers();
     try {

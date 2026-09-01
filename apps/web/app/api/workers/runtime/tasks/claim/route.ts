@@ -1,4 +1,8 @@
-import { verificationCommandSchema, workerHeartbeatSchema } from '@bunker-studio/contracts';
+import {
+  verificationCommandSchema,
+  verificationEvidenceSchema,
+  workerHeartbeatSchema,
+} from '@bunker-studio/contracts';
 import { decryptSecret, type EncryptedSecret } from '@bunker-studio/db';
 import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
@@ -47,7 +51,9 @@ async function executionContext(
   const projectId = string(row.project_id, 'project');
   const { data: taskData, error: taskError } = await client
     .from('tasks')
-    .select('assigned_agent_id, verification_json')
+    .select(
+      'assigned_agent_id, verification_json, candidate_branch, candidate_commit_sha, worker_result_json',
+    )
     .eq('id', taskId)
     .eq('organization_id', organizationId)
     .maybeSingle();
@@ -59,6 +65,15 @@ async function executionContext(
     .array()
     .max(20)
     .parse(Array.isArray(verification.commands) ? verification.commands : []);
+  const workerResult = record(task.worker_result_json ?? {});
+  const priorVerification = verificationEvidenceSchema
+    .array()
+    .max(20)
+    .safeParse(Array.isArray(workerResult.verification) ? workerResult.verification : []);
+  const canResumePublication =
+    workerResult.publicationStage === 'BRANCH_PUSHED' ||
+    workerResult.publicationStage === 'PULL_REQUEST_READY' ||
+    workerResult.publicationStage === 'REVIEW_READY';
   const [{ data: agentData, error: agentError }, { data: bindingData, error: bindingError }] =
     await Promise.all([
       client
@@ -116,6 +131,18 @@ async function executionContext(
 
   return {
     verificationCommands,
+    ...(canResumePublication &&
+    typeof task.candidate_branch === 'string' &&
+    typeof task.candidate_commit_sha === 'string' &&
+    priorVerification.success
+      ? {
+          priorPublication: {
+            branch: task.candidate_branch,
+            candidateCommitSha: task.candidate_commit_sha,
+            verification: priorVerification.data,
+          },
+        }
+      : {}),
     agent: {
       ...record(agentData),
       id: agentId,

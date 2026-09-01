@@ -1,5 +1,5 @@
 export const PACKAGE_NAME = '@bunker-studio/git';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 export type WorkspaceRequest = {
   projectSlug: string;
@@ -80,6 +80,7 @@ export type GitHubRepositoryRef = Pick<RepositoryConnection, 'owner' | 'name'>;
 
 export type GitHubCheck = {
   name: string;
+  source: 'CHECK_RUN' | 'COMMIT_STATUS';
   status: 'QUEUED' | 'IN_PROGRESS' | 'COMPLETED';
   conclusion: string | null;
   url?: string;
@@ -91,10 +92,49 @@ export type GitHubCiEvidence = {
   checks: GitHubCheck[];
 };
 
+export type GitHubCiVerification = {
+  kind: 'INTEGRATION';
+  commandOrCheck: string;
+  status: 'PASS' | 'FAIL' | 'PENDING';
+  durationMs: 0;
+  externalKey: string;
+};
+
+const MAX_GITHUB_CI_CHECKS = 200;
+
+export function githubCiVerificationRuns(evidence: GitHubCiEvidence): GitHubCiVerification[] {
+  if (!evidence.checks.length)
+    return [
+      {
+        kind: 'INTEGRATION',
+        commandOrCheck: 'GitHub CI: waiting for checks',
+        status: 'PENDING',
+        durationMs: 0,
+        externalKey: `github:${evidence.commitSha}:discovery`,
+      },
+    ];
+  return evidence.checks.slice(0, MAX_GITHUB_CI_CHECKS).map((check) => {
+    const externalId = createHash('sha256').update(`${check.source}:${check.name}`).digest('hex');
+    return {
+      kind: 'INTEGRATION',
+      commandOrCheck: `GitHub CI: ${check.name || 'unnamed check'}`.slice(0, 1_000),
+      status:
+        check.status !== 'COMPLETED'
+          ? 'PENDING'
+          : ['SUCCESS', 'SKIPPED', 'NEUTRAL'].includes((check.conclusion ?? '').toUpperCase())
+            ? 'PASS'
+            : 'FAIL',
+      durationMs: 0,
+      externalKey: `github:${evidence.commitSha}:${externalId}`,
+    };
+  });
+}
+
 export type GitHubPullRequest = {
   number: number;
   url: string;
   head: string;
+  headSha: string;
   base: string;
   state: 'OPEN' | 'CLOSED';
 };
@@ -110,6 +150,11 @@ export type GitHubApi = {
     baseCommitSha: string,
   ) => Promise<void>;
   getCiEvidence: (repository: GitHubRepositoryRef, ref: string) => Promise<GitHubCiEvidence>;
+  findPullRequest: (input: {
+    repository: GitHubRepositoryRef;
+    head: string;
+    base: string;
+  }) => Promise<GitHubPullRequest | null>;
   createPullRequest: (input: {
     repository: GitHubRepositoryRef;
     head: string;
@@ -117,6 +162,22 @@ export type GitHubApi = {
     title: string;
     body?: string;
   }) => Promise<GitHubPullRequest>;
+  updatePullRequest: (input: {
+    repository: GitHubRepositoryRef;
+    number: number;
+    base: string;
+    title: string;
+    body?: string;
+  }) => Promise<GitHubPullRequest>;
+};
+
+export type GitHubPullRequestPlan = {
+  repository: GitHubRepositoryRef;
+  head: string;
+  expectedHeadSha: string;
+  base: string;
+  title: string;
+  body?: string;
 };
 
 export class GitHubApiError extends Error {
@@ -134,15 +195,57 @@ function githubPath(repository: GitHubRepositoryRef, suffix: string): string {
 }
 
 function ciStatus(checks: GitHubCheck[]): GitHubCiEvidence['status'] {
-  if (checks.some((check) => check.status !== 'COMPLETED')) return 'PENDING';
+  if (!checks.length) return 'PENDING';
   if (
     checks.some(
       (check) =>
+        check.status === 'COMPLETED' &&
         !['SUCCESS', 'SKIPPED', 'NEUTRAL'].includes((check.conclusion ?? '').toUpperCase()),
     )
   )
     return 'FAIL';
+  if (checks.some((check) => check.status !== 'COMPLETED')) return 'PENDING';
   return 'PASS';
+}
+
+function mapPullRequest(result: {
+  number: number;
+  html_url: string;
+  head: { ref: string; sha: string };
+  base: { ref: string };
+  state: string;
+}): GitHubPullRequest {
+  return {
+    number: result.number,
+    url: result.html_url,
+    head: result.head.ref,
+    headSha: result.head.sha,
+    base: result.base.ref,
+    state: result.state.toUpperCase() === 'OPEN' ? 'OPEN' : 'CLOSED',
+  };
+}
+
+export async function ensurePullRequest(
+  api: GitHubApi,
+  input: GitHubPullRequestPlan,
+): Promise<{ pullRequest: GitHubPullRequest; created: boolean }> {
+  const existing = await api.findPullRequest(input);
+  const pullRequest = existing
+    ? await api.updatePullRequest({
+        repository: input.repository,
+        number: existing.number,
+        base: input.base,
+        title: input.title,
+        body: input.body,
+      })
+    : await api.createPullRequest(input);
+  if (
+    pullRequest.head !== input.head ||
+    pullRequest.base !== input.base ||
+    pullRequest.headSha !== input.expectedHeadSha
+  )
+    throw new Error('GitHub pull request does not match the candidate branch and commit.');
+  return { pullRequest, created: !existing };
 }
 
 /**
@@ -203,17 +306,30 @@ export function createGitHubApi(input: {
       });
     },
     getCiEvidence: async (repository, ref) => {
-      const result = await request<{
-        sha: string;
-        check_runs: Array<{
-          name: string;
-          status: string;
-          conclusion: string | null;
-          html_url?: string;
-        }>;
-      }>(githubPath(repository, `/commits/${encodeURIComponent(ref)}/check-runs?per_page=100`));
-      const checks = result.check_runs.map((check) => ({
+      const [checkRuns, combinedStatus] = await Promise.all([
+        request<{
+          sha: string;
+          check_runs: Array<{
+            name: string;
+            status: string;
+            conclusion: string | null;
+            html_url?: string;
+          }>;
+        }>(githubPath(repository, `/commits/${encodeURIComponent(ref)}/check-runs?per_page=100`)),
+        request<{
+          sha: string;
+          statuses: Array<{
+            context: string;
+            state: string;
+            target_url?: string;
+          }>;
+        }>(githubPath(repository, `/commits/${encodeURIComponent(ref)}/status?per_page=100`)),
+      ]);
+      if (checkRuns.sha !== combinedStatus.sha)
+        throw new Error('GitHub CI evidence returned inconsistent commit identifiers.');
+      const checks: GitHubCheck[] = checkRuns.check_runs.map((check) => ({
         name: check.name,
+        source: 'CHECK_RUN',
         status:
           check.status === 'completed'
             ? ('COMPLETED' as const)
@@ -223,13 +339,46 @@ export function createGitHubApi(input: {
         conclusion: check.conclusion,
         url: check.html_url,
       }));
-      return { commitSha: result.sha, status: ciStatus(checks), checks };
+      checks.push(
+        ...combinedStatus.statuses.map((status): GitHubCheck => {
+          const state = status.state.toUpperCase();
+          return {
+            name: status.context,
+            source: 'COMMIT_STATUS',
+            status: state === 'PENDING' ? 'IN_PROGRESS' : 'COMPLETED',
+            conclusion: state === 'SUCCESS' ? 'SUCCESS' : state === 'PENDING' ? null : 'FAILURE',
+            url: status.target_url,
+          };
+        }),
+      );
+      return { commitSha: checkRuns.sha, status: ciStatus(checks), checks };
+    },
+    findPullRequest: async (input) => {
+      const query = new URLSearchParams({
+        state: 'all',
+        head: `${input.repository.owner}:${input.head}`,
+        base: input.base,
+        per_page: '10',
+      });
+      const results = await request<
+        Array<{
+          number: number;
+          html_url: string;
+          head: { ref: string; sha: string };
+          base: { ref: string };
+          state: string;
+        }>
+      >(githubPath(input.repository, `/pulls?${query.toString()}`));
+      const exact = results.find(
+        (candidate) => candidate.head.ref === input.head && candidate.base.ref === input.base,
+      );
+      return exact ? mapPullRequest(exact) : null;
     },
     createPullRequest: async (input) => {
       const result = await request<{
         number: number;
         html_url: string;
-        head: { ref: string };
+        head: { ref: string; sha: string };
         base: { ref: string };
         state: string;
       }>(githubPath(input.repository, '/pulls'), {
@@ -242,13 +391,26 @@ export function createGitHubApi(input: {
           body: input.body,
         }),
       });
-      return {
-        number: result.number,
-        url: result.html_url,
-        head: result.head.ref,
-        base: result.base.ref,
-        state: result.state.toUpperCase() === 'OPEN' ? 'OPEN' : 'CLOSED',
-      };
+      return mapPullRequest(result);
+    },
+    updatePullRequest: async (input) => {
+      const result = await request<{
+        number: number;
+        html_url: string;
+        head: { ref: string; sha: string };
+        base: { ref: string };
+        state: string;
+      }>(githubPath(input.repository, `/pulls/${input.number}`), {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: input.title,
+          base: input.base,
+          body: input.body,
+          state: 'open',
+        }),
+      });
+      return mapPullRequest(result);
     },
   };
 }
