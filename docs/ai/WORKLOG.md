@@ -917,3 +917,15 @@ non bloccanti, dietro il contratto ora persistito.
   collegamento alla creazione manuale degli agenti.
 - `staffing/staffing.test.ts`: PASS. Formattazione completata; typecheck web
   avviato e da riconfermare insieme a lint/build/E2E nel prossimo checkpoint.
+
+### Verifiche completate
+
+- Typecheck web: PASS; format e lint: PASS.
+- Build production web: PASS dopo aver isolato la cache `.next` Windows con
+  path separator incompatibili; nessun file sorgente e' stato rimosso.
+- E2E browser Teams: PASS - onboarding, proposta team editabile e conferma
+  separata dalla creazione agenti.
+
+### Stato finale
+
+M8 completata localmente. Prossima attivita' unica: audit M9 Meetings.

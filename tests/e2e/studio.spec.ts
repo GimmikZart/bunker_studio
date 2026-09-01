@@ -11,6 +11,30 @@ test('onboarding creates a local development organization', async ({ page }) => 
   });
 });
 
+test('team builder proposes editable hires without immediately creating agents', async ({
+  page,
+}) => {
+  await page.goto('/onboarding');
+  await page.getByLabel('Organization name').fill(`E2E Team ${Date.now()}`);
+  await page.getByRole('button', { name: 'Create organization' }).click();
+  await expect(page.getByText('Organization created. Your studio is ready.')).toBeVisible({
+    timeout: 60_000,
+  });
+  await page.goto('/teams');
+  await page.getByLabel('Team objective').fill('Ship a safe accessible dashboard');
+  const proposal = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/staffing/proposals') && response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Propose team' }).click();
+  expect((await proposal).status()).toBe(200);
+  await expect(page.getByText('Review and edit every proposed hire')).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByText('Lead Architect / Orchestrator').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Confirm and hire team' })).toBeVisible();
+});
+
 test('login and signup flows expose accessible credential forms', async ({ page }) => {
   await page.goto('/login');
   await expect(page.getByLabel('Email')).toBeVisible();
