@@ -59,6 +59,7 @@ describe('runtime worker control-plane client', () => {
               readScope: [],
               writeScope: [],
               definitionOfDone: {},
+              verificationCommands: [],
               attemptNumber: 1,
               leaseExpiresAt: new Date().toISOString(),
               agent: { id: '66666666-6666-4666-8666-666666666666' },

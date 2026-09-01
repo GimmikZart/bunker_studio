@@ -30,7 +30,7 @@ import type {
   ReportScheduleRecord,
   BudgetReportRecord,
 } from './_store';
-import type { ReviewFinding } from '@bunker-studio/contracts';
+import { verificationCommandSchema, type ReviewFinding } from '@bunker-studio/contracts';
 
 type MeetingMinutes = NonNullable<MeetingRecord['minutes']>;
 export type ProviderRecord = {
@@ -293,7 +293,12 @@ function mapTask(value: unknown): TaskRecord {
   const readScope = Array.isArray(item.read_scope_json) ? item.read_scope_json : [];
   const writeScope = Array.isArray(item.write_scope_json) ? item.write_scope_json : [];
   const definition = object(item.definition_of_done_json ?? {});
+  const verification = object(item.verification_json ?? {});
   const definitionItems = Array.isArray(definition.items) ? definition.items : [];
+  const verificationCommands = verificationCommandSchema
+    .array()
+    .max(20)
+    .safeParse(Array.isArray(verification.commands) ? verification.commands : []);
   return {
     id: stringValue(item.id, 'id'),
     organizationId: stringValue(item.organization_id, 'organization_id'),
@@ -323,6 +328,7 @@ function mapTask(value: unknown): TaskRecord {
     definitionOfDone: definitionItems.filter(
       (entry: unknown): entry is string => typeof entry === 'string',
     ),
+    verificationCommands: verificationCommands.success ? verificationCommands.data : [],
     ...(typeof item.candidate_branch === 'string'
       ? { candidateBranch: item.candidate_branch }
       : {}),
@@ -1565,6 +1571,7 @@ export class SupabaseOperationalRepository {
             estimated_cost: input.estimatedCost,
             items: input.definitionOfDone ?? [],
           },
+          verification_json: { commands: input.verificationCommands ?? [] },
         })
         .select('*')
         .single(),

@@ -36,6 +36,26 @@ export const reviewFindingSchema = z.object({
 });
 export type ReviewFinding = z.infer<typeof reviewFindingSchema>;
 
+export const verificationCommandSchema = z.object({
+  kind: z.enum(['FORMAT', 'LINT', 'TYPECHECK', 'UNIT', 'INTEGRATION', 'E2E', 'SECURITY', 'BUILD']),
+  executable: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9_.-]+$/)
+    .max(80),
+  args: z
+    .array(
+      z
+        .string()
+        .max(500)
+        .refine((value) => !value.includes('\0')),
+    )
+    .max(50)
+    .default([]),
+  timeoutMs: z.number().int().min(1_000).max(1_200_000).default(300_000),
+});
+export type VerificationCommand = z.infer<typeof verificationCommandSchema>;
+
 export const leadTaskSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
@@ -48,6 +68,7 @@ export const leadTaskSchema = z.object({
   parallelGroupId: z.string().min(1).optional(),
   approvedDesignVersionId: z.string().uuid().optional(),
   definitionOfDone: z.array(z.string().min(1)),
+  verificationCommands: z.array(verificationCommandSchema).max(20).default([]),
   estimatedCost: z.number().nonnegative(),
 });
 export type LeadTask = z.infer<typeof leadTaskSchema>;
@@ -397,6 +418,7 @@ export const taskCreateSchema = z.object({
   dependencies: z.array(z.string().uuid()).max(50).default([]),
   readScope: z.array(z.string().trim().min(1)).max(100).default([]),
   writeScope: z.array(z.string().trim().min(1)).max(100).default([]),
+  verificationCommands: z.array(verificationCommandSchema).max(20).default([]),
   requiredCapability: z.string().trim().min(1).max(80).optional(),
   parallelGroupId: z.string().trim().min(1).max(120).optional(),
   approvedDesignVersionId: z.string().uuid().optional(),

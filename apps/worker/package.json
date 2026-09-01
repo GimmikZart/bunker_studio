@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@bunker-studio/agent-runtime": "workspace:*",
+    "@bunker-studio/contracts": "workspace:*",
     "@bunker-studio/config": "workspace:*",
     "@bunker-studio/core": "workspace:*",
     "@bunker-studio/db": "workspace:*",

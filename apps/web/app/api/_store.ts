@@ -371,6 +371,12 @@ export type TaskRecord = {
   parallelGroupId?: string;
   approvedDesignVersionId?: string;
   definitionOfDone?: string[];
+  verificationCommands?: {
+    kind: 'FORMAT' | 'LINT' | 'TYPECHECK' | 'UNIT' | 'INTEGRATION' | 'E2E' | 'SECURITY' | 'BUILD';
+    executable: string;
+    args: string[];
+    timeoutMs: number;
+  }[];
   candidateBranch?: string;
   candidateCommitSha?: string;
   workerResult?: Record<string, unknown>;

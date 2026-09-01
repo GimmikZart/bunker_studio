@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { LocalWorkerTaskLoop } from './local-task';
+import { LocalWorkerTaskLoop, TaskExecutionError } from './local-task';
 import type { RuntimeWorkerClient } from './runtime-client';
 
 const task = {
@@ -14,6 +14,9 @@ const task = {
   readScope: ['packages/core'],
   writeScope: ['packages/core/src'],
   definitionOfDone: { items: ['tests pass'] },
+  verificationCommands: [
+    { kind: 'UNIT' as const, executable: 'pnpm', args: ['test'], timeoutMs: 300_000 },
+  ],
   requiredCapability: 'ollama',
   attemptNumber: 1,
   leaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
@@ -93,6 +96,32 @@ describe('local worker task loop', () => {
         success: false,
         error: 'provider unavailable',
       }),
+    );
+  });
+
+  it('persists safe verification evidence when deterministic checks fail', async () => {
+    const completeTask = vi.fn(async () => ({ id: task.taskId, state: 'QUEUED', retryCount: 1 }));
+    const controlPlane = client({ claimTask: vi.fn(async () => task), completeTask });
+    const verification = [
+      {
+        kind: 'UNIT',
+        command: 'pnpm (1 args)',
+        status: 'FAIL',
+        exitCode: 1,
+        timedOut: false,
+        durationMs: 42,
+      },
+    ];
+    const loop = new LocalWorkerTaskLoop(
+      controlPlane,
+      { nodeId: '55555555-5555-4555-8555-555555555555', credential: 'secret' },
+      async () => {
+        throw new TaskExecutionError('Deterministic verification did not pass.', { verification });
+      },
+    );
+    await expect(loop.runOnce()).resolves.toBe('RETRY_SCHEDULED');
+    expect(completeTask).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, result: { verification } }),
     );
   });
 

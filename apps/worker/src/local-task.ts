@@ -6,6 +6,16 @@ export type LocalTaskRunStatus = 'IDLE' | 'COMPLETED' | 'RETRY_SCHEDULED' | 'FAI
 export type LocalTaskExecutor = (task: LocalWorkerTask) => Promise<Record<string, unknown>>;
 export type RuntimeFactory = (task: LocalWorkerTask) => AgentRuntime;
 
+export class TaskExecutionError extends Error {
+  constructor(
+    message: string,
+    readonly result: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = 'TaskExecutionError';
+  }
+}
+
 export function createRuntimeTaskExecutor(runtime: AgentRuntime): LocalTaskExecutor {
   return async (task) => {
     const result = await collectRun(runtime, {
@@ -87,6 +97,7 @@ export class LocalWorkerTaskLoop {
         credential: this.identity.credential,
         leaseId: task.leaseId,
         success: false,
+        ...(error instanceof TaskExecutionError ? { result: error.result } : {}),
         error: error instanceof Error ? error.message.slice(0, 2_000) : 'Local task failed.',
       });
       return completion.state === 'FAILED_FINAL' ? 'FAILED' : 'RETRY_SCHEDULED';

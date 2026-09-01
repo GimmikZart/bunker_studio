@@ -1,3 +1,5 @@
+import type { VerificationCommand } from '@bunker-studio/contracts';
+
 export type RuntimeWorkerIdentity = {
   nodeId: string;
   credential: string;
@@ -15,6 +17,7 @@ export type LocalWorkerTask = {
   readScope: string[];
   writeScope: string[];
   definitionOfDone: Record<string, unknown>;
+  verificationCommands: VerificationCommand[];
   requiredCapability?: string | null;
   attemptNumber: number;
   leaseExpiresAt: string;
@@ -129,6 +132,7 @@ export function createRuntimeWorkerClient(input: {
         typeof body.task.title !== 'string' ||
         !Array.isArray(body.task.readScope) ||
         !Array.isArray(body.task.writeScope) ||
+        !Array.isArray(body.task.verificationCommands) ||
         typeof body.task.agent?.id !== 'string' ||
         typeof body.task.binding?.providerModelId !== 'string' ||
         typeof body.task.provider?.apiKey !== 'string'

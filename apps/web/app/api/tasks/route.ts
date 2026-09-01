@@ -125,6 +125,14 @@ export async function PATCH(request: Request) {
             { error: 'A Codex repository task requires at least one write scope.' },
             { status: 409 },
           );
+        if (!task.verificationCommands?.length)
+          return NextResponse.json(
+            {
+              error:
+                'A Codex repository task requires at least one deterministic verification command.',
+            },
+            { status: 409 },
+          );
         const repository = await operations.getRepository(task.projectId, organizationId, actorId);
         if (
           !repository ||

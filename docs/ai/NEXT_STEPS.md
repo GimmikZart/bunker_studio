@@ -1,37 +1,37 @@
 # Next Steps
 
-## Prossima attivita' precisa — verifica deterministica del branch candidato
+## Prossima attivita' precisa — PR GitHub e ingestione CI idempotenti
 
-Completare la parte restante di M5 prima di ampliare altre milestone: il worker
-deve eseguire un piano di verifica dichiarato dal task dopo il run Codex e
-prima di considerare l'implementazione pronta.
+Completare la parte restante di M6: dopo il push verificato del branch candidato,
+il worker deve preparare una pull request GitHub ripetibile senza duplicati e il
+control plane deve acquisire lo stato CI come evidenza deterministica.
 
 ### Area interessata
 
-`packages/contracts`, task persistence/UI, `apps/worker`, API completion,
-verification runs e migrazioni Supabase.
+`packages/git`, task persistence/UI, `apps/worker`, API completion, verification
+runs e migrazioni Supabase.
 
 ### Comportamento atteso
 
-- Il task contiene comandi di verifica espliciti e bounded (per esempio lint,
-  typecheck e test), non inventati dal modello durante l'esecuzione.
-- Il worker esegue i comandi nel workspace candidato con timeout, limite di
-  output, ambiente sanitizzato e senza shell interpolation.
-- Comando, exit code, durata e stato vengono persistiti come verification
-  evidence; secret e output sensibile non vengono salvati.
-- Un check fallito impedisce lo stato `IMPLEMENTED` e segue il retry/escalation
-  deterministico esistente.
-- Il resoconto dell'LLM resta informativo e non puo' trasformare un check
-  fallito in PASS.
+- Una operation key stabile per task/branch/base cerca prima una PR esistente;
+  retry e restart aggiornano la stessa PR anziche' crearne altre.
+- Titolo e body sono deterministicamente derivati dal task e non contengono
+  secret; base branch e head SHA devono corrispondere al repository connesso.
+- Numero, URL, stato e head SHA della PR vengono persistiti nel task/risultato.
+- Check run e stato combinato GitHub vengono normalizzati in evidence CI bounded
+  e tenant-scoped; output/log remoti non vengono copiati integralmente.
+- CI pending o failure non puo' diventare PASS per testo LLM. Nessun percorso
+  effettua merge o deploy automatico.
 
 ### Definition of Done locale
 
-Unit e integration test coprono PASS, failure, timeout, restart/lease renewal e
-assenza di secret leakage. Task UI mostra l'esito dei check. Migrazioni da zero,
-`pnpm verify` e `pnpm test:e2e` passano.
+Contract/unit/integration test coprono create, lookup/update, retry/restart senza
+duplicati, CI pending/pass/fail e assenza di secret leakage. Task UI mostra PR e
+CI. Migrazioni da zero, `pnpm verify` e `pnpm test:e2e` passano.
 
 ### Verifica successiva
 
-Dopo questa attivita', implementare la preparazione GitHub PR/CI idempotente di
-M6. Le prove con OpenAI/GitHub reali restano un controllo esterno separato e
-non bloccano il lavoro indipendente.
+Dopo questa attivita', completare il restante reviewer loop/baseline security di
+M6 e passare alla prima milestone successiva realmente incompleta. Le prove con
+OpenAI/GitHub reali restano un controllo esterno separato e non bloccano il
+lavoro indipendente.

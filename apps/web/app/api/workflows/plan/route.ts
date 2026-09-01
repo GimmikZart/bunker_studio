@@ -102,6 +102,7 @@ export async function POST(request: Request) {
             ? { approvedDesignVersionId: planTask.approvedDesignVersionId }
             : {}),
           definitionOfDone: planTask.definitionOfDone,
+          verificationCommands: planTask.verificationCommands,
           estimatedCost: planTask.estimatedCost,
           priority: 0,
         },

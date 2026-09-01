@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { codexEnvironment, codexTaskPrompt, commandEvidence } from './codex-task';
+import { agentCommandEvidence, codexEnvironment, codexTaskPrompt } from './codex-task';
 import type { LocalWorkerTask } from './runtime-client';
 
 describe('Codex task boundary', () => {
@@ -34,7 +34,7 @@ describe('Codex task boundary', () => {
   });
 
   it('records executed checks without persisting their potentially sensitive output', () => {
-    const evidence = commandEvidence([
+    const evidence = agentCommandEvidence([
       {
         id: 'command-1',
         type: 'command_execution',

@@ -1,4 +1,5 @@
 import type { PortableOrganization } from '@bunker-studio/db';
+import { verificationCommandSchema } from '@bunker-studio/contracts';
 
 export type OrganizationExport = {
   manifest: { schemaVersion: 1; exportedAt: string };
@@ -31,6 +32,16 @@ function optionalStringArray(value: unknown): value is string[] | undefined {
 
 function optionalString(value: unknown): value is string | undefined {
   return value === undefined || string(value);
+}
+
+type PortableVerificationCommands = NonNullable<
+  NonNullable<PortableOrganization['tasks']>[number]['verificationCommands']
+>;
+
+function optionalVerificationCommands(
+  value: unknown,
+): value is PortableVerificationCommands | undefined {
+  return value === undefined || verificationCommandSchema.array().max(20).safeParse(value).success;
 }
 
 export function parseOrganizationExport(value: unknown): OrganizationExport | null {
@@ -108,6 +119,7 @@ export function parseOrganizationExport(value: unknown): OrganizationExport | nu
         optionalString(item.requiredCapability) &&
         optionalString(item.parallelGroupId) &&
         optionalString(item.approvedDesignVersionId) &&
+        optionalVerificationCommands(item.verificationCommands) &&
         typeof item.estimatedCost === 'number' &&
         typeof item.priority === 'number',
     )

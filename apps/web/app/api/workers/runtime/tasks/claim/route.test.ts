@@ -37,7 +37,19 @@ describe('local worker task claim route', () => {
       error: null,
     }));
     const rows: Record<string, unknown> = {
-      tasks: { assigned_agent_id: '66666666-6666-4666-8666-666666666666' },
+      tasks: {
+        assigned_agent_id: '66666666-6666-4666-8666-666666666666',
+        verification_json: {
+          commands: [
+            {
+              kind: 'UNIT',
+              executable: 'pnpm',
+              args: ['test'],
+              timeoutMs: 300_000,
+            },
+          ],
+        },
+      },
       agents: {
         id: '66666666-6666-4666-8666-666666666666',
         name: 'Builder',
@@ -88,7 +100,10 @@ describe('local worker task claim route', () => {
     const responseBody = await response.json();
     expect(response.status, JSON.stringify(responseBody)).toBe(200);
     expect(responseBody).toMatchObject({
-      task: { taskId: '22222222-2222-4222-8222-222222222222' },
+      task: {
+        taskId: '22222222-2222-4222-8222-222222222222',
+        verificationCommands: [{ kind: 'UNIT', executable: 'pnpm' }],
+      },
     });
     expect(rpc).toHaveBeenCalledWith(
       'claim_local_worker_task',

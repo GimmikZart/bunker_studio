@@ -6,7 +6,13 @@ import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
 type Project = { id: string; name: string };
-type Agent = { id: string; name: string; title: string; providerModelId: string };
+type Agent = {
+  id: string;
+  name: string;
+  title: string;
+  providerModelId: string;
+  runtimeType: string;
+};
 type Task = {
   id: string;
   projectId: string;
@@ -22,7 +28,16 @@ type Task = {
   writeScope?: string[];
   candidateBranch?: string;
   candidateCommitSha?: string;
-  workerResult?: { checks?: { command?: string; status?: string; exitCode?: number | null }[] };
+  workerResult?: {
+    verification?: {
+      kind?: string;
+      command?: string;
+      status?: string;
+      exitCode?: number | null;
+      timedOut?: boolean;
+      durationMs?: number;
+    }[];
+  };
 };
 type Design = { id: string; version: number; status: string };
 
@@ -43,6 +58,18 @@ const nextStates: Record<string, string[]> = {
   FAILED_RETRYABLE: ['QUEUED'],
 };
 
+function verificationKind(script: string) {
+  const normalized = script.toLowerCase();
+  if (normalized.includes('format')) return 'FORMAT';
+  if (normalized.includes('lint')) return 'LINT';
+  if (normalized.includes('type')) return 'TYPECHECK';
+  if (normalized.includes('integration')) return 'INTEGRATION';
+  if (normalized.includes('e2e')) return 'E2E';
+  if (normalized.includes('security') || normalized.includes('audit')) return 'SECURITY';
+  if (normalized.includes('build')) return 'BUILD';
+  return 'UNIT';
+}
+
 export function TaskBoard() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationId, setOrganizationId] = useState('');
@@ -60,6 +87,8 @@ export function TaskBoard() {
   const [writeScope, setWriteScope] = useState('');
   const [taskType, setTaskType] = useState('BACKEND');
   const [estimatedCost, setEstimatedCost] = useState('0');
+  const [packageManager, setPackageManager] = useState('pnpm');
+  const [verificationScripts, setVerificationScripts] = useState('lint, typecheck, test');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -129,6 +158,10 @@ export function TaskBoard() {
   async function createTask() {
     setError('');
     setNotice('');
+    const scripts = verificationScripts
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
     const response = await fetch('/api/tasks', {
       method: 'POST',
       headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
@@ -147,6 +180,12 @@ export function TaskBoard() {
           .split(',')
           .map((item) => item.trim())
           .filter(Boolean),
+        verificationCommands: scripts.map((script) => ({
+          kind: verificationKind(script),
+          executable: packageManager,
+          args: ['run', script],
+          timeoutMs: 300_000,
+        })),
         estimatedCost: Number(estimatedCost),
         priority: 0,
         ...(taskType === 'FRONTEND' ? { approvedDesignVersionId } : {}),
@@ -311,6 +350,27 @@ export function TaskBoard() {
           onChange={(event) => setWriteScope(event.target.value)}
           placeholder="apps/web/app, packages/contracts"
         />
+        <label htmlFor="task-package-manager">Verification package manager</label>
+        <select
+          id="task-package-manager"
+          value={packageManager}
+          onChange={(event) => setPackageManager(event.target.value)}
+        >
+          {['pnpm', 'npm', 'yarn', 'bun'].map((manager) => (
+            <option key={manager}>{manager}</option>
+          ))}
+        </select>
+        <label htmlFor="task-verification-scripts">Verification scripts</label>
+        <input
+          id="task-verification-scripts"
+          value={verificationScripts}
+          onChange={(event) => setVerificationScripts(event.target.value)}
+          placeholder="lint, typecheck, test"
+        />
+        <p className="field-help">
+          Comma-separated package scripts. The worker runs these checks after the agent edits and
+          before it pushes a candidate branch. A failed or timed-out check blocks publication.
+        </p>
         <label htmlFor="task-dependencies">Dependencies</label>
         <select
           id="task-dependencies"
@@ -409,14 +469,12 @@ export function TaskBoard() {
                     {task.candidateCommitSha ? ` · ${task.candidateCommitSha.slice(0, 12)}` : ''}
                   </small>
                 )}
-                {task.workerResult?.checks?.length ? (
+                {task.workerResult?.verification?.length ? (
                   <small>
-                    Checks: {task.workerResult.checks.length} recorded ·{' '}
-                    {task.workerResult.checks.every(
-                      (check) => check.status === 'completed' && check.exitCode === 0,
-                    )
+                    Verification: {task.workerResult.verification.length} recorded ·{' '}
+                    {task.workerResult.verification.every((check) => check.status === 'PASS')
                       ? 'all passed'
-                      : 'review required'}
+                      : 'publication blocked'}
                   </small>
                 ) : null}
               </span>

@@ -763,6 +763,12 @@ export type PortableOrganization = {
     requiredCapability?: string;
     parallelGroupId?: string;
     approvedDesignVersionId?: string;
+    verificationCommands?: {
+      kind: 'FORMAT' | 'LINT' | 'TYPECHECK' | 'UNIT' | 'INTEGRATION' | 'E2E' | 'SECURITY' | 'BUILD';
+      executable: string;
+      args: string[];
+      timeoutMs: number;
+    }[];
     estimatedCost: number;
     priority: number;
   }[];

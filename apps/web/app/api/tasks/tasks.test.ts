@@ -207,4 +207,77 @@ describe('task design reference policy', () => {
       ]),
     );
   });
+
+  it('requires deterministic verification before queueing a Codex repository task', async () => {
+    const userId = `codex-task-owner-${crypto.randomUUID()}`;
+    const baseHeaders = { 'content-type': 'application/json', 'x-bunker-user-id': userId };
+    const organizationResponse = await createOrganization(
+      new Request('http://localhost', {
+        method: 'POST',
+        headers: baseHeaders,
+        body: JSON.stringify({ name: 'Codex Verification Gate' }),
+      }),
+    );
+    const organizationId = (await organizationResponse.json()).organization.id as string;
+    const headers = { ...baseHeaders, 'x-bunker-organization-id': organizationId };
+    const projectResponse = await createProject(
+      new Request('http://localhost', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name: 'Codex project' }),
+      }),
+      { params: Promise.resolve({ organizationId }) },
+    );
+    const projectId = (await projectResponse.json()).project.id as string;
+    const agentResponse = await createAgent(
+      new Request('http://localhost/api/agents', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          name: 'Codex Builder',
+          roleKey: 'backend',
+          title: 'Backend Engineer',
+          providerConnectionId: '00000000-0000-4000-8000-000000000001',
+          providerModelId: 'gpt-test',
+          runtimeType: 'CODEX_SDK',
+          reasoningEffort: 'high',
+        }),
+      }),
+    );
+    expect(agentResponse.status).toBe(201);
+    const assignedAgentId = (await agentResponse.json()).agent.id as string;
+    const taskResponse = await POST(
+      new Request('http://localhost/api/tasks', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          projectId,
+          title: 'Implement safely',
+          taskType: 'BACKEND',
+          assignedAgentId,
+          writeScope: ['packages/core'],
+          verificationCommands: [],
+        }),
+      }),
+    );
+    const task = (await taskResponse.json()).task;
+    await PATCH(
+      new Request(`http://localhost/api/tasks?taskId=${task.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ state: 'READY' }),
+      }),
+    );
+    const queued = await PATCH(
+      new Request(`http://localhost/api/tasks?taskId=${task.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ state: 'QUEUED' }),
+      }),
+    );
+    expect(queued.status).toBe(409);
+    await expect(queued.json()).resolves.toMatchObject({
+      error: expect.stringContaining('deterministic verification'),
+    });
+  });
 });

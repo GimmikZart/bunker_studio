@@ -820,3 +820,38 @@ Audit interattivo completato con evidenze. Definition of Done invariata: restano
 ### Stato finale
 
 Checkpoint compilabile ma audit UI non ancora chiuso. Priorità: isolare e correggere l'aggancio degli handler client nel runner, quindi rieseguire UI-001–UI-008 e le verifiche complete.
+
+## 2026-09-01 — Verifica deterministica pre-push del worker Codex
+
+### Lavoro svolto
+
+- Aggiunto un piano di verifica strutturato per task con kind, eseguibile,
+  argomenti bounded e timeout; persistenza Supabase, import/export e Lead plan
+  conservano il piano.
+- Il queue gate Codex richiede almeno un controllo deterministico. Il worker lo
+  esegue nel workspace candidato prima di commit/push tramite `execFile`, senza
+  shell, con ambiente allowlist e limite output.
+- Aggiunta risoluzione sicura degli shim package-manager Windows tramite i file
+  JavaScript ufficiali eseguiti con Node.
+- Separata l'evidenza dei comandi osservati dall'LLM (`agentCommands`) dai
+  risultati autorevoli (`verification`). Failure e timeout bloccano la
+  pubblicazione e seguono il retry deterministico.
+- Aggiunta migrazione 23: il completamento lease registra automaticamente le
+  evidence bounded in `verification_runs`; nessun stdout/stderr o argomento
+  potenzialmente sensibile viene duplicato.
+- UI task aggiornata con package manager, script e stato verification.
+
+### Verifiche
+
+- `pnpm verify`: PASS; format, lint/typecheck/build 15/15, test Turbo 26/26,
+  web 22 file/38 test, worker 11 file/28 test, audit high senza vulnerabilita'.
+- `pnpm test:e2e` in memory mode: PASS, 11/11.
+- `supabase db reset --local`: PASS con migrazioni 00..23 e seed.
+- Smoke runner reale Windows `pnpm --version`: PASS senza shell.
+- Trigger verification SQL: PASS in transazione locale, poi rollback.
+- Dev web/worker riavviati; `/api/health` restituisce `status: ok`.
+
+### Stato finale
+
+Checkpoint stabile. Prossima attivita' unica: PR GitHub e ingestione CI
+idempotenti di M6; nessun push, merge o chiamata provider reale eseguiti.

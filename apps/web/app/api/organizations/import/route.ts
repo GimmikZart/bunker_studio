@@ -121,6 +121,7 @@ export async function POST(request: Request) {
           writeScope: task.writeScope,
           ...(task.requiredCapability ? { requiredCapability: task.requiredCapability } : {}),
           ...(task.parallelGroupId ? { parallelGroupId: task.parallelGroupId } : {}),
+          verificationCommands: task.verificationCommands ?? [],
           estimatedCost: task.estimatedCost,
           priority: task.priority,
         },

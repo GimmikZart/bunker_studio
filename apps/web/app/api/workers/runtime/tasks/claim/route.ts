@@ -1,4 +1,4 @@
-import { workerHeartbeatSchema } from '@bunker-studio/contracts';
+import { verificationCommandSchema, workerHeartbeatSchema } from '@bunker-studio/contracts';
 import { decryptSecret, type EncryptedSecret } from '@bunker-studio/db';
 import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
@@ -47,12 +47,18 @@ async function executionContext(
   const projectId = string(row.project_id, 'project');
   const { data: taskData, error: taskError } = await client
     .from('tasks')
-    .select('assigned_agent_id')
+    .select('assigned_agent_id, verification_json')
     .eq('id', taskId)
     .eq('organization_id', organizationId)
     .maybeSingle();
   if (taskError || !taskData) throw new Error('The claimed task no longer exists.');
-  const agentId = string(record(taskData).assigned_agent_id, 'assigned agent');
+  const task = record(taskData);
+  const agentId = string(task.assigned_agent_id, 'assigned agent');
+  const verification = record(task.verification_json ?? {});
+  const verificationCommands = verificationCommandSchema
+    .array()
+    .max(20)
+    .parse(Array.isArray(verification.commands) ? verification.commands : []);
   const [{ data: agentData, error: agentError }, { data: bindingData, error: bindingError }] =
     await Promise.all([
       client
@@ -109,6 +115,7 @@ async function executionContext(
       : null;
 
   return {
+    verificationCommands,
     agent: {
       ...record(agentData),
       id: agentId,

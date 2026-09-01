@@ -15,6 +15,7 @@ import type { LocalWorkerTask } from './runtime-client.js';
 import { loadWorkerIdentity, saveWorkerIdentity } from './identity-store.js';
 import { createCodexTaskExecutor } from './codex-task.js';
 import { createRuntimeWorkerClient } from './runtime-client.js';
+import { parseAllowedExecutables } from './verification.js';
 
 const intervalMs = Number(process.env.WORKER_HEARTBEAT_INTERVAL_MS ?? 60_000);
 const controlPlaneUrl = process.env.WORKER_CONTROL_PLANE_URL?.trim();
@@ -124,6 +125,9 @@ function startTaskLoop(client: ReturnType<typeof createRuntimeWorkerClient>) {
     ? createCodexTaskExecutor({
         workspaceRoot,
         networkAccessEnabled: process.env.WORKER_CODEX_NETWORK_ACCESS === 'true',
+        allowedVerificationExecutables: parseAllowedExecutables(
+          process.env.WORKER_ALLOWED_VERIFICATION_EXECUTABLES,
+        ),
       })
     : null;
   const loop = new LocalWorkerTaskLoop(client, runtimeIdentity, (task) => {

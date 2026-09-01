@@ -1,7 +1,8 @@
 import { Codex, type ModelReasoningEffort } from '@openai/codex-sdk';
 import { cleanupGitWorkspace, prepareGitWorkspace, publishGitWorkspace } from './git-workspace.js';
-import type { LocalTaskExecutor } from './local-task.js';
+import { TaskExecutionError, type LocalTaskExecutor } from './local-task.js';
 import type { LocalWorkerTask } from './runtime-client.js';
+import { runVerificationPlan } from './verification.js';
 import type { ThreadItem } from '@openai/codex-sdk';
 
 const SAFE_ENVIRONMENT_KEYS = [
@@ -46,7 +47,7 @@ export function codexTaskPrompt(task: LocalWorkerTask): string {
   ].join('\n');
 }
 
-export function commandEvidence(items: ThreadItem[]) {
+export function agentCommandEvidence(items: ThreadItem[]) {
   return items
     .filter((item) => item.type === 'command_execution')
     .map((item) => ({
@@ -65,6 +66,7 @@ function reasoningEffort(
 export function createCodexTaskExecutor(input: {
   workspaceRoot: string;
   networkAccessEnabled?: boolean;
+  allowedVerificationExecutables: string[];
 }): LocalTaskExecutor {
   return async (task) => {
     if (task.binding.runtimeType !== 'CODEX_SDK' || task.provider.type !== 'OPENAI')
@@ -88,6 +90,16 @@ export function createCodexTaskExecutor(input: {
         webSearchMode: 'disabled',
       });
       const turn = await thread.run(codexTaskPrompt(task));
+      const verification = await runVerificationPlan({
+        commands: task.verificationCommands,
+        cwd: workspace.path,
+        allowedExecutables: input.allowedVerificationExecutables,
+      });
+      if (!verification.length || verification.some((entry) => entry.status !== 'PASS'))
+        throw new TaskExecutionError('Deterministic verification did not pass.', {
+          verification,
+          agentCommands: agentCommandEvidence(turn.items),
+        });
       const publication = await publishGitWorkspace(task, workspace);
       return {
         text: turn.finalResponse,
@@ -102,7 +114,8 @@ export function createCodexTaskExecutor(input: {
               reasoningOutputTokens: turn.usage.reasoning_output_tokens,
             }
           : null,
-        checks: commandEvidence(turn.items),
+        verification,
+        agentCommands: agentCommandEvidence(turn.items),
         ...publication,
       };
     } finally {
