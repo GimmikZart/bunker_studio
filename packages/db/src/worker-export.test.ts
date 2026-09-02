@@ -15,6 +15,17 @@ describe('worker and portability foundations', () => {
     expect(isWorkerEligible({ ...node, status: 'OFFLINE' }, 1_001)).toBe(false);
   });
 
+  it('projects a stale heartbeat as offline in the worker monitor', () => {
+    const registry = new WorkerRegistry();
+    registry.register({
+      organizationId: 'org-1',
+      name: 'Stale PC',
+      capabilities: ['chat'],
+      now: 1_000,
+    });
+    expect(registry.list('org-1', 181_001)).toMatchObject([{ status: 'OFFLINE' }]);
+  });
+
   it('exports no plaintext provider secret and remaps tenant identity on import', () => {
     const pack = exportOrganization({
       organization: { id: 'org-1', name: 'Org' },

@@ -1,29 +1,33 @@
 # Next Steps
 
-## Prossima attivita' precisa - audit M12 Local Worker
+## Prossima attivita' precisa - audit M13 Export / Import / Multiuser Foundations
 
-M11 e' completata localmente: ledger, policy, forecast, report scheduler,
-inbox/read state, deep link e Web Push adapter sono presenti. Il claim worker
-rivaluta atomicamente il budget prima della consegna del contesto provider; test
-API/core/worker, E2E, build e reset/lint Supabase sono verdi.
+M12 e' completata localmente: il worker locale e' pull-only, autenticato con
+credenziale scambiata da token monouso, con heartbeat, lease/reclaim,
+capability/scope/concurrency e supporto OpenAI-compatible futuro. Il monitor
+mostra gli heartbeat scaduti come offline e Owner/Admin possono revocare un PC
+senza cancellare dati o alterare altri tenant. Test mirati, format, lint,
+typecheck e build sono verdi. Il test Ollama/LM Studio reale resta non bloccante
+per la decisione esplicita di attendere hardware adeguato.
 
 ### Area interessata
 
-Installazione e lifecycle del worker locale, registration/credential renewal,
-lease/retry/resume, capability/write scope, monitoring UI e flusso cloud-to-PC.
+Export/import versionato e sicuro, remapping degli ID tenant, template vergine,
+ruoli Owner/Admin/Member/Viewer, isolamento RLS/API e inviti UI se resta una
+lacuna reale rispetto alla specifica.
 
 ### Comportamento da verificare
 
-- Verificare il percorso di setup per un utente non tecnico e la persistenza
-  sicura dell'identita' worker.
-- Verificare che claim, heartbeat, lease renewal, retry/quota e resume non
-  richiedano segreti nel browser e non eseguano scope non autorizzati.
-- Verificare il monitoraggio da web/mobile e aggiungere esclusivamente lacune
-  reali con test API/worker/browser.
+- Verificare che export non contenga secret e che import remappi ogni ID e lasci
+  i task importati in DRAFT.
+- Verificare che ogni ruolo disponga soltanto delle API/UI previste e che RLS
+  protegga il tenant anche fuori dal percorso UI.
+- Aggiungere solo test o superfici realmente mancanti, senza modificare
+  requisiti gia' approvati.
 
 ### Definition of Done locale
 
-Il DoD M12 e' coperto senza regressioni. Un PC locale resta un worker opzionale,
-non un requisito per usare il control plane; la prova con repository GitHub e
-provider reali resta esterna, protetta e non deve eseguire push o chiamate a
-pagamento automaticamente.
+AC-012 e AC-014 risultano soddisfatti da evidenza automatizzata locale, oppure
+le eventuali lacune vengono implementate e verificate con test tenant-scoped,
+format, lint, typecheck, build e controlli Supabase pertinenti. Nessun secret
+viene esportato o reso disponibile al browser.

@@ -259,6 +259,11 @@ type LocalOperationalRepository = {
     organizationId: string,
     actorUserId: string,
   ) => RegisteredWorker;
+  revokeWorker: (
+    nodeId: string,
+    organizationId: string,
+    actorUserId: string,
+  ) => RegisteredWorker | null;
   recordChat: (
     input: {
       organizationId: string;
@@ -394,6 +399,12 @@ const localOperationalRepository: LocalOperationalRepository = {
     const node = workerRegistry.get(nodeId);
     if (!node || node.organizationId !== organizationId) throw new Error('Worker not found.');
     return workerRegistry.heartbeat(nodeId);
+  },
+  revokeWorker: (nodeId, organizationId) => {
+    const node = workerRegistry.get(nodeId);
+    if (!node || node.organizationId !== organizationId) return null;
+    workerRegistry.revoke(nodeId);
+    return workerRegistry.get(nodeId);
   },
   recordChat: (input) =>
     recordConversation({

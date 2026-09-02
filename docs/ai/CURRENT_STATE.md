@@ -83,6 +83,16 @@ provider: un hard cap blocca il task e crea la notifica. Scheduler report
 settimanale, preferenze e adapter Web Push erano gia' presenti e sono testati.
 La prima attivita' incompleta e' l'audit M12 Local Worker.
 
+M12 e' completata localmente: il worker PC usa solo connessioni outbound verso
+il control plane, con token di registrazione monouso, credenziale persistita con
+permessi ristretti, heartbeat, claim/renew/reclaim, capability e scope. Settings
+mostra offline un heartbeat assente da tre intervalli e permette a Owner/Admin di
+revocare il worker tenant-scoped; la revoca impedisce nuovi claim e il lavoro
+attivo torna eleggibile al reclaim alla scadenza del lease. Il supporto generico
+OpenAI-compatible copre il futuro collegamento a Ollama/LM Studio senza rendere
+un modello locale un requisito. La prima attivita' incompleta e' l'audit M13
+Export / Import / Multiuser Foundations.
+
 ## Verifiche correnti
 
 - `pnpm verify`: PASS — format, lint 15/15, typecheck 15/15, test 26/26,
@@ -93,7 +103,7 @@ La prima attivita' incompleta e' l'audit M12 Local Worker.
   PASS; orchestration: 23 test PASS; contracts: 5 test PASS.
 - Test M7 API/unit: PASS (3/3); E2E M7: PASS - brief, due preview sicure,
   Owner approve e task FRONTEND con riferimento esatto.
-- `supabase db reset --local`: PASS con migrazioni `00..26` e seed.
+- `supabase db reset --local`: PASS con migrazioni `00..29` e seed.
 - `supabase db lint --local`: PASS, nessun errore schema.
 - M11: test API budget/task/inbox 8/8, core budget/cost 5/5 e worker report
   scheduler 2/2: PASS; E2E Cost Center + inbox: PASS; lint workspace, typecheck
@@ -101,6 +111,9 @@ La prima attivita' incompleta e' l'audit M12 Local Worker.
 - `supabase db reset --local`: PASS con migrazioni `00..29`; `supabase db lint
   --local`: PASS. Smoke transazionale del claim gate: task sopra hard cap ->
   `BLOCKED`, una notifica BUDGET, poi rollback.
+- M12: test DB scheduler/heartbeat 4/4 e API revoca Owner 1/1: PASS; format,
+  lint workspace 15/15, typecheck 15/15, build production web e `pnpm test:e2e`
+  (15 flussi funzionali + smoke p95 production): PASS.
 
 ## Limiti e verifiche esterne pendenti
 

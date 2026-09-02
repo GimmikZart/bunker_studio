@@ -84,6 +84,42 @@ test('cost center and in-app notification inbox are available for an organizatio
   await expect(page.getByText('No notifications yet.')).toBeVisible();
 });
 
+test('settings monitors and revokes a local worker', async ({ page }) => {
+  await page.goto('/onboarding');
+  await page.getByLabel('Organization name').fill(`E2E Worker ${Date.now()}`);
+  await page.getByRole('button', { name: 'Create organization' }).click();
+  await expect(page.getByText('Organization created. Your studio is ready.')).toBeVisible({
+    timeout: 60_000,
+  });
+  const organizationId = await page.evaluate(() =>
+    window.localStorage.getItem('bunker-organization-id'),
+  );
+  expect(organizationId).toBeTruthy();
+  const registration = await page.evaluate(async (id) => {
+    const response = await fetch('/api/workers/register', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-bunker-organization-id': id!,
+        'x-bunker-user-id': 'local-owner',
+      },
+      body: JSON.stringify({
+        name: 'E2E PC',
+        capabilities: ['openai-compatible'],
+        allowedScopes: ['apps/web'],
+        maxConcurrent: 1,
+      }),
+    });
+    return { status: response.status, body: await response.json() };
+  }, organizationId);
+  expect(registration.status).toBe(201);
+  await page.goto('/settings');
+  await expect(page.getByText('E2E PC')).toBeVisible({ timeout: 30_000 });
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Revoke' }).click();
+  await expect(page.getByText('E2E PC was revoked.')).toBeVisible({ timeout: 30_000 });
+});
+
 test('login and signup flows expose accessible credential forms', async ({ page }) => {
   await page.goto('/login');
   await expect(page.getByLabel('Email')).toBeVisible();

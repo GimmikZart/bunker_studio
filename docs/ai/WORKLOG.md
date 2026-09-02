@@ -998,3 +998,33 @@ Reporting.
 M11 completata localmente. Prossima attivita' unica: audit M12 Local Worker.
 Web Push reale resta una verifica esterna con VAPID e browser/device supportato;
 adapter, subscription, preferenze e deep link sono gia' implementati e testati.
+
+## 2026-09-02 - M12 Local Worker
+
+### Lavoro svolto
+
+- Completato l'audit del lifecycle worker PC: token monouso, credenziale locale,
+  pull control plane, heartbeat, lease/reclaim, capability, scope e concorrenza
+  erano gia' presenti e coerenti con l'architettura.
+- Il monitor Settings ora proietta un heartbeat assente da tre intervalli come
+  `OFFLINE`, senza mutare lo stato persistito o far assegnare task impropri.
+- Aggiunta revoca Owner/Admin tenant-scoped: la credenziale del PC non puo' piu'
+  reclamare nuovi task; non vengono cancellati dati e i lease esistenti restano
+  recuperabili secondo la scadenza normale.
+- Aggiunti test per la proiezione offline, per lo scheduler con clock esplicito
+  e per la route di revoca autorizzata.
+
+### Verifiche
+
+- Test DB worker/scheduler: PASS (4/4); test API revoca Owner: PASS (1/1).
+- `pnpm format:check`, `pnpm lint` (15/15), `pnpm typecheck` (15/15) e build
+  production web: PASS.
+- `pnpm test:e2e`: PASS - 15 flussi funzionali, incluso monitor/revoca worker,
+  piu' smoke p95 su build production.
+
+### Stato finale
+
+M12 completata localmente. La prova di rete con Ollama/LM Studio e un quality
+node resta `PARTIAL (non-blocking)`, come deciso: non sono state richieste
+chiamate provider a pagamento ne' hardware locale non disponibile. Prossima
+attivita' unica: audit M13 Export / Import / Multiuser Foundations.

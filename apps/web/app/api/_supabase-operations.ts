@@ -469,12 +469,12 @@ function mapWorker(value: unknown): RegisteredWorker {
     typeof item.last_heartbeat_at === 'string' ? Date.parse(item.last_heartbeat_at) : 0;
   const capabilitiesValue = object(item.capabilities_json ?? {});
   const scopesValue = object(item.allowed_scopes_json ?? {});
+  const stale = !heartbeat || Date.now() - heartbeat > 3 * 60_000;
   return {
     id: stringValue(item.id, 'id'),
     name: stringValue(item.name, 'name'),
     organizationId: stringValue(item.organization_id, 'organization_id'),
-    status:
-      item.status === 'REVOKED' ? 'REVOKED' : item.status === 'OFFLINE' ? 'OFFLINE' : 'ONLINE',
+    status: item.status === 'REVOKED' || item.revoked_at ? 'REVOKED' : stale ? 'OFFLINE' : 'ONLINE',
     capabilities: Array.isArray(capabilitiesValue.items)
       ? capabilitiesValue.items.filter((entry): entry is string => typeof entry === 'string')
       : [],
@@ -1440,6 +1440,25 @@ export class SupabaseOperationalRepository {
         .single(),
     );
     return mapWorker(data);
+  }
+
+  async revokeWorker(
+    nodeId: string,
+    organizationId: string,
+    actorUserId: string,
+  ): Promise<RegisteredWorker | null> {
+    await this.requireWrite(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('worker_nodes')
+        .update({ status: 'REVOKED', revoked_at: new Date().toISOString() })
+        .eq('id', nodeId)
+        .eq('organization_id', organizationId)
+        .is('revoked_at', null)
+        .select('*')
+        .maybeSingle(),
+    );
+    return data ? mapWorker(data) : null;
   }
 
   async recordChat(

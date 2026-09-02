@@ -622,10 +622,14 @@ export class WorkerRegistry {
     return node ? structuredClone(node) : null;
   }
 
-  list(organizationId: string): RegisteredWorker[] {
+  list(organizationId: string, now = Date.now()): RegisteredWorker[] {
     return [...this.nodes.values()]
       .filter((node) => node.organizationId === organizationId)
-      .map((node) => structuredClone(node));
+      .map((node) => {
+        const copy = structuredClone(node);
+        if (copy.status === 'ONLINE' && !isWorkerEligible(copy, now)) copy.status = 'OFFLINE';
+        return copy;
+      });
   }
 
   setOffline(nodeId: string): void {
@@ -702,7 +706,7 @@ export class WorkerTaskScheduler {
   assign(task: WorkerTaskRequest, now = Date.now()): WorkerTaskAssignment | null {
     const requestedScopes = [...(task.readScope ?? []), ...(task.writeScope ?? [])];
     const worker = this.registry
-      .list(task.organizationId)
+      .list(task.organizationId, now)
       .find(
         (candidate) =>
           isWorkerEligible(candidate, now) &&

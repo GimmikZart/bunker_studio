@@ -365,6 +365,26 @@ export function SettingsPanel() {
     setNotice('One-time worker token created. Run the command on the PC before it expires.');
   }
 
+  async function revokeWorker(workerId: string, workerName: string) {
+    if (!organizationId) return;
+    if (!window.confirm(`Revoke ${workerName}? Its credential will stop working immediately.`))
+      return;
+    setError('');
+    setNotice('');
+    const response = await fetch(`/api/workers/${workerId}`, {
+      method: 'DELETE',
+      headers: apiHeaders(organizationId),
+    });
+    if (!response.ok) {
+      setError('The worker could not be revoked.');
+      return;
+    }
+    await load(organizationId);
+    setNotice(
+      `${workerName} was revoked. Active work will return to the queue when its lease expires.`,
+    );
+  }
+
   return (
     <section className="live-panel" aria-label="Settings live view">
       <div className="live-panel-toolbar">
@@ -574,6 +594,15 @@ export function SettingsPanel() {
                       {worker.capabilities.join(', ') || 'No capabilities'} ·{' '}
                       {formatHeartbeat(worker.lastHeartbeatAt)}
                     </small>
+                    {worker.status !== 'REVOKED' && (
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => void revokeWorker(worker.id, worker.name)}
+                      >
+                        Revoke
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
