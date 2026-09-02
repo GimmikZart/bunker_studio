@@ -965,3 +965,36 @@ M9 completata localmente. Prossima attivita' unica: audit M10 Memory & Search.
 
 M10 completata localmente. Prossima attivita' unica: audit M11 Cost, Budget &
 Reporting.
+
+## 2026-09-02 - M11 Cost, Budget & Notifications
+
+### Lavoro svolto
+
+- Sostituita la vista Costi generica con Cost Center: today/week/month,
+  forecast deterministico, policy hard cap, top driver per provider/modello e
+  attribuzione project/agent/task, oltre allo stato dei provider.
+- Aggiunto inbox notifiche in-app tenant-scoped con read/unread e deep link; la
+  route e' coperta da test di persistenza e mark-as-read.
+- Rafforzato il claim del worker locale nel database: prima di consegnare il
+  contesto con credenziale provider, una funzione SQL rivaluta policy e ledger;
+  task oltre hard cap viene `BLOCKED`, gli altri hard cap con approval passano a
+  `WAITING_BUDGET_APPROVAL`, con alert BUDGET agli Owner/Admin.
+- Aggiunte migrazioni forward-only `27..29` per il gate e le sue correzioni di
+  schema/enum rilevate dal lint locale.
+
+### Verifiche
+
+- API web budget/task/inbox: PASS (8 test); core budget/cost: PASS (5 test);
+  worker report scheduler: PASS (2 test).
+- E2E Cost Center + notification inbox: PASS.
+- `pnpm format:check`, `pnpm lint`, typecheck web e build production: PASS.
+- `supabase db reset --local` con migrazioni `00..29`: PASS;
+  `supabase db lint --local`: PASS.
+- Smoke transazionale SQL: task sopra hard cap -> `BLOCKED`, alert BUDGET 1,
+  rollback eseguito.
+
+### Stato finale
+
+M11 completata localmente. Prossima attivita' unica: audit M12 Local Worker.
+Web Push reale resta una verifica esterna con VAPID e browser/device supportato;
+adapter, subscription, preferenze e deep link sono gia' implementati e testati.

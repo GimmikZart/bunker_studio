@@ -1,27 +1,29 @@
 # Next Steps
 
-## Prossima attivita' precisa - audit M11 Cost, Budget & Reporting
+## Prossima attivita' precisa - audit M12 Local Worker
 
-M10 e' completata localmente: il retrieval context resta bounded, la ricerca
-dell'archivio e' separata dal context degli agenti e l'utente puo' gestire
-memorie strutturate per organizzazione. API, typecheck ed E2E browser del
-salvataggio/ricerca sono verdi.
+M11 e' completata localmente: ledger, policy, forecast, report scheduler,
+inbox/read state, deep link e Web Push adapter sono presenti. Il claim worker
+rivaluta atomicamente il budget prima della consegna del contesto provider; test
+API/core/worker, E2E, build e reset/lint Supabase sono verdi.
 
 ### Area interessata
 
-Cost ledger, budget policies, preflight gate, forecast/report deterministici,
-quota UI, notifiche e persistenza/generazione del report settimanale.
+Installazione e lifecycle del worker locale, registration/credential renewal,
+lease/retry/resume, capability/write scope, monitoring UI e flusso cloud-to-PC.
 
 ### Comportamento da verificare
 
-- Verificare che un hard cap impedisca davvero l'invocazione del provider.
-- Verificare ledger tenant-scoped, forecast e report deterministici.
-- Verificare la UI budget/costi, inbox notifiche e deep link approval.
-- Aggiungere soltanto le lacune reali, con test API e browser pertinenti.
+- Verificare il percorso di setup per un utente non tecnico e la persistenza
+  sicura dell'identita' worker.
+- Verificare che claim, heartbeat, lease renewal, retry/quota e resume non
+  richiedano segreti nel browser e non eseguano scope non autorizzati.
+- Verificare il monitoraggio da web/mobile e aggiungere esclusivamente lacune
+  reali con test API/worker/browser.
 
 ### Definition of Done locale
 
-Il DoD M11 e' coperto senza regressioni: budget hard-cap, report e notifiche
-sono verificati da contract/API/UI/E2E dove applicabile; i controlli di qualita'
-pertinenti passano. Le notifiche push reali restano una verifica esterna quando
-saranno configurate VAPID e un browser/device.
+Il DoD M12 e' coperto senza regressioni. Un PC locale resta un worker opzionale,
+non un requisito per usare il control plane; la prova con repository GitHub e
+provider reali resta esterna, protetta e non deve eseguire push o chiamate a
+pagamento automaticamente.

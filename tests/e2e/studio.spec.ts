@@ -67,6 +67,23 @@ test('structured memory is saved and retrieved without using the conversation ar
   );
 });
 
+test('cost center and in-app notification inbox are available for an organization', async ({
+  page,
+}) => {
+  await page.goto('/onboarding');
+  await page.getByLabel('Organization name').fill(`E2E Cost ${Date.now()}`);
+  await page.getByRole('button', { name: 'Create organization' }).click();
+  await expect(page.getByText('Organization created. Your studio is ready.')).toBeVisible({
+    timeout: 60_000,
+  });
+  await page.goto('/costs');
+  await expect(page.getByLabel('Cost center')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Month forecast')).toBeVisible();
+  await page.goto('/notifications');
+  await expect(page.getByLabel('Notifications')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('No notifications yet.')).toBeVisible();
+});
+
 test('login and signup flows expose accessible credential forms', async ({ page }) => {
   await page.goto('/login');
   await expect(page.getByLabel('Email')).toBeVisible();

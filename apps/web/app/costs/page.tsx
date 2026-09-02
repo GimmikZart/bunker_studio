@@ -1,4 +1,4 @@
-import { LivePanel } from '../_components/live-panel';
+import { CostCenterPanel } from '../_components/cost-center-panel';
 
 export default function CostsPage() {
   return (
@@ -8,11 +8,7 @@ export default function CostsPage() {
       <p className="hero-copy">
         Track today, week, month, forecast, budgets, provider quota, and the runs driving spend.
       </p>
-      <LivePanel
-        resource="costs"
-        title="Cost center"
-        description="Numbers come from the deterministic ledger; narrative summaries never decide budget gates."
-      />
+      <CostCenterPanel />
     </main>
   );
 }

@@ -74,7 +74,14 @@ provenance erano gia' presenti; il pannello Structured Memory ora permette di
 scegliere l'organizzazione, creare, cercare e rimuovere memorie. Le azioni sono
 disabilitate finche' il contesto tenant non e' pronto. Test API, typecheck web e
 browser E2E di salvataggio/ricerca passano senza iniettare l'archivio nel context.
-La prima attivita' incompleta e' l'audit M11 Cost, Budget & Reporting.
+
+M11 e' completata localmente: Cost Center mostra metriche deterministicamente
+derivate dal ledger, forecast, policy hard-cap, top cost driver e stato provider;
+l'inbox in-app conserva read/unread e deep link. Il budget viene rivalutato nel
+claim SQL del worker sotto lock sulle policy/ledger, prima di fornire credenziali
+provider: un hard cap blocca il task e crea la notifica. Scheduler report
+settimanale, preferenze e adapter Web Push erano gia' presenti e sono testati.
+La prima attivita' incompleta e' l'audit M12 Local Worker.
 
 ## Verifiche correnti
 
@@ -88,6 +95,12 @@ La prima attivita' incompleta e' l'audit M11 Cost, Budget & Reporting.
   Owner approve e task FRONTEND con riferimento esatto.
 - `supabase db reset --local`: PASS con migrazioni `00..26` e seed.
 - `supabase db lint --local`: PASS, nessun errore schema.
+- M11: test API budget/task/inbox 8/8, core budget/cost 5/5 e worker report
+  scheduler 2/2: PASS; E2E Cost Center + inbox: PASS; lint workspace, typecheck
+  web, format e build production: PASS.
+- `supabase db reset --local`: PASS con migrazioni `00..29`; `supabase db lint
+  --local`: PASS. Smoke transazionale del claim gate: task sopra hard cap ->
+  `BLOCKED`, una notifica BUDGET, poi rollback.
 
 ## Limiti e verifiche esterne pendenti
 
@@ -96,7 +109,8 @@ La prima attivita' incompleta e' l'audit M11 Cost, Budget & Reporting.
   verdi; la prova GitHub/CI reale richiede credenziali dell'utente.
 - Restano gli scenari quality esterni tracciati nella matrice acceptance:
   recovery cloud/secondo device, pg-boss quality multi-process, GitHub/CI
-  protetto reale, VAPID push su device e backup/restore.
+  protetto reale, VAPID push su device e backup/restore. Web Push reale richiede
+  VAPID e un browser/device supportato; non e' stato simulato con credenziali.
 - Ollama/LM Studio reale resta esplicitamente differito e non bloccante finché
   non sarà disponibile hardware adeguato.
 

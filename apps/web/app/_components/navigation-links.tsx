@@ -10,6 +10,7 @@ const items = [
   ['Agents', '/agents'],
   ['Tasks', '/tasks'],
   ['Approvals', '/approvals'],
+  ['Notifications', '/notifications'],
   ['Meetings', '/meetings'],
   ['Costs', '/costs'],
   ['Activity', '/activity'],
