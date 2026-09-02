@@ -1,4 +1,5 @@
 import { ConversationArchivePanel } from '../_components/conversation-archive-panel';
+import { MemoryPanel } from '../_components/memory-panel';
 
 export default function ConversationsPage() {
   return (
@@ -10,6 +11,7 @@ export default function ConversationsPage() {
         intentional.
       </p>
       <ConversationArchivePanel />
+      <MemoryPanel />
     </main>
   );
 }

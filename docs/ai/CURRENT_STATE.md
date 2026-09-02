@@ -69,6 +69,10 @@ con agenda, partecipanti, massimo tre round, contributi, minutes, decisioni,
 azioni e costo. Il test di integrazione con tre agenti verifica il round cap.
 La prima attivita' incompleta e' l'audit M10 Memory & Search.
 
+M10 e' in corso: retrieval bounded e archivio conversazioni erano gia' presenti;
+aggiunto pannello per creare, cercare e rimuovere memorie strutturate. Test API
+memory passa; restano verifica UI/E2E e audit della milestone successiva.
+
 ## Verifiche correnti
 
 - `pnpm verify`: PASS — format, lint 15/15, typecheck 15/15, test 26/26,
