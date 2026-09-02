@@ -929,3 +929,16 @@ non bloccanti, dietro il contratto ora persistito.
 ### Stato finale
 
 M8 completata localmente. Prossima attivita' unica: audit M9 Meetings.
+
+## 2026-09-02 - M9 Meeting room operativa
+
+- Aggiunta UI Meetings per creare e avviare riunioni con progetto, agenda,
+  partecipanti, tipo e massimo tre round; contributi, minutes, decisioni, azioni
+  e costo vengono mostrati dopo il run.
+- Aggiunto test API/integration: meeting Architecture con tre agenti e due round
+  produce sei contributi, minutes, tre action item e costo `0.06`.
+- Typecheck web e test mirato passano.
+
+### Stato finale
+
+M9 completata localmente. Prossima attivita' unica: audit M10 Memory & Search.

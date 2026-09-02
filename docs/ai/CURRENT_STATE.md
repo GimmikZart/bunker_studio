@@ -64,6 +64,11 @@ opzionale, budget, capability e ruoli; restituisce proposte editabili e richiede
 binding provider/modello/reasoning e conferma esplicita prima di creare agenti.
 Test API e browser E2E passano. La prima attivita' incompleta e' l'audit M9.
 
+M9 e' completata localmente: pagina Meetings operativa per scheduling/run,
+con agenda, partecipanti, massimo tre round, contributi, minutes, decisioni,
+azioni e costo. Il test di integrazione con tre agenti verifica il round cap.
+La prima attivita' incompleta e' l'audit M10 Memory & Search.
+
 ## Verifiche correnti
 
 - `pnpm verify`: PASS — format, lint 15/15, typecheck 15/15, test 26/26,

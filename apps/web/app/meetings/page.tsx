@@ -1,4 +1,4 @@
-import { LivePanel } from '../_components/live-panel';
+import { MeetingRoomPanel } from '../_components/meeting-room-panel';
 
 export default function MeetingsPage() {
   return (
@@ -9,11 +9,7 @@ export default function MeetingsPage() {
         Bounded, agenda-led meetings turn scoped agent contributions into validated minutes and
         actions.
       </p>
-      <LivePanel
-        resource="meetings"
-        title="Meeting room"
-        description="Agenda-led meetings produce bounded contributions and persisted minutes."
-      />
+      <MeetingRoomPanel />
     </main>
   );
 }
