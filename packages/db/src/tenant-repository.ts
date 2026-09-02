@@ -402,11 +402,40 @@ export class SupabaseTenancyRepository {
     const data = await unwrap(
       this.client
         .from('organization_members')
-        .insert({ organization_id: input.organizationId, user_id: input.userId, role: input.role })
+        .upsert(
+          { organization_id: input.organizationId, user_id: input.userId, role: input.role },
+          { onConflict: 'organization_id,user_id' },
+        )
         .select('*')
         .single(),
     );
     return mapMember(data);
+  }
+
+  async removeMember(input: {
+    organizationId: string;
+    actorUserId: string;
+    userId: string;
+  }): Promise<void> {
+    const actorRole = await this.getRole(input.organizationId, input.actorUserId);
+    if (actorRole !== 'OWNER') throw new AuthorizationError();
+    const target = await unwrap(
+      this.client
+        .from('organization_members')
+        .select('role')
+        .eq('organization_id', input.organizationId)
+        .eq('user_id', input.userId)
+        .maybeSingle(),
+    );
+    if (!target || row(target).role === 'OWNER')
+      throw new AuthorizationError('An organization owner cannot be removed.');
+    await unwrap(
+      this.client
+        .from('organization_members')
+        .delete()
+        .eq('organization_id', input.organizationId)
+        .eq('user_id', input.userId),
+    );
   }
 
   async listMembers(organizationId: string, actorUserId: string): Promise<OrganizationMember[]> {

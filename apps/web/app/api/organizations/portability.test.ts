@@ -4,6 +4,7 @@ import { POST as createAssignment } from '../agents/[agentId]/assignments/route'
 import { POST as createOrganization } from './route';
 import { POST as createTeam } from './[organizationId]/teams/route';
 import { POST as createProject } from './[organizationId]/projects/route';
+import { POST as addMember } from './[organizationId]/members/route';
 import { GET as exportOrganization } from './[organizationId]/export/route';
 import { POST as importOrganization } from './import/route';
 import { POST as createTask } from '../tasks/route';
@@ -153,5 +154,36 @@ describe('organization portability routes', () => {
       { params: Promise.resolve({ organizationId: crypto.randomUUID() }) },
     );
     expect(response.status).toBe(404);
+  });
+
+  it('does not allow an admin to export an organization', async () => {
+    const owner = `portability-owner-${crypto.randomUUID()}`;
+    const admin = `portability-admin-${crypto.randomUUID()}`;
+    const baseHeaders = { 'content-type': 'application/json', 'x-bunker-user-id': owner };
+    const created = await createOrganization(
+      new Request('http://localhost/api/organizations', {
+        method: 'POST',
+        headers: baseHeaders,
+        body: JSON.stringify({ name: 'Owner export only' }),
+      }),
+    );
+    const organizationId = (await created.json()).organization.id as string;
+    const ownerHeaders = { ...baseHeaders, 'x-bunker-organization-id': organizationId };
+    const added = await addMember(
+      new Request(`http://localhost/api/organizations/${organizationId}/members`, {
+        method: 'POST',
+        headers: ownerHeaders,
+        body: JSON.stringify({ userId: admin, role: 'ADMIN' }),
+      }),
+      { params: Promise.resolve({ organizationId }) },
+    );
+    expect(added.status).toBe(201);
+    const response = await exportOrganization(
+      new Request(`http://localhost/api/organizations/${organizationId}/export`, {
+        headers: { 'x-bunker-user-id': admin },
+      }),
+      { params: Promise.resolve({ organizationId }) },
+    );
+    expect(response.status).toBe(403);
   });
 });

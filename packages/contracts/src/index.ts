@@ -264,6 +264,10 @@ export const memberInviteSchema = z.object({
   role: z.enum(['ADMIN', 'MEMBER', 'VIEWER']),
 });
 
+export const memberRemoveSchema = z.object({
+  userId: z.string().min(1),
+});
+
 export const workerRegistrationSchema = z.object({
   name: z.string().trim().min(1).max(120),
   capabilities: z.array(z.string().min(1)).max(50),

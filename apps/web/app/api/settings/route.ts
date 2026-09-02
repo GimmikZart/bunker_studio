@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     const role = await operations.getRole(organizationId, actorId);
     if (!role) return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
     return NextResponse.json({
+      role,
       providers: await operations.listProviders(organizationId, actorId),
       workers: await operations.listWorkers(organizationId, actorId),
       runtime: {

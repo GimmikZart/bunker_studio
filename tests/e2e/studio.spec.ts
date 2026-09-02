@@ -115,6 +115,8 @@ test('settings monitors and revokes a local worker', async ({ page }) => {
   expect(registration.status).toBe(201);
   await page.goto('/settings');
   await expect(page.getByText('E2E PC')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('button', { name: 'Download organization export' })).toBeVisible();
+  await expect(page.getByLabel('Import Bunker Studio export')).toBeVisible();
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Revoke' }).click();
   await expect(page.getByText('E2E PC was revoked.')).toBeVisible({ timeout: 30_000 });

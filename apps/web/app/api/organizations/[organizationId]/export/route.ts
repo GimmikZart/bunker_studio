@@ -20,6 +20,13 @@ export async function GET(
   if (!tenancy || !agents || !operations)
     return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
+    const role = await tenancy.getRole(organizationId, actorId);
+    if (!role) return NextResponse.json({ error: 'Organization not found.' }, { status: 404 });
+    if (role !== 'OWNER')
+      return NextResponse.json(
+        { error: 'Only the Owner can export an organization.' },
+        { status: 403 },
+      );
     const organization = (await tenancy.listOrganizations(actorId)).find(
       (item) => item.id === organizationId,
     );

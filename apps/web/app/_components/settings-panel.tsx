@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
 type SettingsPayload = {
+  role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
   providers: {
     id: string;
     displayName: string;
@@ -385,6 +386,69 @@ export function SettingsPanel() {
     );
   }
 
+  async function downloadOrganizationExport() {
+    if (!organizationId || settings?.role !== 'OWNER') return;
+    setError('');
+    setNotice('');
+    const response = await fetch(`/api/organizations/${organizationId}/export`, {
+      headers: apiHeaders(organizationId),
+    });
+    if (!response.ok) {
+      setError('The organization export could not be prepared.');
+      return;
+    }
+    const blob = await response.blob();
+    const filename =
+      response.headers.get('content-disposition')?.match(/filename="?([^";]+)"?/i)?.[1] ??
+      'bunker-studio-export.json';
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setNotice('Organization export downloaded. Provider credentials are excluded.');
+  }
+
+  async function importOrganizationExport(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) return;
+    setError('');
+    setNotice('');
+    if (file.size > 10 * 1024 * 1024) {
+      setError('The export file must be 10 MB or smaller.');
+      return;
+    }
+    let payload: unknown;
+    try {
+      payload = JSON.parse(await file.text());
+    } catch {
+      setError('This file is not a valid Bunker Studio JSON export.');
+      return;
+    }
+    const response = await fetch('/api/organizations/import', {
+      method: 'POST',
+      headers: { ...apiHeaders(), 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const result = (await response.json().catch(() => ({}))) as {
+      organization?: { id: string; name: string };
+      error?: string;
+    };
+    if (!response.ok || !result.organization) {
+      setError(result.error ?? 'The organization export could not be imported.');
+      return;
+    }
+    setOrganizations((current) => [...current, result.organization!]);
+    setOrganizationId(result.organization.id);
+    window.localStorage.setItem('bunker-organization-id', result.organization.id);
+    await load(result.organization.id);
+    setNotice(
+      `${result.organization.name} was imported. Reconnect provider credentials before use.`,
+    );
+  }
+
   return (
     <section className="live-panel" aria-label="Settings live view">
       <div className="live-panel-toolbar">
@@ -606,6 +670,35 @@ export function SettingsPanel() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+          <div className="getting-started live-panel-card">
+            <div>
+              <h2>Portability</h2>
+              <p>
+                Export preserves organization data, relationships, memories and conversation
+                history, but never provider credentials. Import always creates a new organization
+                and requires provider reconnection.
+              </p>
+              {settings.role === 'OWNER' ? (
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => void downloadOrganizationExport()}
+                >
+                  Download organization export
+                </button>
+              ) : (
+                <small>Only the organization Owner can download an export.</small>
+              )}
+              <label htmlFor="organization-import">Import Bunker Studio export</label>
+              <input
+                id="organization-import"
+                type="file"
+                accept="application/json,.json"
+                onChange={(event) => void importOrganizationExport(event)}
+              />
+              <small>Maximum file size: 10 MB.</small>
             </div>
           </div>
           {preferences && (

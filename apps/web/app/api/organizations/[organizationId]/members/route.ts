@@ -1,4 +1,4 @@
-import { memberInviteSchema } from '@bunker-studio/contracts';
+import { memberInviteSchema, memberRemoveSchema } from '@bunker-studio/contracts';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../../_auth';
 import { getWebTenancyRepository } from '../../../_data';
@@ -34,6 +34,27 @@ export async function POST(
     const input = memberInviteSchema.parse(await request.json());
     const member = await store.addMember({ ...input, organizationId, actorUserId: actorId });
     return NextResponse.json({ member }, { status: 201 });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AuthorizationError')
+      return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
+    return NextResponse.json({ error: 'Invalid member payload.' }, { status: 400 });
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ organizationId: string }> },
+) {
+  const actorId = await resolveActorId(request);
+  const { organizationId } = await context.params;
+  const store = await getWebTenancyRepository();
+  if (!actorId) return NextResponse.json({ error: 'Authentication is required.' }, { status: 401 });
+  if (!store)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  try {
+    const input = memberRemoveSchema.parse(await request.json());
+    await store.removeMember({ ...input, organizationId, actorUserId: actorId });
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     if (error instanceof Error && error.name === 'AuthorizationError')
       return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });

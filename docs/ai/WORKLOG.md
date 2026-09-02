@@ -1028,3 +1028,33 @@ M12 completata localmente. La prova di rete con Ollama/LM Studio e un quality
 node resta `PARTIAL (non-blocking)`, come deciso: non sono state richieste
 chiamate provider a pagamento ne' hardware locale non disponibile. Prossima
 attivita' unica: audit M13 Export / Import / Multiuser Foundations.
+
+## 2026-09-02 - M13 Export / Import / Multiuser Foundations
+
+### Lavoro svolto
+
+- Completato l'audit di portability: export/import versionati, ID remap,
+  relazioni, stato `REQUIRES_REAUTH`, task importati in DRAFT e template vergine
+  erano gia' implementati e testati; aggiunti i controlli alla UI Settings.
+- Aggiunto download dell'export soltanto per Owner e import JSON bounded a 10 MB;
+  ogni import crea un tenant nuovo e non rende mai disponibili credenziali.
+- Corretto il controllo in-memory: come nel repository Supabase/RLS, solo
+  l'Owner puo' aggiungere o modificare collaboratori. Aggiunta rimozione
+  Owner-only e migrazione `30` con trigger che proibisce rimozione/declassamento
+  dell'Owner anche tramite accesso diretto consentito dalla RLS.
+- Aggiunti test API per ruoli, rimozione e divieto Owner/Admin export; l'E2E
+  Settings verifica anche i controlli di portability.
+
+### Verifiche
+
+- API membership/export/import: PASS (4/4); build contracts/DB: PASS.
+- `supabase db reset --local` con migrazioni `00..30`, `supabase db lint --local`
+  e query catalogo trigger Owner: PASS.
+- `pnpm lint`, `pnpm typecheck` (15/15), build production web e `pnpm test:e2e`:
+  PASS - 15 flussi funzionali e smoke p95 production.
+
+### Stato finale
+
+M13 completata localmente. Prossima attivita' unica: audit finale Definition of
+Done e quality verification esterne; non e' stata dichiarata implementazione
+completata perche' restano AC quality esterni bloccanti gia' tracciati.

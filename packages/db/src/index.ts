@@ -427,7 +427,7 @@ export class TenantStore {
     role: Exclude<OrganizationRole, 'OWNER'>;
   }): OrganizationMember {
     const actorRole = this.getRole(input.organizationId, input.actorUserId);
-    if (!actorRole || !canWrite(actorRole)) throw new AuthorizationError();
+    if (actorRole !== 'OWNER') throw new AuthorizationError();
     const organization = this.state.organizations.find((item) => item.id === input.organizationId);
     if (!organization || organization.archivedAt)
       throw new AuthorizationError('Organization not found.');
@@ -446,6 +446,18 @@ export class TenantStore {
     };
     this.state.members.push(member);
     return structuredClone(member);
+  }
+
+  removeMember(input: { organizationId: string; actorUserId: string; userId: string }): void {
+    if (this.getRole(input.organizationId, input.actorUserId) !== 'OWNER')
+      throw new AuthorizationError();
+    const index = this.state.members.findIndex(
+      (member) => member.organizationId === input.organizationId && member.userId === input.userId,
+    );
+    const member = this.state.members[index];
+    if (!member || member.role === 'OWNER')
+      throw new AuthorizationError('An organization owner cannot be removed.');
+    this.state.members.splice(index, 1);
   }
 
   listMembers(organizationId: string, actorUserId: string): OrganizationMember[] {

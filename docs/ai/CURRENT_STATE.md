@@ -93,6 +93,15 @@ OpenAI-compatible copre il futuro collegamento a Ollama/LM Studio senza rendere
 un modello locale un requisito. La prima attivita' incompleta e' l'audit M13
 Export / Import / Multiuser Foundations.
 
+M13 e' completata localmente: export/import versionato conserva relazioni e
+mette le connessioni provider in `REQUIRES_REAUTH`, senza esportare credenziali.
+Settings rende disponibili download Owner-only e import controllato; l'import
+crea sempre un nuovo tenant. Owner/Admin/Member/Viewer sono presenti in schema,
+RLS e API; solo l'Owner puo' esportare, aggiungere/rimuovere collaboratori e non
+puo' essere rimosso o declassato neppure tramite la policy RLS diretta. La prima
+attivita' incompleta e' l'audit finale della Definition of Done e delle quality
+verification esterne.
+
 ## Verifiche correnti
 
 - `pnpm verify`: PASS — format, lint 15/15, typecheck 15/15, test 26/26,
@@ -114,6 +123,10 @@ Export / Import / Multiuser Foundations.
 - M12: test DB scheduler/heartbeat 4/4 e API revoca Owner 1/1: PASS; format,
   lint workspace 15/15, typecheck 15/15, build production web e `pnpm test:e2e`
   (15 flussi funzionali + smoke p95 production): PASS.
+- M13: API membership/export/import 4/4, reset/lint Supabase con migrazioni
+  `00..30` e trigger Owner presente: PASS; lint e typecheck workspace 15/15,
+  build web e `pnpm test:e2e` (15 flussi funzionali + smoke p95 production):
+  PASS.
 
 ## Limiti e verifiche esterne pendenti
 
