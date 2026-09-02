@@ -942,3 +942,26 @@ M8 completata localmente. Prossima attivita' unica: audit M9 Meetings.
 ### Stato finale
 
 M9 completata localmente. Prossima attivita' unica: audit M10 Memory & Search.
+
+## 2026-09-02 - M10 Memory & Search
+
+### Lavoro svolto
+
+- Reso disponibile nella pagina Conversations il pannello Structured Memory per
+  creare, cercare e rimuovere memorie tenant-scoped.
+- Allineato il pannello al selettore organizzazione condiviso: conserva la
+  scelta locale e disabilita le azioni finche' il tenant non e' disponibile,
+  evitando richieste premature durante il caricamento.
+- Aggiunto E2E browser: onboarding, salvataggio di una memoria e ricerca tramite
+  retrieval bounded; nessun archivio conversazioni viene usato come context.
+
+### Verifiche
+
+- Test API `memories.test.ts`: PASS.
+- Typecheck web: PASS.
+- Playwright E2E Structured Memory: PASS (1/1).
+
+### Stato finale
+
+M10 completata localmente. Prossima attivita' unica: audit M11 Cost, Budget &
+Reporting.

@@ -35,6 +35,38 @@ test('team builder proposes editable hires without immediately creating agents',
   await expect(page.getByRole('button', { name: 'Confirm and hire team' })).toBeVisible();
 });
 
+test('structured memory is saved and retrieved without using the conversation archive', async ({
+  page,
+}) => {
+  await page.goto('/onboarding');
+  await page.getByLabel('Organization name').fill(`E2E Memory ${Date.now()}`);
+  await page.getByRole('button', { name: 'Create organization' }).click();
+  await expect(page.getByText('Organization created. Your studio is ready.')).toBeVisible({
+    timeout: 60_000,
+  });
+  await page.goto('/conversations');
+  await expect(page.getByLabel('Organization', { exact: true }).last()).toBeEnabled();
+  await page
+    .getByRole('textbox', { name: 'Memory' })
+    .fill('Use durable queue retries for provider quota recovery');
+  await expect(page.getByRole('button', { name: 'Save memory' })).toBeEnabled();
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/memories') && response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Save memory' }).click();
+  expect((await saved).status()).toBe(201);
+  await page.getByLabel('Search memories').fill('durable queue');
+  const memoryPanel = page.getByLabel('Structured memory');
+  await expect(memoryPanel.getByRole('button', { name: 'Search', exact: true })).toBeEnabled();
+  await memoryPanel.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(page.getByText('Use durable queue retries for provider quota recovery')).toBeVisible(
+    {
+      timeout: 30_000,
+    },
+  );
+});
+
 test('login and signup flows expose accessible credential forms', async ({ page }) => {
   await page.goto('/login');
   await expect(page.getByLabel('Email')).toBeVisible();

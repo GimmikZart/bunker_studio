@@ -69,9 +69,12 @@ con agenda, partecipanti, massimo tre round, contributi, minutes, decisioni,
 azioni e costo. Il test di integrazione con tre agenti verifica il round cap.
 La prima attivita' incompleta e' l'audit M10 Memory & Search.
 
-M10 e' in corso: retrieval bounded e archivio conversazioni erano gia' presenti;
-aggiunto pannello per creare, cercare e rimuovere memorie strutturate. Test API
-memory passa; restano verifica UI/E2E e audit della milestone successiva.
+M10 e' completata localmente: retrieval bounded, archivio conversazioni e
+provenance erano gia' presenti; il pannello Structured Memory ora permette di
+scegliere l'organizzazione, creare, cercare e rimuovere memorie. Le azioni sono
+disabilitate finche' il contesto tenant non e' pronto. Test API, typecheck web e
+browser E2E di salvataggio/ricerca passano senza iniettare l'archivio nel context.
+La prima attivita' incompleta e' l'audit M11 Cost, Budget & Reporting.
 
 ## Verifiche correnti
 
@@ -99,4 +102,4 @@ memory passa; restano verifica UI/E2E e audit della milestone successiva.
 
 ## Ultimo aggiornamento
 
-2026-09-01
+2026-09-02

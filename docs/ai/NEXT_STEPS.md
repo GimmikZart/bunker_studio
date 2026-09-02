@@ -1,28 +1,27 @@
 # Next Steps
 
-## Prossima attivita' precisa - audit M10 Memory & Search
+## Prossima attivita' precisa - audit M11 Cost, Budget & Reporting
 
-M9 e' completata localmente: la stanza meeting permette di creare e avviare
-riunioni scoped con progetto, agenda, partecipanti e round bounded; mostra
-contributi, minuti, decisioni, azioni e costo. Il prossimo audit e' M10.
+M10 e' completata localmente: il retrieval context resta bounded, la ricerca
+dell'archivio e' separata dal context degli agenti e l'utente puo' gestire
+memorie strutturate per organizzazione. API, typecheck ed E2E browser del
+salvataggio/ricerca sono verdi.
 
 ### Area interessata
 
-conversation archive, structured memory, retrieval/context builder, UI/API e provenance.
+Cost ledger, budget policies, preflight gate, forecast/report deterministici,
+quota UI, notifiche e persistenza/generazione del report settimanale.
 
 ### Comportamento da verificare
 
-- Verificare ricerca full-text, memorie strutturate, provenance e gestione utente.
-- Verificare che il context builder resti bounded e non inietti l'intero archivio.
-- Aggiungere solo le lacune reali e testarle end-to-end.
+- Verificare che un hard cap impedisca davvero l'invocazione del provider.
+- Verificare ledger tenant-scoped, forecast e report deterministici.
+- Verificare la UI budget/costi, inbox notifiche e deep link approval.
+- Aggiungere soltanto le lacune reali, con test API e browser pertinenti.
 
 ### Definition of Done locale
 
-Il DoD M10 e' coperto senza regressioni; contract, API/UI/E2E pertinenti e
-controlli di qualita' passano.
-
-### Verifica successiva
-
-Dopo l'audit M8, procedere automaticamente alla prima lacuna della milestone
-successiva. Le prove provider immagine/Figma reali restano adapter esterni non
-bloccanti dietro i contratti gia' implementati.
+Il DoD M11 e' coperto senza regressioni: budget hard-cap, report e notifiche
+sono verificati da contract/API/UI/E2E dove applicabile; i controlli di qualita'
+pertinenti passano. Le notifiche push reali restano una verifica esterna quando
+saranno configurate VAPID e un browser/device.
