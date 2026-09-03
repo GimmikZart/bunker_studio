@@ -103,7 +103,9 @@ export function StudioLabsPanel() {
             void loadProjects(next).catch(() => setError('Could not load projects.'));
           }}
         >
-          {!organizations.length && <option value="">No organizations</option>}
+          {!organizations.length && (
+            <option value="">No organizations — create one in Settings</option>
+          )}
           {organizations.map((organization) => (
             <option key={organization.id} value={organization.id}>
               {organization.name}

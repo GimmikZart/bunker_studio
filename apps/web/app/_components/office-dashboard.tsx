@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiHeaders } from './live-panel';
+import { OrganizationCreateForm } from './organization-create-form';
 
 type Agent = {
   id: string;
@@ -21,11 +22,14 @@ export function OfficeDashboard() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [organizationName, setOrganizationName] = useState('Bunker Studio');
   const [message, setMessage] = useState('Loading office…');
+  // null while loading, so the create form never flashes before the check.
+  const [hasOrganization, setHasOrganization] = useState<boolean | null>(null);
 
   useEffect(() => {
     void (async () => {
       const orgResponse = await fetch('/api/organizations', { headers: apiHeaders() });
       if (!orgResponse.ok) {
+        setHasOrganization(false);
         setMessage('Create an organization to populate the office.');
         return;
       }
@@ -37,9 +41,11 @@ export function OfficeDashboard() {
           (item) => item.id === window.localStorage.getItem('bunker-organization-id'),
         ) ?? organizations[0];
       if (!organization) {
+        setHasOrganization(false);
         setMessage('Create an organization to populate the office.');
         return;
       }
+      setHasOrganization(true);
       window.localStorage.setItem('bunker-organization-id', organization.id);
       setOrganizationName(organization.name);
       const response = await fetch('/api/agents', { headers: apiHeaders(organization.id) });
@@ -51,6 +57,13 @@ export function OfficeDashboard() {
       setMessage('Presence is derived from deterministic task state.');
     })();
   }, []);
+
+  if (hasOrganization === false)
+    return (
+      <section className="office-empty" aria-label="Create your organization">
+        <OrganizationCreateForm />
+      </section>
+    );
 
   return (
     <section className="office-grid" aria-label="Office areas">

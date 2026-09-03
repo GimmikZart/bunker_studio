@@ -29,15 +29,16 @@ export default function HomePage() {
           <p className="eyebrow">Getting started</p>
           <h2>Build the team around the work.</h2>
           <p>
-            Start by creating an organization. Then create a project and choose an agent template.
+            Once the organization exists, connect a provider in Settings, then create a project and
+            hire the team.
           </p>
         </div>
         <div className="action-row">
           <Link className="primary-button" href="/projects">
             Create project
           </Link>
-          <Link className="secondary-button" href="/agents">
-            Add an agent
+          <Link className="secondary-button" href="/settings">
+            Connect a provider
           </Link>
         </div>
       </section>

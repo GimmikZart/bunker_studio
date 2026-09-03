@@ -80,15 +80,15 @@ try {
   );
   await goto('/');
   await Promise.all([
-    page.waitForURL(/\/agents$/),
-    page.getByRole('link', { name: 'Add an agent' }).click(),
+    page.waitForURL(/\/settings$/),
+    page.getByRole('link', { name: 'Connect a provider' }).click(),
   ]);
   await record(
     'UI-001',
-    'Home → Add an agent',
-    'Functional CTA reaches Agents',
-    'Reached /agents',
-    'UI-001-agent-cta',
+    'Home → Connect a provider',
+    'Functional CTA reaches Settings',
+    'Reached /settings',
+    'UI-001-provider-cta',
   );
   await goto('/onboarding');
   await page.getByLabel('Organization name').fill(orgName);

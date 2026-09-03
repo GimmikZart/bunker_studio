@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AccountLink } from './account-link';
 import { NavigationLinks } from './navigation-links';
 
 export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -11,9 +12,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
             <span>Bunker Studio</span>
           </Link>
           <NavigationLinks />
-          <Link className="avatar-button" href="/settings" aria-label="Open settings">
-            GM
-          </Link>
+          <AccountLink />
         </div>
       </header>
       {children}

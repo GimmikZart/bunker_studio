@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { apiHeaders } from './live-panel';
+import { OrganizationCreateForm } from './organization-create-form';
 
 type Organization = { id: string; name: string };
 type SettingsPayload = {
@@ -459,7 +460,9 @@ export function SettingsPanel() {
           onChange={(event) => selectOrganization(event.target.value)}
           disabled={!organizations.length}
         >
-          {!organizations.length && <option value="">No organizations</option>}
+          {!organizations.length && (
+            <option value="">No organizations — create one in Settings</option>
+          )}
           {organizations.map((organization) => (
             <option key={organization.id} value={organization.id}>
               {organization.name}
@@ -467,7 +470,10 @@ export function SettingsPanel() {
           ))}
         </select>
       </div>
-      {error && (
+      {!organizations.length && (
+        <OrganizationCreateForm description="Providers, budgets, workers and members are all configured per organization, so create one before adding an API key." />
+      )}
+      {error && organizations.length > 0 && (
         <p className="live-error" role="alert">
           {error}
         </p>

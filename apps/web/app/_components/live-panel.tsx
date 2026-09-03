@@ -94,7 +94,9 @@ export function LivePanel({
           onChange={(event) => selectOrganization(event.target.value)}
           disabled={!organizations.length}
         >
-          {!organizations.length && <option value="">No organizations</option>}
+          {!organizations.length && (
+            <option value="">No organizations — create one in Settings</option>
+          )}
           {organizations.map((organization) => (
             <option key={organization.id} value={organization.id}>
               {organization.name}

@@ -22,6 +22,17 @@ pnpm verify
 pnpm dev
 ```
 
+Al primo avvio la home mostra un modulo per creare l'organizzazione: tutto nello
+studio (agenti, progetti, budget, provider) appartiene a un'organizzazione, quindi
+va creata prima di collegare una API key da Settings.
+
+Gli E2E avviano un server proprio sulla porta 3000. Per eseguirli mentre il dev
+server e' acceso, scegli un'altra porta:
+
+```bash
+BUNKER_E2E_PORT=3999 pnpm test:e2e
+```
+
 La web app è disponibile su `http://localhost:3000`; il controllo salute è
 `http://localhost:3000/api/health`. Il worker può essere avviato separatamente:
 
