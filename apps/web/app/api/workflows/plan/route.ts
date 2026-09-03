@@ -1,25 +1,13 @@
 import { leadPlanSubmissionSchema } from '@bunker-studio/contracts';
+import { remainingHardBudget } from '@bunker-studio/core';
+import { validateLeadPlanProposal } from '@bunker-studio/orchestration';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../_auth';
-import { getWebOperationalRepository, getWebTenancyRepository } from '../../_data';
-
-function topologicalTaskKeys(tasks: { id: string; dependencies: string[] }[]): string[] | null {
-  const ids = new Set(tasks.map((task) => task.id));
-  if (ids.size !== tasks.length) return null;
-  if (tasks.some((task) => task.dependencies.some((dependency) => !ids.has(dependency))))
-    return null;
-  const remaining = new Map(tasks.map((task) => [task.id, task]));
-  const ordered: string[] = [];
-  while (remaining.size) {
-    const next = [...remaining.values()].find((task) =>
-      task.dependencies.every((dependency) => !remaining.has(dependency)),
-    );
-    if (!next) return null;
-    remaining.delete(next.id);
-    ordered.push(next.id);
-  }
-  return ordered;
-}
+import {
+  getWebAgentRepository,
+  getWebOperationalRepository,
+  getWebTenancyRepository,
+} from '../../_data';
 
 export async function POST(request: Request) {
   const actorUserId = await resolveActorId(request);
@@ -41,27 +29,37 @@ export async function POST(request: Request) {
       (candidate) => candidate.id === input.projectId,
     );
     if (!project) return NextResponse.json({ error: 'Project not found.' }, { status: 404 });
-    const approvedDesignIds = new Set(
-      (await operations.listDesignVersions(organizationId, actorUserId))
-        .filter((design) => design.status === 'APPROVED')
-        .map((design) => design.id),
-    );
-    if (
-      input.plan.tasks.some(
-        (task) =>
-          task.taskType === 'FRONTEND' &&
-          !approvedDesignIds.has(task.approvedDesignVersionId ?? ''),
-      )
+    const approvedDesignVersionIds = (
+      await operations.listDesignVersions(organizationId, actorUserId)
     )
+      .filter((design) => design.status === 'APPROVED')
+      .map((design) => design.id);
+    const agents = await getWebAgentRepository();
+    const teamCapabilities = agents
+      ? [
+          ...new Set(
+            (await agents.listAgents(organizationId, actorUserId)).flatMap((agent) => agent.skills),
+          ),
+        ]
+      : [];
+    // The same gates the planner applies, enforced again here: this is the only
+    // place a plan becomes real work, so it cannot be bypassed by posting a plan
+    // that was never generated.
+    const validated = validateLeadPlanProposal(input.plan, {
+      approvedDesignVersionIds,
+      remainingBudget: remainingHardBudget({
+        policies: await operations.listBudgetPolicies(organizationId, actorUserId),
+        entries: await operations.listCosts(organizationId, actorUserId),
+        context: { projectId: input.projectId },
+      }),
+      teamCapabilities,
+    });
+    if (!validated.ok)
       return NextResponse.json(
-        { error: 'Every frontend task requires an approved design version.' },
-        { status: 409 },
+        { error: 'The plan violates the studio rules.', reasons: validated.reasons },
+        { status: 400 },
       );
-    if (input.plan.tasks.some((task) => task.dependencies.includes(task.id)))
-      return NextResponse.json({ error: 'A task cannot depend on itself.' }, { status: 400 });
-    const order = topologicalTaskKeys(input.plan.tasks);
-    if (!order)
-      return NextResponse.json({ error: 'Lead plan contains an invalid DAG.' }, { status: 400 });
+    const order = validated.order;
     const workflow = await operations.createWorkflow(
       {
         organizationId,

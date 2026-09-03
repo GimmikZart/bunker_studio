@@ -243,6 +243,37 @@ export function TaskBoard() {
     await load(organizationId);
   }
 
+  async function runReview(task: Task) {
+    setError('');
+    setNotice('');
+    const reviewer = agents.find((agent) => agent.title.toLowerCase().includes('reviewer'));
+    if (!reviewer) {
+      setError('Create a Reviewer agent before running a review.');
+      return;
+    }
+    const response = await fetch('/api/reviews/generate', {
+      method: 'POST',
+      headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
+      body: JSON.stringify({
+        projectId: task.projectId,
+        taskId: task.id,
+        reviewerAgentId: reviewer.id,
+      }),
+    });
+    const payload = (await response.json()) as {
+      error?: string;
+      review?: { status?: string; findings?: unknown[] };
+    };
+    if (!response.ok) {
+      setError(payload.error ?? 'The review could not be completed.');
+      return;
+    }
+    setNotice(
+      `Review recorded: ${payload.review?.status ?? 'unknown'} with ${payload.review?.findings?.length ?? 0} finding(s).`,
+    );
+    await load(organizationId);
+  }
+
   return (
     <section className="live-panel" aria-label="Task workflow board">
       <div className="live-panel-toolbar">
@@ -531,6 +562,15 @@ export function TaskBoard() {
                   onClick={() => void refreshGitHubCi(task)}
                 >
                   Refresh CI
+                </button>
+              )}
+              {task.candidatePullRequestUrl && (
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => void runReview(task)}
+                >
+                  Run review
                 </button>
               )}
             </div>

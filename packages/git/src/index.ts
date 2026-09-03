@@ -139,6 +139,17 @@ export type GitHubPullRequest = {
   state: 'OPEN' | 'CLOSED';
 };
 
+export type GitHubPullRequestFile = {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  patch?: string;
+};
+
+/** One page of files is enough context for a review and bounds the request. */
+export const MAX_PULL_REQUEST_FILES = 100;
+
 export type GitHubApi = {
   verifyRepositoryAccess: (
     repository: GitHubRepositoryRef,
@@ -169,6 +180,10 @@ export type GitHubApi = {
     title: string;
     body?: string;
   }) => Promise<GitHubPullRequest>;
+  listPullRequestFiles: (input: {
+    repository: GitHubRepositoryRef;
+    number: number;
+  }) => Promise<GitHubPullRequestFile[]>;
 };
 
 export type GitHubPullRequestPlan = {
@@ -411,6 +426,25 @@ export function createGitHubApi(input: {
         }),
       });
       return mapPullRequest(result);
+    },
+    listPullRequestFiles: async (input) => {
+      if (!Number.isInteger(input.number) || input.number <= 0)
+        throw new Error('A pull request number is required to list its files.');
+      const files = await request<
+        { filename: string; status: string; additions: number; deletions: number; patch?: string }[]
+      >(
+        githubPath(
+          input.repository,
+          `/pulls/${input.number}/files?per_page=${MAX_PULL_REQUEST_FILES}`,
+        ),
+      );
+      return (Array.isArray(files) ? files : []).map((file) => ({
+        filename: String(file.filename),
+        status: String(file.status),
+        additions: Number(file.additions) || 0,
+        deletions: Number(file.deletions) || 0,
+        ...(typeof file.patch === 'string' ? { patch: file.patch } : {}),
+      }));
     },
   };
 }

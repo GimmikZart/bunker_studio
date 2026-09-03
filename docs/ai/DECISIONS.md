@@ -135,3 +135,43 @@
 **Motivazione:** L'identita' dell'agente deve sopravvivere ai cambi di modello e agenti diversi devono poter usare modelli/provider diversi. Il worker sul PC consente lavoro concreto sui repository e controllo dal telefono senza imporre subito un costo di hosting worker.
 
 **Conseguenze:** Gli env contengono solo configurazione infrastrutturale; le credenziali provider/repository sono cifrate per organizzazione/progetto. Un task Codex usa workspace e branch isolati, non auto-merge e non auto-deploy. A PC spento i task restano durable in coda.
+
+## DEC-016 — Il Lead propone, il motore valida, l'Owner accetta
+
+**Status:** Accepted — 2026-09-03
+
+**Decisione:** La decomposizione del lavoro e' generata dal Lead tramite provider, ma il piano non e' mai persistito direttamente. `POST /api/workflows/plan/generate` restituisce una proposta; solo `POST /api/workflows/plan` la trasforma in task. Gli stessi gate deterministici (`validateLeadPlanProposal`) sono applicati in entrambi gli endpoint.
+
+**Motivazione:** DEC-003 vieta di affidare a un LLM transizioni di stato deterministiche. Un piano che crea task, write scope e costi e' una transizione di stato: il modello puo' proporlo, non decretarlo. Applicare i gate anche in submit impedisce di aggirarli inviando un piano mai generato.
+
+**Conseguenze:** Un piano che viola cap sul numero di task, aciclicita', write scope obbligatorio per task che scrivono, sola lettura per REVIEW/DESIGN, design approvato per i task FRONTEND, disgiunzione dei write scope nei gruppi paralleli, capability del team o budget residuo viene rifiutato con l'elenco completo delle violazioni. Il costo della pianificazione e' addebitato al ledger e gated dalle budget policy prima della chiamata provider.
+
+## DEC-017 — Il Designer restituisce dati, non markup
+
+**Status:** Accepted — 2026-09-03
+
+**Decisione:** Un Designer provider-backed restituisce esclusivamente dati strutturati (`designDraftSchema`). L'anteprima HTML e' renderizzata dallo studio con escaping di ogni campo e colori riconvalidati contro `^#[0-9a-fA-F]{6}$` al momento del rendering. Se la risposta non rispetta il contratto si ricade sul generatore deterministico.
+
+**Motivazione:** Un'anteprima viene aperta da un revisore. Accettare markup da un modello significherebbe eseguire contenuto non fidato nel browser di chi approva.
+
+**Conseguenze:** Nessun percorso puo' introdurre HTML, CSS o script generati dal modello. Il fallback mantiene il flusso usabile prima che un provider sia collegato, e i due percorsi condividono lo stesso limite di dimensione dell'anteprima.
+
+## DEC-018 — Un verbale non prova decisioni che non ci sono
+
+**Status:** Accepted — 2026-09-03
+
+**Decisione:** I contributi di una riunione sono generati dagli agenti partecipanti tramite il rispettivo binding provider. Il verbale e' redatto dal Lead ma validato deterministicamente: un action item puo' essere assegnato solo a un agente presente, e se la bozza non e' utilizzabile si registrano zero decisioni conservando i contributi.
+
+**Motivazione:** La versione precedente sintetizzava decisioni dall'agenda e action item dall'elenco partecipanti. Erano dati inventati, indistinguibili da decisioni reali per chi legge lo storico.
+
+**Conseguenze:** Un verbale vuoto e' un esito legittimo e onesto. Ogni turno effettivamente eseguito e' addebitato al ledger anche se la riunione fallisce a meta', e la riunione torna in `DRAFT` invece di restare bloccata in `RUNNING`.
+
+## DEC-019 — Fine riga normalizzate nel repository
+
+**Status:** Accepted — 2026-09-03
+
+**Decisione:** Il repository dichiara `* text=auto eol=lf` in `.gitattributes`.
+
+**Motivazione:** Senza questo, un checkout Windows con `core.autocrlf=true` produce file CRLF che fanno fallire `prettier --check` su ogni file del repository, rendendo impossibile far passare `pnpm verify` su una macchina di sviluppo Windows.
+
+**Conseguenze:** Il working tree usa LF su ogni piattaforma indipendentemente dalla configurazione git locale. Gli asset binari sono esclusi esplicitamente dalla conversione.

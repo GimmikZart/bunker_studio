@@ -254,3 +254,40 @@ describe('GitHub API adapter', () => {
     ).rejects.toEqual(new GitHubApiError('GitHub API request failed with status 401.', 401));
   });
 });
+
+describe('pull request files', () => {
+  it('returns the candidate diff bounded to one page', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify([
+          { filename: 'a.ts', status: 'modified', additions: 3, deletions: 1, patch: '@@ x @@' },
+          { filename: 'bin.png', status: 'added', additions: 0, deletions: 0 },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const files = await createGitHubApi({ token: 'token', fetchImpl }).listPullRequestFiles({
+      repository: { owner: 'acme', name: 'studio' },
+      number: 7,
+    });
+    expect(files).toEqual([
+      { filename: 'a.ts', status: 'modified', additions: 3, deletions: 1, patch: '@@ x @@' },
+      { filename: 'bin.png', status: 'added', additions: 0, deletions: 0 },
+    ]);
+    expect(fetchImpl).toHaveBeenLastCalledWith(
+      new URL('https://api.github.com/repos/acme/studio/pulls/7/files?per_page=100'),
+      expect.anything(),
+    );
+  });
+
+  it('refuses a pull request number that is not a positive integer', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    await expect(
+      createGitHubApi({ token: 'token', fetchImpl }).listPullRequestFiles({
+        repository: { owner: 'acme', name: 'studio' },
+        number: 0,
+      }),
+    ).rejects.toThrow('pull request number is required');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});

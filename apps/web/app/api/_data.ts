@@ -446,7 +446,12 @@ export async function getWebOperationalRepository(): Promise<WebOperationalRepos
 }
 
 export async function getWebAgentRuntime(agent: Agent): Promise<AgentRuntime | null> {
-  if (!usesSupabasePersistence()) return new FakeRuntime({});
+  // Memory persistence is the dev/test mode; the canned response lets a test
+  // drive the structured paths (plan, minutes, design draft) without a provider.
+  if (!usesSupabasePersistence()) {
+    const response = process.env.BUNKER_FAKE_RUNTIME_RESPONSE;
+    return new FakeRuntime(response ? { response } : {});
+  }
   const client = createWorkerServiceSupabaseClient();
   const masterKey = process.env.STUDIO_MASTER_KEY;
   if (!client || !masterKey) return null;

@@ -6,10 +6,16 @@ import {
   type RunRequest,
   type RunResult,
 } from '@bunker-studio/agent-runtime';
+import { scopesOverlap } from './scope.js';
 export * from './queue.js';
 export * from './workflow.js';
 export * from './meeting.js';
 export * from './review-loop.js';
+export * from './lead-planner.js';
+export * from './meeting-agenda.js';
+export * from './design-brief.js';
+export * from './review-brief.js';
+export * from './scope.js';
 
 export const PACKAGE_NAME = '@bunker-studio/orchestration';
 
@@ -114,12 +120,6 @@ export function eligibleTasks(tasks: TaskDefinition[], remainingBudget: number):
       task.state === 'READY' &&
       task.estimatedCost <= remainingBudget &&
       task.dependencies.every((dependency) => done.has(dependency)),
-  );
-}
-
-function scopesOverlap(left: string[], right: string[]): boolean {
-  return left.some((a) =>
-    right.some((b) => a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`)),
   );
 }
 

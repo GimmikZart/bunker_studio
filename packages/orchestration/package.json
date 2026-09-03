@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@bunker-studio/agent-runtime": "workspace:*",
+    "@bunker-studio/contracts": "workspace:*",
     "@bunker-studio/core": "workspace:*"
   },
   "scripts": {

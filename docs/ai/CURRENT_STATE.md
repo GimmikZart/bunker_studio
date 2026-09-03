@@ -1,5 +1,32 @@
 # Current Project State
 
+## Checkpoint 2026-09-03 — I sei ruoli sono collegati al provider
+
+Lead, Reviewer, Designer e i partecipanti alle riunioni invocano ora il modello
+tramite il binding provider del singolo agente. Ogni transizione di stato resta
+deterministica: il modello propone, il motore valida, l'utente accetta.
+
+- Il Lead decompone un obiettivo in un piano. `POST /api/workflows/plan/generate`
+  restituisce una proposta e non persiste nulla; `POST /api/workflows/plan` la
+  trasforma in task. Entrambi applicano gli stessi gate deterministici, quindi
+  un piano che viola le regole non entra nemmeno inviandolo direttamente.
+- Le riunioni raccolgono un contributo reale per partecipante e per round con
+  digest bounded. Il verbale e' redatto dal Lead ma validato: un action item
+  puo' essere assegnato solo a chi era presente e una bozza non utilizzabile
+  produce zero decisioni invece di decisioni inventate.
+- Il Designer restituisce dati strutturati, mai markup. L'anteprima e'
+  renderizzata dallo studio con escaping e colori riconvalidati; se la risposta
+  non rispetta il contratto si ricade sul generatore deterministico.
+- Il Reviewer legge il diff della PR con la credenziale cifrata e riporta
+  finding. `PASS`/`FIX_REQUIRED` e' derivato dai finding e lo SHA e' quello
+  inviato: un modello non puo' dichiarare pulito un candidato con finding
+  bloccanti.
+- Pianificazione, riunioni, design e review passano dalle budget policy prima
+  della chiamata provider e scrivono nel cost ledger.
+- `.gitattributes` normalizza le fine riga a LF: senza, un checkout Windows con
+  `core.autocrlf=true` faceva fallire `prettier --check` su 275 file.
+- `docs/GO_LIVE.md` elenca i collegamenti che restano all'utente.
+
 ## Checkpoint 2026-09-01 — M7 Designer workflow completato localmente
 
 Bunker Studio supporta il percorso iniziale richiesto: web locale o ospitato,
@@ -104,8 +131,10 @@ verification esterne.
 
 ## Verifiche correnti
 
-- `pnpm verify`: PASS — format, lint 15/15, typecheck 15/15, test 26/26,
-  build 15/15 e audit high senza vulnerabilità note.
+- `pnpm verify` (2026-09-03): PASS — format, lint, typecheck, 26 task di test,
+  15 build e audit senza vulnerabilità note.
+- Orchestration 11 file / 79 test, web 30 file / 65 test, worker 12 file / 32
+  test, git 3 file / 14 test: PASS.
 - `pnpm test:e2e` con `BUNKER_PERSISTENCE_MODE=memory`: PASS — 10 flussi
   funzionali dev + 1 performance p95 su build production.
 - Web: 23 file / 41 test PASS; worker: 12 file / 32 test PASS; Git: 12 test
@@ -130,6 +159,9 @@ verification esterne.
 
 ## Limiti e verifiche esterne pendenti
 
+- Il percorso completo del Reviewer richiede un repository GitHub collegato: in
+  modalità memoria l'endpoint risponde 503. I gate di autorizzazione e le regole
+  di composizione sono testati; il giro end-to-end ricade sotto AC-009.
 - Nessuna inferenza OpenAI a pagamento, push su repository reale, merge o
   deploy è stata effettuata automaticamente. Adapter, fake e contract test sono
   verdi; la prova GitHub/CI reale richiede credenziali dell'utente.
@@ -142,4 +174,4 @@ verification esterne.
 
 ## Ultimo aggiornamento
 
-2026-09-02
+2026-09-03

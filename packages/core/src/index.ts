@@ -414,6 +414,31 @@ export function evaluateBudgetPolicies(input: {
   };
 }
 
+/**
+ * Headroom left under the tightest matching hard limit, or `null` when no hard
+ * cap applies.  Planning uses this to size a proposal before any provider call,
+ * so an over-budget plan is rejected without spending anything to find out.
+ */
+export function remainingHardBudget(input: {
+  policies: BudgetPolicy[];
+  entries: CostEntry[];
+  context: { projectId?: string; taskId?: string; agentId?: string; runId?: string };
+  now?: Date;
+}): number | null {
+  const now = input.now ?? new Date();
+  let remaining: number | null = null;
+  for (const policy of input.policies) {
+    if (!policy.enabled || !policyMatches(policy, input.context)) continue;
+    if (policy.hardLimit <= 0) continue;
+    const usage = input.entries
+      .filter((entry) => entryBelongsToPolicy(entry, policy, input.context, now))
+      .reduce((total, entry) => total + entry.amount, 0);
+    const headroom = Math.max(0, policy.hardLimit - usage);
+    remaining = remaining === null ? headroom : Math.min(remaining, headroom);
+  }
+  return remaining;
+}
+
 export type EscalationReason =
   | 'FAILED_IMPLEMENTATION_ATTEMPTS'
   | 'REPEATED_TEST_FAILURE'

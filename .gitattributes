@@ -1,0 +1,15 @@
+# Keep the working tree on LF everywhere.  Without this, a Windows checkout with
+# core.autocrlf=true produces CRLF files that fail the Prettier check, so
+# `pnpm verify` cannot pass on a developer machine.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.pdf binary

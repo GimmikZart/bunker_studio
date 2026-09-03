@@ -91,6 +91,18 @@ export const leadPlanSchema = z.object({
 });
 export type LeadPlan = z.infer<typeof leadPlanSchema>;
 
+/**
+ * Asks a Lead agent to draft a plan.  The result is a proposal: it becomes work
+ * only when it is submitted through `leadPlanSubmissionSchema`.
+ */
+export const leadPlanGenerationSchema = z.object({
+  projectId: z.string().uuid(),
+  leadAgentId: z.string().uuid(),
+  goal: z.string().trim().min(1).max(4_000),
+  constraints: z.array(z.string().trim().min(1).max(300)).max(20).default([]),
+});
+export type LeadPlanGenerationRequest = z.infer<typeof leadPlanGenerationSchema>;
+
 export const leadPlanSubmissionSchema = z.object({
   projectId: z.string().uuid(),
   plan: leadPlanSchema,
@@ -119,6 +131,26 @@ export const reviewReportSchema = z.object({
   conflictingProposals: z.boolean().optional(),
 });
 export type ReviewReport = z.infer<typeof reviewReportSchema>;
+
+/**
+ * What a Reviewer agent is allowed to return: a summary and findings.
+ *
+ * `status` is deliberately absent. The pass/fail outcome is derived from the
+ * findings by `reviewOutcome`, so a model cannot declare a candidate clean
+ * while listing blocking problems.
+ */
+export const reviewDraftSchema = z.object({
+  summary: z.string().trim().min(1).max(4_000),
+  findings: z.array(reviewFindingSchema).max(50).default([]),
+});
+export type ReviewDraft = z.infer<typeof reviewDraftSchema>;
+
+export const reviewGenerationSchema = z.object({
+  projectId: z.string().uuid(),
+  taskId: z.string().uuid(),
+  reviewerAgentId: z.string().uuid(),
+});
+export type ReviewGenerationRequest = z.infer<typeof reviewGenerationSchema>;
 
 export const reviewSubmissionSchema = z.object({
   projectId: z.string().uuid(),
@@ -150,6 +182,37 @@ export const designProposalRequestSchema = z.object({
   variantCount: z.number().int().min(1).max(3).default(1),
 });
 export type DesignProposalRequest = z.infer<typeof designProposalRequestSchema>;
+/**
+ * What a Designer agent is allowed to return.  It is structured data only: the
+ * preview HTML is rendered from these fields by the studio, so model output is
+ * never treated as markup and cannot inject styles or script.
+ */
+export const designVariantDraftSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  rationale: z.string().trim().min(1).max(2_000),
+  headline: z.string().trim().min(1).max(200),
+  summary: z.string().trim().min(1).max(1_000),
+  accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  surfaceColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  primaryAction: z.string().trim().min(1).max(60),
+  sections: z
+    .array(
+      z.object({
+        heading: z.string().trim().min(1).max(120),
+        body: z.string().trim().min(1).max(1_000),
+      }),
+    )
+    .max(6)
+    .default([]),
+  mainStates: z.array(z.string().trim().min(1).max(40)).max(8).default([]),
+});
+export type DesignVariantDraft = z.infer<typeof designVariantDraftSchema>;
+
+export const designDraftSchema = z.object({
+  variants: z.array(designVariantDraftSchema).min(1).max(3),
+});
+export type DesignDraft = z.infer<typeof designDraftSchema>;
+
 export const designResolutionSchema = z.object({
   decision: z.enum(['APPROVED', 'REJECTED', 'CHANGES']),
 });
@@ -180,6 +243,34 @@ export const meetingMinutesSchema = z.object({
   decisions: z.array(z.object({ title: z.string(), decision: z.string() })),
   actionItems: z.array(z.object({ title: z.string(), ownerAgentId: z.string().optional() })),
 });
+
+/**
+ * Bounded shape accepted from a Lead when it drafts minutes.  The persisted
+ * `meetingMinutesSchema` stays permissive for historic rows, while anything a
+ * model produces must fit these limits before it is stored.
+ */
+export const meetingMinutesProposalSchema = z.object({
+  summary: z.string().trim().min(1).max(4_000),
+  decisions: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1).max(200),
+        decision: z.string().trim().min(1).max(2_000),
+      }),
+    )
+    .max(20)
+    .default([]),
+  actionItems: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1).max(200),
+        ownerAgentId: z.string().uuid().optional(),
+      }),
+    )
+    .max(20)
+    .default([]),
+});
+export type MeetingMinutesProposal = z.infer<typeof meetingMinutesProposalSchema>;
 export type MeetingMinutes = z.infer<typeof meetingMinutesSchema>;
 
 export const agentCreateSchema = z.object({

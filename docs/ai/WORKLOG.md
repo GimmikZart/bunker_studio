@@ -1058,3 +1058,71 @@ attivita' unica: audit M13 Export / Import / Multiuser Foundations.
 M13 completata localmente. Prossima attivita' unica: audit finale Definition of
 Done e quality verification esterne; non e' stata dichiarata implementazione
 completata perche' restano AC quality esterni bloccanti gia' tracciati.
+
+## 2026-09-03 — Ruoli AI collegati al provider
+
+### Lavoro svolto
+
+Quattro ruoli erano implementati come impianto ma nessuno invocava un modello:
+il piano del Lead doveva arrivare dall'esterno, i contributi delle riunioni
+erano stringhe template, il Designer generava HTML statico e il Reviewer
+riceveva il report invece di produrlo. Tutti e quattro sono stati collegati al
+binding provider dell'agente, mantenendo deterministica ogni transizione di
+stato.
+
+- `packages/orchestration/src/lead-planner.ts`: prompt bounded, parsing JSON
+  senza eval e `validateLeadPlanProposal` con i gate su cap task, aciclicita',
+  write scope obbligatorio, sola lettura per REVIEW/DESIGN, design approvato per
+  FRONTEND, disgiunzione write scope nei gruppi paralleli, capability e budget.
+- `apps/web/app/api/workflows/plan/generate/route.ts`: genera una proposta, non
+  la persiste. `plan/route.ts` applica gli stessi gate in scrittura, quindi non
+  sono aggirabili inviando un piano mai generato. Estratto
+  `orderLeadPlanTasks` e `scope.ts` per eliminare la duplicazione.
+- `packages/orchestration/src/meeting-agenda.ts` e la route run: contributi
+  reali per partecipante e round con digest bounded, verbale redatto dal Lead e
+  validato deterministicamente. Action item solo a chi era presente; bozza non
+  utilizzabile -> zero decisioni invece di decisioni inventate. Ogni turno
+  effettivo e' addebitato e la riunione fallita torna `DRAFT`.
+- `packages/orchestration/src/design-brief.ts` e `_designer.ts`: il Designer
+  restituisce dati strutturati, mai markup. Colori riconvalidati contro hex al
+  rendering, campi escaped, fallback al generatore deterministico.
+- `packages/orchestration/src/review-brief.ts`, `listPullRequestFiles` nel
+  pacchetto git e `apps/web/app/api/reviews/generate/route.ts`: il Reviewer
+  legge il diff della PR con la credenziale cifrata e riporta finding. Lo stato
+  `PASS`/`FIX_REQUIRED` e' derivato dai finding e lo SHA e' quello inviato,
+  quindi un modello non puo' dichiarare pulito un candidato con finding
+  bloccanti.
+- UI: `lead-planner-panel.tsx` in `/tasks` con revisione e accettazione
+  esplicita; azione `Run review` sulla scheda task con candidato pubblicato.
+- Budget: pianificazione, riunioni, design e review passano dalle policy prima
+  della chiamata provider e scrivono nel ledger.
+- `.gitattributes` con `* text=auto eol=lf`: senza questo un checkout Windows
+  con `core.autocrlf=true` faceva fallire `prettier --check` su 275 file e
+  rendeva impossibile far passare `pnpm verify`.
+- `docs/GO_LIVE.md`: indice dei collegamenti che restano all'utente.
+
+### File principali
+
+`packages/orchestration/src/{lead-planner,meeting-agenda,design-brief,review-brief,scope}.ts`,
+`packages/contracts/src/index.ts`, `packages/core/src/index.ts` (`remainingHardBudget`),
+`packages/git/src/index.ts`, `apps/web/app/api/{workflows/plan,meetings,designs,reviews}`,
+`apps/web/app/_components/{lead-planner-panel,task-board}.tsx`, `.gitattributes`,
+`docs/GO_LIVE.md`.
+
+### Verifiche
+
+- `pnpm verify`: PASS — format, lint, typecheck, 26 task di test, 15 build e
+  audit senza vulnerabilita' note.
+- Orchestration 11 file / 79 test, web 30 file / 65 test, worker 12 file / 32
+  test, git 3 file / 14 test: PASS.
+
+### Problemi
+
+Il percorso completo del Reviewer richiede un repository GitHub collegato: in
+memoria l'endpoint risponde 503. I gate di autorizzazione e le regole di
+composizione sono coperti da test; il giro end-to-end ricade sotto AC-009.
+
+### Stato finale
+
+I sei ruoli sono ora operativi con un provider collegato. Restano i quattro
+blocker esterni gia' tracciati: AC-001, AC-006, AC-009, AC-011.
