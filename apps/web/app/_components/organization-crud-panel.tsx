@@ -263,7 +263,31 @@ export function OrganizationCrudPanel({ kind }: { kind: 'projects' | 'teams' }) 
           />
           <FieldLabel
             htmlFor="repository-token"
-            help="A key you create in your GitHub settings that grants access to this one repository. Give it permission to read and write contents and pull requests, and nothing more. It is encrypted before storage."
+            help={
+              <>
+                <span>
+                  A key that lets this app act on one repository on your behalf. It is created in
+                  your GitHub account settings, not on the repository page — which is where most
+                  people look first.
+                </span>
+                <span>
+                  On GitHub: profile picture, top right, then <strong>Settings</strong> →{' '}
+                  <strong>Developer settings</strong> → <strong>Personal access tokens</strong> →{' '}
+                  <strong>Fine-grained tokens</strong> → <strong>Generate new token</strong>.
+                </span>
+                <span>
+                  Set <strong>Resource owner</strong> to the account or organisation that owns the
+                  repository, choose <strong>Only select repositories</strong> and pick this one,
+                  then under <strong>Repository permissions</strong> grant{' '}
+                  <strong>Contents: Read and write</strong> and{' '}
+                  <strong>Pull requests: Read and write</strong>. Nothing else is needed.
+                </span>
+                <span>
+                  Copy the token when it is shown: GitHub does not show it again. It is encrypted
+                  before it is stored here.
+                </span>
+              </>
+            }
           >
             GitHub fine-grained access token
           </FieldLabel>
@@ -276,8 +300,17 @@ export function OrganizationCrudPanel({ kind }: { kind: 'projects' | 'teams' }) 
             required
           />
           <p className="field-help">
-            Use a fine-grained token limited to this repository, with Contents read/write and Pull
-            requests read/write. It is sent to the server over HTTPS and stored encrypted.
+            Create it at{' '}
+            <a
+              href="https://github.com/settings/personal-access-tokens/new"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              github.com/settings/personal-access-tokens/new
+            </a>{' '}
+            — in your GitHub account settings, not on the repository page. Limit it to this one
+            repository, with Contents read/write and Pull requests read/write. It is sent over HTTPS
+            and stored encrypted.
           </p>
           <button className="secondary-button" type="submit" disabled={!repositoryProjectId}>
             Connect GitHub repository

@@ -154,9 +154,28 @@ claim vengono rifiutati subito.
 
 ## 4. GitHub — far aprire le Pull Request
 
-**Cosa serve:** un Personal Access Token con accesso al repository di
-destinazione (permessi minimi: `contents:write` e `pull_requests:write` sul
-singolo repository).
+**Cosa serve:** un *fine-grained personal access token* con accesso al solo
+repository di destinazione.
+
+**Dove si crea:** nelle impostazioni del tuo **account** GitHub, non nella
+pagina del repository — e' li' che quasi tutti lo cercano invano.
+
+Link diretto: <https://github.com/settings/personal-access-tokens/new>
+
+Oppure a mano: foto profilo in alto a destra → **Settings** → **Developer
+settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate
+new token**.
+
+Poi:
+
+1. **Resource owner**: l'account o l'organizzazione che possiede il repository.
+2. **Repository access**: *Only select repositories*, e scegli quello.
+3. **Repository permissions**: `Contents` → *Read and write* e `Pull requests` →
+   *Read and write*. Nient'altro.
+4. **Expiration**: scegli una scadenza e segnatela; quando scade la connessione
+   smette di funzionare e va rifatta.
+
+Copia il token quando compare: GitHub non lo mostra una seconda volta.
 
 **Dove si inserisce:** nell'app, in **Projects → Repository**. Viene cifrato
 come le credenziali provider.
