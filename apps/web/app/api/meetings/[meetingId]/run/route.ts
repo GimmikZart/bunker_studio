@@ -57,7 +57,7 @@ export async function POST(request: Request, context: { params: Promise<{ meetin
     );
 
   const unitCost = contributionEstimatedCost();
-  const runId = crypto.randomUUID();
+  const correlationId = crypto.randomUUID();
   // Price the worst case up front: every participant speaking every allowed
   // round, plus the Lead drafting the minutes.
   const maxRounds = Math.max(1, Math.min(meeting.maxRounds, 3));
@@ -66,7 +66,7 @@ export async function POST(request: Request, context: { params: Promise<{ meetin
     policies: await operations.listBudgetPolicies(organizationId, actorId),
     entries: await operations.listCosts(organizationId, actorId),
     estimatedCost,
-    context: { runId },
+    context: { runId: correlationId },
   });
   if (budget.decision !== 'ALLOW') {
     await Promise.resolve(
@@ -110,6 +110,18 @@ export async function POST(request: Request, context: { params: Promise<{ meetin
   const running = { ...meeting, status: 'RUNNING' as const };
   await operations.updateMeeting(organizationId, running, actorId);
 
+  // One run for the meeting, opened against the Lead. The cost ledger points at
+  // it by foreign key, so it has to be a stored row before anything is charged.
+  const run = await operations.startAgentRun(
+    {
+      organizationId,
+      agentId: meeting.agentIds[0]!,
+      correlationId,
+      meetingId: meeting.id,
+    },
+    actorId,
+  );
+
   let spokenTurns = 0;
   let provider = 'internal';
   try {
@@ -127,7 +139,7 @@ export async function POST(request: Request, context: { params: Promise<{ meetin
             round,
             boundedContext,
           }),
-          correlationId: `${runId}-${agentId}-${round}`,
+          correlationId: `${correlationId}-${agentId}-${round}`,
         });
         spokenTurns += 1;
         provider = run.provider;
@@ -149,7 +161,7 @@ export async function POST(request: Request, context: { params: Promise<{ meetin
           contributions: result.contributions,
           participantAgentIds: meeting.agentIds,
         }),
-        correlationId: `${runId}-minutes`,
+        correlationId: `${correlationId}-minutes`,
       });
       spokenTurns += 1;
       provider = draft.provider;
@@ -165,6 +177,9 @@ export async function POST(request: Request, context: { params: Promise<{ meetin
       { ...running, status: 'COMPLETED', contributions: result.contributions, minutes, cost },
       actorId,
     );
+    await Promise.resolve(
+      operations.finishAgentRun(organizationId, run.id, 'COMPLETED', undefined, actorId),
+    ).catch(() => undefined);
     await operations.addCost(
       {
         organizationId,
@@ -173,7 +188,7 @@ export async function POST(request: Request, context: { params: Promise<{ meetin
         provider,
         model: 'bounded-meeting',
         meetingId: meeting.id,
-        runId,
+        runId: run.id,
       },
       actorId,
     );
@@ -182,6 +197,9 @@ export async function POST(request: Request, context: { params: Promise<{ meetin
     // Charge for the turns that did happen and leave the meeting re-runnable
     // rather than stranding it in RUNNING.
     const cost = Number((spokenTurns * unitCost).toFixed(4));
+    await Promise.resolve(
+      operations.finishAgentRun(organizationId, run.id, 'FAILED', undefined, actorId),
+    ).catch(() => undefined);
     if (cost > 0)
       await operations.addCost(
         {
@@ -191,7 +209,7 @@ export async function POST(request: Request, context: { params: Promise<{ meetin
           provider,
           model: 'bounded-meeting',
           meetingId: meeting.id,
-          runId,
+          runId: run.id,
         },
         actorId,
       );

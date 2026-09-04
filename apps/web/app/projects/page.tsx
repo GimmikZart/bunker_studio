@@ -1,15 +1,15 @@
-import { OrganizationCrudPanel } from '../_components/organization-crud-panel';
+import { ProjectDirectory } from '../_components/project-directory';
 
 export default function ProjectsPage() {
   return (
     <main className="shell content-shell">
       <p className="eyebrow">Organization / Projects</p>
-      <h1>Work with a clear home.</h1>
+      <h1>Every project, at a glance.</h1>
       <p className="hero-copy">
-        Projects bind goals, teams, repositories, budgets, workflows, and the agents responsible for
-        delivery.
+        Each project binds a repository, the agents working on it, its budget and its workflow. Open
+        one to see what it holds.
       </p>
-      <OrganizationCrudPanel kind="projects" />
+      <ProjectDirectory />
     </main>
   );
 }

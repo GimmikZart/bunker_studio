@@ -38,6 +38,13 @@ type SettingsPayload = {
 
 type ProviderType = 'OPENAI' | 'ANTHROPIC' | 'OPENAI_COMPATIBLE';
 
+type GitHubConnection = {
+  id: string;
+  accountLogin: string;
+  accountType: 'USER' | 'ORGANIZATION';
+  createdAt: string;
+};
+
 type NotificationPreferences = Record<
   'APPROVAL' | 'SECURITY' | 'BUDGET' | 'QUOTA' | 'WORKFLOW',
   boolean
@@ -121,6 +128,9 @@ export function SettingsPanel() {
     manualModels: '',
   });
   const [savingProvider, setSavingProvider] = useState(false);
+  const [githubConnections, setGithubConnections] = useState<GitHubConnection[]>([]);
+  const [githubToken, setGithubToken] = useState('');
+  const [savingGitHub, setSavingGitHub] = useState(false);
   const [workerScopes, setWorkerScopes] = useState('');
   const [workerRegistration, setWorkerRegistration] = useState<{
     token: string;
@@ -167,6 +177,16 @@ export function SettingsPanel() {
       ((await policiesResponse.json()) as { policies?: BudgetPolicy[] }).policies ?? [];
     setBudgetPolicies(policies);
     setPolicyForm(policies[0] ? { ...policies[0] } : emptyPolicy);
+    // A GitHub account is optional, so a studio without one still loads.
+    const githubResponse = await fetch(`/api/organizations/${nextOrganizationId}/github`, {
+      headers,
+    });
+    setGithubConnections(
+      githubResponse.ok
+        ? (((await githubResponse.json()) as { connections?: GitHubConnection[] }).connections ??
+            [])
+        : [],
+    );
     const schedule =
       ((await reportResponse.json()) as { schedule?: ReportSchedule | null }).schedule ?? null;
     setReportSchedule(schedule);
@@ -201,6 +221,57 @@ export function SettingsPanel() {
     setOrganizationId(value);
     window.localStorage.setItem('bunker-organization-id', value);
     void load(value);
+  }
+
+  async function connectGitHub(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!organizationId || savingGitHub) return;
+    setError('');
+    setNotice('');
+    setSavingGitHub(true);
+    const response = await fetch(`/api/organizations/${organizationId}/github`, {
+      method: 'POST',
+      headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
+      body: JSON.stringify({ accessToken: githubToken }),
+    });
+    setSavingGitHub(false);
+    const payload = (await response.json().catch(() => ({}))) as {
+      connection?: GitHubConnection;
+      error?: string;
+    };
+    if (!response.ok || !payload.connection) {
+      setError(payload.error ?? 'The GitHub account could not be connected.');
+      return;
+    }
+    setGithubToken('');
+    setGithubConnections((current) => [
+      ...current.filter((connection) => connection.id !== payload.connection!.id),
+      payload.connection!,
+    ]);
+    setNotice(
+      `GitHub account ${payload.connection.accountLogin} connected. Its token was encrypted and is no longer displayed.`,
+    );
+  }
+
+  async function disconnectGitHub(connection: GitHubConnection) {
+    if (
+      !window.confirm(
+        `Disconnect ${connection.accountLogin}? Projects already connected keep working until their repository is reconnected.`,
+      )
+    )
+      return;
+    setError('');
+    setNotice('');
+    const response = await fetch(
+      `/api/organizations/${organizationId}/github?connectionId=${connection.id}`,
+      { method: 'DELETE', headers: apiHeaders(organizationId) },
+    );
+    if (!response.ok) {
+      setError('The GitHub account could not be disconnected.');
+      return;
+    }
+    setGithubConnections((current) => current.filter((item) => item.id !== connection.id));
+    setNotice(`${connection.accountLogin} was disconnected.`);
   }
 
   async function updatePreference(category: keyof NotificationPreferences, enabled: boolean) {
@@ -658,6 +729,116 @@ export function SettingsPanel() {
                 {settings.providers.map((provider) => (
                   <ProviderSummary key={provider.id} provider={provider} />
                 ))}
+              </div>
+            </div>
+          </div>
+          <div className="getting-started live-panel-card" id="github">
+            <div>
+              <h2>GitHub</h2>
+              <p>
+                Connect the GitHub account this organization works through — once. Every project
+                created afterwards picks its repository from what this account can already see,
+                instead of asking you to retype owner, repository and branch.
+              </p>
+              <p className="field-help">
+                An organization can hold more than one account, so repositories owned by different
+                GitHub users or organizations are all reachable.
+              </p>
+              {settings.secureProviderStorage === false && (
+                <p className="live-error" role="status">
+                  STUDIO_MASTER_KEY is not set, so a token cannot be encrypted before storage. Add a
+                  32-byte base64url value to .env as STUDIO_MASTER_KEY and restart the server before
+                  connecting GitHub.
+                </p>
+              )}
+              <form className="settings-form-grid" onSubmit={(event) => void connectGitHub(event)}>
+                <span className="settings-field">
+                  <FieldLabel
+                    htmlFor="github-token"
+                    help={
+                      <>
+                        <span>
+                          A key that lets this app act on your repositories on your behalf. It is
+                          created in your GitHub account settings, not on a repository page — which
+                          is where most people look first.
+                        </span>
+                        <span>
+                          On GitHub: profile picture, top right, then <strong>Settings</strong> →{' '}
+                          <strong>Developer settings</strong> →{' '}
+                          <strong>Personal access tokens</strong> →{' '}
+                          <strong>Fine-grained tokens</strong> → <strong>Generate new token</strong>
+                          .
+                        </span>
+                        <span>
+                          Set <strong>Resource owner</strong> to the account or organisation that
+                          owns the repositories, choose the repositories this studio may work on,
+                          then under <strong>Repository permissions</strong> grant{' '}
+                          <strong>Contents: Read and write</strong> and{' '}
+                          <strong>Pull requests: Read and write</strong>. Nothing else is needed.
+                        </span>
+                        <span>
+                          Only the repositories you select here appear when you create a project.
+                          Copy the token when it is shown: GitHub does not show it again.
+                        </span>
+                      </>
+                    }
+                  >
+                    GitHub fine-grained access token
+                  </FieldLabel>
+                  <input
+                    id="github-token"
+                    type="password"
+                    autoComplete="new-password"
+                    value={githubToken}
+                    onChange={(event) => setGithubToken(event.target.value)}
+                    placeholder="github_pat_…"
+                    required
+                  />
+                </span>
+                <p className="field-help">
+                  Create it at{' '}
+                  <a
+                    href="https://github.com/settings/personal-access-tokens/new"
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    github.com/settings/personal-access-tokens/new
+                  </a>
+                  . It is sent over HTTPS, stored encrypted, and never shown again.
+                </p>
+                <button
+                  className="secondary-button"
+                  type="submit"
+                  disabled={savingGitHub || !githubToken.trim()}
+                >
+                  {savingGitHub ? 'Checking with GitHub…' : 'Connect GitHub account'}
+                </button>
+              </form>
+              <div className="live-records">
+                {githubConnections.length === 0 ? (
+                  <span className="empty-state">No GitHub account connected yet.</span>
+                ) : (
+                  githubConnections.map((connection) => (
+                    <div className="live-record" key={connection.id}>
+                      <span>
+                        <strong>{connection.accountLogin}</strong>
+                        <small>
+                          {connection.accountType === 'ORGANIZATION'
+                            ? 'GitHub organization'
+                            : 'GitHub user'}{' '}
+                          · connected {new Date(connection.createdAt).toLocaleDateString()}
+                        </small>
+                      </span>
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => void disconnectGitHub(connection)}
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

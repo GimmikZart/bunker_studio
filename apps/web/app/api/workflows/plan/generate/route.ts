@@ -67,9 +67,9 @@ export async function POST(request: Request) {
 
     const policies = await operations.listBudgetPolicies(organizationId, actorId);
     const costs = await operations.listCosts(organizationId, actorId);
-    const runId = crypto.randomUUID();
+    const correlationId = crypto.randomUUID();
     const estimatedCost = planEstimatedCost();
-    const budgetContext = { projectId: input.projectId, agentId: lead.id, runId };
+    const budgetContext = { projectId: input.projectId, agentId: lead.id, runId: correlationId };
     const budget = evaluateBudgetPolicies({
       policies,
       entries: costs,
@@ -115,19 +115,35 @@ export async function POST(request: Request) {
       context: budgetContext,
     });
 
-    const result = await collectRun(runtime, {
-      agentId: lead.id,
-      prompt: buildLeadPlanPrompt({
-        goal: input.goal,
-        constraints: input.constraints,
-        teamCapabilities,
-        approvedDesignVersionIds,
-        remainingBudget,
-        existingTaskTitles,
-      }),
-      correlationId: runId,
-      capabilities: { skills: lead.skills, tools: lead.tools, permissions: lead.permissions },
-    });
+    // The ledger references a run by foreign key, so the run row exists first.
+    const run = await operations.startAgentRun(
+      { organizationId, agentId: lead.id, correlationId },
+      actorId,
+    );
+    let result: Awaited<ReturnType<typeof collectRun>>;
+    try {
+      result = await collectRun(runtime, {
+        agentId: lead.id,
+        prompt: buildLeadPlanPrompt({
+          goal: input.goal,
+          constraints: input.constraints,
+          teamCapabilities,
+          approvedDesignVersionIds,
+          remainingBudget,
+          existingTaskTitles,
+        }),
+        correlationId,
+        capabilities: { skills: lead.skills, tools: lead.tools, permissions: lead.permissions },
+      });
+    } catch (error) {
+      await Promise.resolve(
+        operations.finishAgentRun(organizationId, run.id, 'FAILED', undefined, actorId),
+      ).catch(() => undefined);
+      throw error;
+    }
+    await Promise.resolve(
+      operations.finishAgentRun(organizationId, run.id, 'COMPLETED', result.sessionId, actorId),
+    ).catch(() => undefined);
     await operations.addCost(
       {
         organizationId,
@@ -136,7 +152,7 @@ export async function POST(request: Request) {
         provider: result.provider,
         model: lead.providerModelId,
         agentId: lead.id,
-        runId,
+        runId: run.id,
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens,
       },

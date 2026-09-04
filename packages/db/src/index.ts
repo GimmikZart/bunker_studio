@@ -403,6 +403,14 @@ export class TenantStore {
       .map((assignment) => structuredClone(assignment));
   }
 
+  /** Every active assignment in the organization, for project-level views. */
+  listAssignments(organizationId: string, actorUserId: string): AgentAssignment[] {
+    if (!this.getRole(organizationId, actorUserId)) throw new AuthorizationError();
+    return this.state.assignments
+      .filter((assignment) => assignment.organizationId === organizationId && assignment.active)
+      .map((assignment) => structuredClone(assignment));
+  }
+
   archiveAgentAssignment(assignmentId: string, organizationId: string, actorUserId: string): void {
     this.requireWrite(organizationId, actorUserId);
     const assignment = this.state.assignments.find(

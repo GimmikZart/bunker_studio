@@ -1,4 +1,4 @@
-import { OrganizationCrudPanel } from '../_components/organization-crud-panel';
+import { TeamCrudPanel } from '../_components/team-crud-panel';
 import { TeamBuilderPanel } from '../_components/team-builder-panel';
 
 export default function TeamsPage() {
@@ -11,7 +11,7 @@ export default function TeamsPage() {
         every proposed member and choose their AI before anyone is created.
       </p>
       <TeamBuilderPanel />
-      <OrganizationCrudPanel kind="teams" />
+      <TeamCrudPanel />
     </main>
   );
 }

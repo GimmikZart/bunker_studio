@@ -42,13 +42,13 @@ export async function POST(request: Request, context: { params: Promise<{ agentI
     const runtime = await getWebAgentRuntime(agent);
     if (!runtime)
       return NextResponse.json({ error: 'Provider runtime is not configured.' }, { status: 503 });
-    const runId = crypto.randomUUID();
+    const correlationId = crypto.randomUUID();
     const estimatedCost = chatEstimatedCost();
     const budget = evaluateBudgetPolicies({
       policies: await operations.listBudgetPolicies(organizationId, actorId),
       entries: await operations.listCosts(organizationId, actorId),
       estimatedCost,
-      context: { agentId, runId },
+      context: { agentId, runId: correlationId },
     });
     if (budget.decision !== 'ALLOW') {
       await Promise.resolve(
@@ -89,17 +89,35 @@ export async function POST(request: Request, context: { params: Promise<{ agentI
         ),
       );
     }
-    const result = await collectRun(runtime, {
-      agentId: agent.id,
-      prompt: `${agent.title}: ${input.content}`,
-      sessionId: input.sessionId,
-      correlationId: crypto.randomUUID(),
-      capabilities: {
-        skills: agent.skills,
-        tools: agent.tools,
-        permissions: agent.permissions,
-      },
-    });
+    // The run is recorded before the provider is called: the cost ledger
+    // references it by foreign key, so a ledger entry naming a run that was
+    // never stored is rejected and the answer would be lost with it.
+    const run = await operations.startAgentRun(
+      { organizationId, agentId: agent.id, correlationId },
+      actorId,
+    );
+    let result: Awaited<ReturnType<typeof collectRun>>;
+    try {
+      result = await collectRun(runtime, {
+        agentId: agent.id,
+        prompt: `${agent.title}: ${input.content}`,
+        sessionId: input.sessionId,
+        correlationId,
+        capabilities: {
+          skills: agent.skills,
+          tools: agent.tools,
+          permissions: agent.permissions,
+        },
+      });
+    } catch (error) {
+      await Promise.resolve(
+        operations.finishAgentRun(organizationId, run.id, 'FAILED', undefined, actorId),
+      ).catch(() => undefined);
+      throw error;
+    }
+    await Promise.resolve(
+      operations.finishAgentRun(organizationId, run.id, 'COMPLETED', result.sessionId, actorId),
+    ).catch(() => undefined);
     await operations.recordChat(
       {
         organizationId,
@@ -111,23 +129,33 @@ export async function POST(request: Request, context: { params: Promise<{ agentI
       },
       actorId,
     );
-    await operations.addCost(
-      {
-        organizationId,
-        amount: estimatedCost,
-        occurredAt: new Date().toISOString(),
-        provider: result.provider,
-        model: agent.providerModelId,
-        agentId: agent.id,
-        runId,
-        inputTokens: result.usage.inputTokens,
-        outputTokens: result.usage.outputTokens,
-      },
-      actorId,
-    );
+    // The answer has already been paid for. If the ledger write fails, say so
+    // instead of discarding a reply the user has been charged for.
+    let warning: string | undefined;
+    try {
+      await operations.addCost(
+        {
+          organizationId,
+          amount: estimatedCost,
+          occurredAt: new Date().toISOString(),
+          provider: result.provider,
+          model: agent.providerModelId,
+          agentId: agent.id,
+          runId: run.id,
+          inputTokens: result.usage.inputTokens,
+          outputTokens: result.usage.outputTokens,
+        },
+        actorId,
+      );
+    } catch (error) {
+      warning = `The agent answered, but the cost of this reply could not be recorded: ${
+        error instanceof Error ? error.message : 'unknown failure'
+      }`;
+    }
     return NextResponse.json({
       message: { role: 'assistant', content: result.text },
       sessionId: result.sessionId,
+      ...(warning ? { warning } : {}),
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'AuthorizationError')

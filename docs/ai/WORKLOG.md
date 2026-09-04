@@ -1126,3 +1126,58 @@ composizione sono coperti da test; il giro end-to-end ricade sotto AC-009.
 
 I sei ruoli sono ora operativi con un provider collegato. Restano i quattro
 blocker esterni gia' tracciati: AC-001, AC-006, AC-009, AC-011.
+
+## 2026-09-04 — Vista progetti, GitHub per organizzazione, run persistiti
+
+### Cosa e' cambiato
+
+- `agent_runs` viene finalmente scritto. `SupabaseOperationalRepository` e lo
+  store in memoria espongono `startAgentRun`/`finishAgentRun`; chat, design,
+  review, piano e riunioni aprono il run prima della chiamata provider e
+  scrivono nel ledger l'id reale. Prima ogni azione a pagamento falliva sulla
+  foreign key `cost_ledger_run_id_fkey` dopo aver gia' consumato token.
+- Nuova migrazione `00000000000034_github_connections.sql`: tabella
+  `github_connections` con RLS per tenant, indice unico su
+  `(organization_id, lower(account_login))` e
+  `repo_connections.github_connection_id`.
+- `packages/git`: `getAuthenticatedAccount` e `listAccessibleRepositories`
+  sull'adapter GitHub, entrambi dietro la stessa `GitHubApiError`.
+- Nuove route: `GET/POST/DELETE /api/organizations/:id/github`,
+  `GET /api/organizations/:id/github/repositories`, `GET /api/projects` (dati
+  delle card). `POST /api/projects/:id/repository` accetta `githubConnectionId`.
+- UI: `project-directory.tsx` (board di card + collegamento repository),
+  `project-create-view.tsx` (`/projects/new`), `github-repository-picker.tsx`
+  condiviso, card GitHub in Settings, `team-crud-panel.tsx` al posto di
+  `organization-crud-panel.tsx`, picker di capability nel pannello agenti con
+  `agent-capabilities.ts` come vocabolario.
+
+### File principali
+
+`supabase/migrations/00000000000034_github_connections.sql`,
+`packages/git/src/index.ts`, `packages/contracts/src/index.ts`,
+`packages/db/src/{index,agent-repository}.ts`,
+`apps/web/app/api/{_store,_data,_supabase-operations}.ts`,
+`apps/web/app/api/organizations/[organizationId]/github/**`,
+`apps/web/app/api/projects/route.ts`,
+`apps/web/app/api/{agents/[agentId]/chat,designs,reviews/generate,meetings/[meetingId]/run,workflows/plan/generate}/route.ts`,
+`apps/web/app/_components/{project-directory,project-create-view,github-repository-picker,agent-capabilities,agent-crud-panel,settings-panel,team-crud-panel}.tsx`,
+`apps/web/app/projects/**`, `apps/web/app/globals.css`.
+
+### Verifiche
+
+- format, lint 15/15, typecheck 15/15, test 26/26 (web 91 test) e build
+  production: PASS.
+- Nuovi test: connessione account GitHub (accettazione, riconnessione che
+  sostituisce, token rifiutato, elenco repository, collegamento repository a un
+  progetto senza reinserire il token, disconnessione), card progetto e
+  corrispondenza fra costo della chat e run registrato.
+- Verifica nel browser sul dev server: board vuota, creazione progetto, card con
+  dettaglio espanso, card GitHub in Settings, picker di capability nel pannello
+  agenti.
+
+### Problemi
+
+Il giro reale contro GitHub (token vero, elenco repository dell'utente) non e'
+stato eseguito: le route sono coperte con `fetch` mockato. Resta sotto AC-009.
+La migrazione `34` va applicata con `supabase db push` prima di usare la nuova
+connessione GitHub sull'istanza dell'utente.

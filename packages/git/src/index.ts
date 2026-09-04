@@ -150,7 +150,27 @@ export type GitHubPullRequestFile = {
 /** One page of files is enough context for a review and bounds the request. */
 export const MAX_PULL_REQUEST_FILES = 100;
 
+/** The account a token belongs to, used to name a connection in the studio. */
+export type GitHubAccount = { login: string; type: 'USER' | 'ORGANIZATION' };
+
+/** What a connected account exposes, so a project picks a repository from a list. */
+export type GitHubRepositorySummary = {
+  owner: string;
+  name: string;
+  fullName: string;
+  defaultBranch: string;
+  private: boolean;
+  description: string | null;
+  pushedAt: string | null;
+  canPush: boolean;
+};
+
+/** Three pages is enough for any studio and bounds an unattended listing. */
+export const MAX_REPOSITORY_PAGES = 3;
+
 export type GitHubApi = {
+  getAuthenticatedAccount: () => Promise<GitHubAccount>;
+  listAccessibleRepositories: () => Promise<GitHubRepositorySummary[]>;
   verifyRepositoryAccess: (
     repository: GitHubRepositoryRef,
     branch: string,
@@ -300,6 +320,44 @@ export function createGitHubApi(input: {
   }
 
   return {
+    getAuthenticatedAccount: async () => {
+      const account = await request<{ login: string; type?: string }>('/user');
+      return {
+        login: account.login,
+        type: (account.type ?? '').toLowerCase() === 'organization' ? 'ORGANIZATION' : 'USER',
+      };
+    },
+    listAccessibleRepositories: async () => {
+      const collected: GitHubRepositorySummary[] = [];
+      for (let page = 1; page <= MAX_REPOSITORY_PAGES; page += 1) {
+        const results = await request<
+          Array<{
+            name: string;
+            full_name: string;
+            owner?: { login?: string };
+            default_branch?: string;
+            private?: boolean;
+            description?: string | null;
+            pushed_at?: string | null;
+            permissions?: { push?: boolean };
+          }>
+        >(`/user/repos?per_page=100&sort=pushed&page=${page}`);
+        collected.push(
+          ...results.map((item) => ({
+            owner: item.owner?.login ?? item.full_name.split('/')[0] ?? '',
+            name: item.name,
+            fullName: item.full_name,
+            defaultBranch: item.default_branch || 'main',
+            private: item.private === true,
+            description: item.description ?? null,
+            pushedAt: item.pushed_at ?? null,
+            canPush: item.permissions?.push === true,
+          })),
+        );
+        if (results.length < 100) break;
+      }
+      return collected;
+    },
     verifyRepositoryAccess: async (repository, branch) => {
       const metadata = await request<{
         id: number | string;

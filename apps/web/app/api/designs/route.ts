@@ -46,22 +46,38 @@ async function proposeDesigns(
     const designer = await agents.getAgent(input.designerAgentId, organizationId, actorId);
     const runtime = await getWebAgentRuntime(designer);
     if (!runtime) return createStaticDesignProposals(input);
-    const runId = crypto.randomUUID();
+    const correlationId = crypto.randomUUID();
     const estimatedCost = designEstimatedCost();
-    const result = await collectRun(runtime, {
-      agentId: designer.id,
-      prompt: buildDesignPrompt({
-        brief: input.brief,
-        constraints: input.constraints,
-        variantCount: input.variantCount,
-      }),
-      correlationId: runId,
-      capabilities: {
-        skills: designer.skills,
-        tools: designer.tools,
-        permissions: designer.permissions,
-      },
-    });
+    // The ledger references a run by foreign key, so the run row exists first.
+    const run = await operations.startAgentRun(
+      { organizationId, agentId: designer.id, correlationId },
+      actorId,
+    );
+    let result: Awaited<ReturnType<typeof collectRun>>;
+    try {
+      result = await collectRun(runtime, {
+        agentId: designer.id,
+        prompt: buildDesignPrompt({
+          brief: input.brief,
+          constraints: input.constraints,
+          variantCount: input.variantCount,
+        }),
+        correlationId,
+        capabilities: {
+          skills: designer.skills,
+          tools: designer.tools,
+          permissions: designer.permissions,
+        },
+      });
+    } catch (error) {
+      await Promise.resolve(
+        operations.finishAgentRun(organizationId, run.id, 'FAILED', undefined, actorId),
+      ).catch(() => undefined);
+      throw error;
+    }
+    await Promise.resolve(
+      operations.finishAgentRun(organizationId, run.id, 'COMPLETED', result.sessionId, actorId),
+    ).catch(() => undefined);
     await operations.addCost(
       {
         organizationId,
@@ -70,7 +86,7 @@ async function proposeDesigns(
         provider: result.provider,
         model: designer.providerModelId,
         agentId: designer.id,
-        runId,
+        runId: run.id,
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens,
       },

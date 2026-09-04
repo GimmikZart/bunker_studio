@@ -83,13 +83,18 @@ export async function POST(request: Request) {
     if (!runtime)
       return NextResponse.json({ error: 'Provider runtime is not configured.' }, { status: 503 });
 
-    const runId = crypto.randomUUID();
+    const correlationId = crypto.randomUUID();
     const estimatedCost = reviewEstimatedCost();
     const budget = evaluateBudgetPolicies({
       policies: await operations.listBudgetPolicies(organizationId, actorId),
       entries: await operations.listCosts(organizationId, actorId),
       estimatedCost,
-      context: { projectId: input.projectId, taskId: task.id, agentId: reviewer.id, runId },
+      context: {
+        projectId: input.projectId,
+        taskId: task.id,
+        agentId: reviewer.id,
+        runId: correlationId,
+      },
     });
     if (budget.decision !== 'ALLOW') {
       await Promise.resolve(
@@ -157,24 +162,40 @@ export async function POST(request: Request) {
     const verification: VerificationEvidence[] = Array.isArray(task.workerResult?.verification)
       ? (task.workerResult.verification as VerificationEvidence[])
       : [];
-    const result = await collectRun(runtime, {
-      agentId: reviewer.id,
-      prompt: buildReviewPrompt({
-        reviewerTitle: reviewer.title,
-        taskTitle: task.title,
-        taskDescription: task.description,
-        definitionOfDone: task.definitionOfDone ?? [],
-        candidateCommitSha: task.candidateCommitSha,
-        files,
-        verification,
-      }),
-      correlationId: runId,
-      capabilities: {
-        skills: reviewer.skills,
-        tools: reviewer.tools,
-        permissions: reviewer.permissions,
-      },
-    });
+    // The ledger references a run by foreign key, so the run row exists first.
+    const run = await operations.startAgentRun(
+      { organizationId, agentId: reviewer.id, correlationId },
+      actorId,
+    );
+    let result: Awaited<ReturnType<typeof collectRun>>;
+    try {
+      result = await collectRun(runtime, {
+        agentId: reviewer.id,
+        prompt: buildReviewPrompt({
+          reviewerTitle: reviewer.title,
+          taskTitle: task.title,
+          taskDescription: task.description,
+          definitionOfDone: task.definitionOfDone ?? [],
+          candidateCommitSha: task.candidateCommitSha,
+          files,
+          verification,
+        }),
+        correlationId,
+        capabilities: {
+          skills: reviewer.skills,
+          tools: reviewer.tools,
+          permissions: reviewer.permissions,
+        },
+      });
+    } catch (error) {
+      await Promise.resolve(
+        operations.finishAgentRun(organizationId, run.id, 'FAILED', undefined, actorId),
+      ).catch(() => undefined);
+      throw error;
+    }
+    await Promise.resolve(
+      operations.finishAgentRun(organizationId, run.id, 'COMPLETED', result.sessionId, actorId),
+    ).catch(() => undefined);
     await operations.addCost(
       {
         organizationId,
@@ -185,7 +206,7 @@ export async function POST(request: Request) {
         agentId: reviewer.id,
         taskId: task.id,
         projectId: task.projectId,
-        runId,
+        runId: run.id,
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens,
       },

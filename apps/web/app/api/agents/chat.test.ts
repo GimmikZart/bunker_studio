@@ -6,6 +6,7 @@ import { POST as createPolicy } from '../budgets/policies/route';
 import { GET as listCosts } from '../costs/route';
 import { GET as listNotifications } from '../notifications/route';
 import { GET as listConversations } from '../conversations/route';
+import { listAgentRuns } from '../_store';
 
 async function setup() {
   const userId = `chat-owner-${crypto.randomUUID()}`;
@@ -113,5 +114,18 @@ describe('direct chat budget gate', () => {
     expect(entries[0].runId).toEqual(expect.any(String));
     expect(entries[0].inputTokens).toEqual(expect.any(Number));
     expect(entries[0].outputTokens).toEqual(expect.any(Number));
+  });
+
+  it('charges the run it actually recorded', async () => {
+    const { headers, organizationId, agentId } = await setup();
+    expect((await chatRequest(headers, agentId)).status).toBe(200);
+
+    const runs = listAgentRuns(organizationId);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({ agentId, state: 'COMPLETED' });
+    const costs = await listCosts(new Request('http://localhost/api/costs', { headers }));
+    // cost_ledger.run_id is a foreign key onto agent_runs: an invented
+    // identifier is rejected by the database, and the answer is lost with it.
+    expect((await costs.json()).entries[0].runId).toBe(runs[0]!.id);
   });
 });

@@ -26,6 +26,8 @@ type WebRuntimeState = {
   reportSchedules: Map<string, ReportScheduleRecord>;
   budgetReports: Map<string, BudgetReportRecord[]>;
   providerConnections: Map<string, ProviderConnectionRecord[]>;
+  githubConnections: Map<string, GitHubConnectionRecord[]>;
+  agentRuns: Map<string, AgentRunRecord[]>;
 };
 
 type GlobalWithRuntime = typeof globalThis & { __bunkerStudioRuntime?: WebRuntimeState };
@@ -53,6 +55,8 @@ const state = (globalRuntime.__bunkerStudioRuntime ??= {
   reportSchedules: new Map<string, ReportScheduleRecord>(),
   budgetReports: new Map<string, BudgetReportRecord[]>(),
   providerConnections: new Map<string, ProviderConnectionRecord[]>(),
+  githubConnections: new Map<string, GitHubConnectionRecord[]>(),
+  agentRuns: new Map<string, AgentRunRecord[]>(),
 });
 state.notificationPreferences ??= new Map<string, NotificationPreferences>();
 state.designPreviews ??= new Map<string, DesignPreviewArtifact[]>();
@@ -65,6 +69,8 @@ state.budgetPolicies ??= new Map<string, BudgetPolicyRecord[]>();
 state.reportSchedules ??= new Map<string, ReportScheduleRecord>();
 state.budgetReports ??= new Map<string, BudgetReportRecord[]>();
 state.providerConnections ??= new Map<string, ProviderConnectionRecord[]>();
+state.githubConnections ??= new Map<string, GitHubConnectionRecord[]>();
+state.agentRuns ??= new Map<string, AgentRunRecord[]>();
 
 export const tenantStore = state.tenantStore;
 export const workerRegistry = state.workerRegistry;
@@ -717,6 +723,14 @@ export function getRepository(projectId: string): RepositoryRecord | null {
   return repository ? structuredClone(repository) : null;
 }
 
+export function listRepositories(organizationId: string): RepositoryRecord[] {
+  return structuredClone(
+    [...state.repositories.values()].filter(
+      (repository) => repository.organizationId === organizationId,
+    ),
+  );
+}
+
 export function createTask(input: TaskCreateRecord): TaskRecord {
   const task: TaskRecord = {
     ...input,
@@ -848,4 +862,123 @@ export function deleteProviderConnection(organizationId: string, connectionId: s
   if (remaining.length === existing.length) return false;
   state.providerConnections.set(organizationId, remaining);
   return true;
+}
+
+/**
+ * A GitHub account connected to an organization, as the browser is allowed to
+ * see it. The token never appears in this shape.
+ */
+export type GitHubConnectionSummary = {
+  id: string;
+  organizationId: string;
+  accountLogin: string;
+  accountType: 'USER' | 'ORGANIZATION';
+  status: 'CONNECTED';
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** The stored connection, token included, for server-side GitHub calls only. */
+export type GitHubConnectionRecord = GitHubConnectionSummary & {
+  encryptedSecret: EncryptedSecret;
+};
+
+export function saveGitHubConnection(
+  input: Omit<GitHubConnectionRecord, 'id' | 'status' | 'createdAt' | 'updatedAt'>,
+): GitHubConnectionRecord {
+  const now = new Date().toISOString();
+  const existing = (state.githubConnections.get(input.organizationId) ?? []).find(
+    (connection) =>
+      connection.accountLogin.toLocaleLowerCase() === input.accountLogin.toLocaleLowerCase(),
+  );
+  // Reconnecting the same account replaces its token instead of adding a second
+  // entry the user would have to choose between.
+  const connection: GitHubConnectionRecord = {
+    ...input,
+    id: existing?.id ?? crypto.randomUUID(),
+    status: 'CONNECTED',
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+  state.githubConnections.set(input.organizationId, [
+    ...(state.githubConnections.get(input.organizationId) ?? []).filter(
+      (candidate) => candidate.id !== connection.id,
+    ),
+    connection,
+  ]);
+  return structuredClone(connection);
+}
+
+export function listGitHubConnections(organizationId: string): GitHubConnectionRecord[] {
+  return structuredClone(state.githubConnections.get(organizationId) ?? []);
+}
+
+export function getGitHubConnection(
+  organizationId: string,
+  connectionId: string,
+): GitHubConnectionRecord | null {
+  const found = (state.githubConnections.get(organizationId) ?? []).find(
+    (connection) => connection.id === connectionId,
+  );
+  return found ? structuredClone(found) : null;
+}
+
+export function deleteGitHubConnection(organizationId: string, connectionId: string): boolean {
+  const existing = state.githubConnections.get(organizationId) ?? [];
+  const remaining = existing.filter((connection) => connection.id !== connectionId);
+  if (remaining.length === existing.length) return false;
+  state.githubConnections.set(organizationId, remaining);
+  return true;
+}
+
+/**
+ * A recorded provider run. Costs reference it, so it has to exist before a
+ * ledger entry can name it.
+ */
+export type AgentRunRecord = {
+  id: string;
+  organizationId: string;
+  agentId: string;
+  meetingId?: string;
+  taskAttemptId?: string;
+  correlationId: string;
+  state: 'RUNNING' | 'COMPLETED' | 'FAILED';
+  externalRunId?: string;
+  startedAt: string;
+  endedAt?: string;
+};
+
+export function startAgentRun(
+  input: Omit<AgentRunRecord, 'id' | 'state' | 'startedAt' | 'endedAt'>,
+): AgentRunRecord {
+  const run: AgentRunRecord = {
+    ...input,
+    id: crypto.randomUUID(),
+    state: 'RUNNING',
+    startedAt: new Date().toISOString(),
+  };
+  state.agentRuns.set(input.organizationId, [
+    ...(state.agentRuns.get(input.organizationId) ?? []),
+    run,
+  ]);
+  return structuredClone(run);
+}
+
+export function finishAgentRun(
+  organizationId: string,
+  runId: string,
+  runState: 'COMPLETED' | 'FAILED',
+  externalRunId?: string,
+): AgentRunRecord | null {
+  const runs = state.agentRuns.get(organizationId) ?? [];
+  const run = runs.find((candidate) => candidate.id === runId);
+  if (!run) return null;
+  run.state = runState;
+  run.endedAt = new Date().toISOString();
+  if (externalRunId) run.externalRunId = externalRunId;
+  return structuredClone(run);
+}
+
+export function listAgentRuns(organizationId: string): AgentRunRecord[] {
+  return structuredClone(state.agentRuns.get(organizationId) ?? []);
 }

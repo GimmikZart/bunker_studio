@@ -508,7 +508,15 @@ export const repositoryConnectionSchema = z.object({
   name: z.string().trim().min(1).max(200),
   defaultBranch: z.string().trim().min(1).max(120).default('main'),
   accessToken: z.string().trim().min(1).max(1_000).optional(),
+  /** The organization GitHub account the repository was picked from. */
+  githubConnectionId: z.string().uuid().optional(),
 });
+
+/** Connecting a GitHub account to an organization, once, in Settings. */
+export const githubConnectionCreateSchema = z.object({
+  accessToken: z.string().trim().min(1).max(1_000),
+});
+export type GitHubConnectionCreateInput = z.infer<typeof githubConnectionCreateSchema>;
 
 export const taskStateSchema = z.enum([
   'DRAFT',

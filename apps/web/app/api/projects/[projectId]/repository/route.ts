@@ -1,5 +1,5 @@
 import { repositoryConnectionSchema } from '@bunker-studio/contracts';
-import { encryptSecret } from '@bunker-studio/db';
+import { decryptSecret, encryptSecret, type EncryptedSecret } from '@bunker-studio/db';
 import { createGitHubApi, GitHubApiError } from '@bunker-studio/git';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../../_auth';
@@ -62,7 +62,7 @@ export async function POST(request: Request, context: { params: Promise<{ projec
     );
     if (!project) return NextResponse.json({ error: 'Project not found.' }, { status: 404 });
     const masterKey = process.env.STUDIO_MASTER_KEY;
-    if (input.accessToken && !masterKey)
+    if ((input.accessToken || input.githubConnectionId) && !masterKey)
       return NextResponse.json(
         { error: 'Secure repository credential storage is not configured.' },
         { status: 503 },
@@ -72,8 +72,29 @@ export async function POST(request: Request, context: { params: Promise<{ projec
         { error: 'Only GitHub repository execution is available in this release.' },
         { status: 409 },
       );
-    if (input.accessToken) {
-      const access = await createGitHubApi({ token: input.accessToken }).verifyRepositoryAccess(
+    // The organization account is the normal path: the token was verified when
+    // it was connected in Settings, so a project only picks a repository. A
+    // token supplied here still works, for a repository outside those accounts.
+    let credential: Record<string, unknown> | undefined;
+    let token = input.accessToken;
+    if (input.githubConnectionId && masterKey) {
+      const stored = await operations.getGitHubConnectionSecret(
+        organizationId,
+        input.githubConnectionId,
+        actorId,
+      );
+      if (!stored)
+        return NextResponse.json(
+          { error: 'The selected GitHub account is no longer connected to this organization.' },
+          { status: 409 },
+        );
+      credential = stored.encryptedSecret;
+      token = decryptSecret(stored.encryptedSecret as unknown as EncryptedSecret, masterKey);
+    } else if (input.accessToken && masterKey) {
+      credential = encryptSecret(input.accessToken, masterKey);
+    }
+    if (token) {
+      const access = await createGitHubApi({ token }).verifyRepositoryAccess(
         { owner: input.owner, name: input.name },
         input.defaultBranch,
       );
@@ -92,10 +113,10 @@ export async function POST(request: Request, context: { params: Promise<{ projec
         owner: input.owner,
         name: input.name,
         defaultBranch: input.defaultBranch,
-        status: input.accessToken ? 'CONNECTED' : 'REQUIRES_AUTH',
+        status: token ? 'CONNECTED' : 'REQUIRES_AUTH',
       },
       actorId,
-      input.accessToken && masterKey ? encryptSecret(input.accessToken, masterKey) : undefined,
+      credential,
     );
     return NextResponse.json({ repository }, { status: 201 });
   } catch (error) {

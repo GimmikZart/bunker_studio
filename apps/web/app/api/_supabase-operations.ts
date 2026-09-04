@@ -20,6 +20,8 @@ import type {
   ConversationRecord,
   PushSubscriptionRecord,
   RepositoryRecord,
+  GitHubConnectionSummary,
+  AgentRunRecord,
   TaskRecord,
   TaskCreateRecord,
   ReviewRecord,
@@ -257,6 +259,38 @@ function mapRepository(value: unknown): RepositoryRecord {
     name: stringValue(item.repo_name, 'repo_name'),
     defaultBranch: stringValue(item.default_branch, 'default_branch'),
     status: item.status === 'CONNECTED' ? 'CONNECTED' : 'REQUIRES_AUTH',
+  };
+}
+
+function mapGitHubConnection(value: unknown): GitHubConnectionSummary {
+  const item = object(value);
+  return {
+    id: stringValue(item.id, 'id'),
+    organizationId: stringValue(item.organization_id, 'organization_id'),
+    accountLogin: stringValue(item.account_login, 'account_login'),
+    accountType: item.account_type === 'ORGANIZATION' ? 'ORGANIZATION' : 'USER',
+    status: 'CONNECTED',
+    createdAt: stringValue(item.created_at, 'created_at'),
+    updatedAt: nullableString(item.updated_at) ?? stringValue(item.created_at, 'created_at'),
+  };
+}
+
+function mapAgentRun(value: unknown): AgentRunRecord {
+  const item = object(value);
+  const meetingId = nullableString(item.meeting_id);
+  const externalRunId = nullableString(item.external_run_id);
+  const endedAt = nullableString(item.ended_at);
+  return {
+    id: stringValue(item.id, 'id'),
+    organizationId: stringValue(item.organization_id, 'organization_id'),
+    agentId: stringValue(item.agent_id, 'agent_id'),
+    ...(meetingId ? { meetingId } : {}),
+    correlationId: stringValue(item.correlation_id, 'correlation_id'),
+    state:
+      item.state === 'COMPLETED' ? 'COMPLETED' : item.state === 'FAILED' ? 'FAILED' : 'RUNNING',
+    ...(externalRunId ? { externalRunId } : {}),
+    startedAt: stringValue(item.started_at, 'started_at'),
+    ...(endedAt ? { endedAt } : {}),
   };
 }
 
@@ -1890,6 +1924,197 @@ export class SupabaseOperationalRepository {
       );
     }
     return mapReview({ ...review, review_findings: input.findings });
+  }
+
+  async listRepositories(organizationId: string, actorUserId: string): Promise<RepositoryRecord[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client.from('repo_connections').select('*').eq('organization_id', organizationId),
+    );
+    // A row without a project predates per-project connections and has nothing
+    // to show on a project card.
+    return Array.isArray(data)
+      ? data.filter((row) => typeof object(row).project_id === 'string').map(mapRepository)
+      : [];
+  }
+
+  async listGitHubConnections(
+    organizationId: string,
+    actorUserId: string,
+  ): Promise<GitHubConnectionSummary[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('github_connections')
+        .select('id, organization_id, account_login, account_type, created_at, updated_at')
+        .eq('organization_id', organizationId),
+    );
+    return Array.isArray(data) ? data.map(mapGitHubConnection) : [];
+  }
+
+  /**
+   * The stored token, for server-side GitHub calls only. It is never part of a
+   * response body.
+   */
+  async getGitHubConnectionSecret(
+    organizationId: string,
+    connectionId: string,
+    actorUserId: string,
+  ): Promise<{
+    connection: GitHubConnectionSummary;
+    encryptedSecret: Record<string, unknown>;
+  } | null> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('github_connections')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('id', connectionId)
+        .maybeSingle(),
+    );
+    if (!data) return null;
+    const item = object(data);
+    if (!item.encrypted_auth_blob || typeof item.encrypted_auth_blob !== 'object') return null;
+    return {
+      connection: mapGitHubConnection(data),
+      encryptedSecret: item.encrypted_auth_blob as Record<string, unknown>,
+    };
+  }
+
+  async saveGitHubConnection(
+    input: {
+      organizationId: string;
+      accountLogin: string;
+      accountType: 'USER' | 'ORGANIZATION';
+      encryptedSecret: Record<string, unknown>;
+    },
+    actorUserId: string,
+  ): Promise<GitHubConnectionSummary> {
+    await this.requireWrite(input.organizationId, actorUserId);
+    // The uniqueness index is on lower(account_login), which an upsert cannot
+    // target by column, so reconnecting the same account updates the row found.
+    const rows = await unwrap(
+      this.client
+        .from('github_connections')
+        .select('id, account_login')
+        .eq('organization_id', input.organizationId),
+    );
+    const existing = (Array.isArray(rows) ? rows : []).find(
+      (row) =>
+        stringValue(object(row).account_login, 'account_login').toLocaleLowerCase() ===
+        input.accountLogin.toLocaleLowerCase(),
+    );
+    const now = new Date().toISOString();
+    if (existing) {
+      const updated = await unwrap(
+        this.client
+          .from('github_connections')
+          .update({
+            account_login: input.accountLogin,
+            account_type: input.accountType,
+            encrypted_auth_blob: input.encryptedSecret,
+            status: 'CONNECTED',
+            updated_at: now,
+          })
+          .eq('organization_id', input.organizationId)
+          .eq('id', stringValue(object(existing).id, 'id'))
+          .select('*')
+          .single(),
+      );
+      return mapGitHubConnection(updated);
+    }
+    const created = await unwrap(
+      this.client
+        .from('github_connections')
+        .insert({
+          organization_id: input.organizationId,
+          account_login: input.accountLogin,
+          account_type: input.accountType,
+          encrypted_auth_blob: input.encryptedSecret,
+          status: 'CONNECTED',
+          updated_at: now,
+        })
+        .select('*')
+        .single(),
+    );
+    return mapGitHubConnection(created);
+  }
+
+  async deleteGitHubConnection(
+    organizationId: string,
+    connectionId: string,
+    actorUserId: string,
+  ): Promise<boolean> {
+    await this.requireWrite(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('github_connections')
+        .delete()
+        .eq('organization_id', organizationId)
+        .eq('id', connectionId)
+        .select('id')
+        .maybeSingle(),
+    );
+    return Boolean(data);
+  }
+
+  /**
+   * Opens the run a cost entry will reference. `cost_ledger.run_id` points at
+   * `agent_runs`, so a ledger entry naming an invented identifier is rejected
+   * by the database: the run has to be a real row first.
+   */
+  async startAgentRun(
+    input: {
+      organizationId: string;
+      agentId: string;
+      correlationId: string;
+      meetingId?: string;
+    },
+    actorUserId: string,
+  ): Promise<AgentRunRecord> {
+    await this.requireMember(input.organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('agent_runs')
+        .insert({
+          organization_id: input.organizationId,
+          agent_id: input.agentId,
+          meeting_id: input.meetingId ?? null,
+          correlation_id: input.correlationId,
+          state: 'RUNNING',
+          started_at: new Date().toISOString(),
+        })
+        .select('*')
+        .single(),
+    );
+    return mapAgentRun(data);
+  }
+
+  async finishAgentRun(
+    organizationId: string,
+    runId: string,
+    state: 'COMPLETED' | 'FAILED',
+    externalRunId: string | undefined,
+    actorUserId: string,
+  ): Promise<AgentRunRecord | null> {
+    await this.requireMember(organizationId, actorUserId);
+    const endedAt = new Date().toISOString();
+    const data = await unwrap(
+      this.client
+        .from('agent_runs')
+        .update({
+          state,
+          ended_at: endedAt,
+          last_event_at: endedAt,
+          ...(externalRunId ? { external_run_id: externalRunId } : {}),
+        })
+        .eq('organization_id', organizationId)
+        .eq('id', runId)
+        .select('*')
+        .maybeSingle(),
+    );
+    return data ? mapAgentRun(data) : null;
   }
 
   private async requireMember(organizationId: string, userId: string): Promise<OrganizationRole> {

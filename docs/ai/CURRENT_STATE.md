@@ -1,5 +1,45 @@
 # Current Project State
 
+## Checkpoint 2026-09-04 — GitHub per organizzazione, vista progetti e run reali
+
+Tre correzioni con lo stesso filo conduttore: quello che il sistema sa gia' non
+deve essere richiesto di nuovo all'utente, e quello che scrive deve esistere
+davvero nel database.
+
+- **Il cost ledger scriveva run inesistenti.** `cost_ledger.run_id` e' una
+  foreign key su `agent_runs`, ma cinque route generavano l'id con
+  `crypto.randomUUID()` senza inserire la riga: chat, design, review,
+  pianificazione e riunioni fallivano tutte con
+  `violates foreign key constraint "cost_ledger_run_id_fkey"` dopo aver gia'
+  pagato l'inferenza. Ora `startAgentRun` apre la riga in `agent_runs` prima
+  della chiamata al provider e `finishAgentRun` la chiude come `COMPLETED` o
+  `FAILED`; il ledger cita quell'id. Nella chat un errore di scrittura del costo
+  non cancella piu' la risposta: torna con un `warning`.
+- **L'account GitHub appartiene all'organizzazione.** Nuova tabella
+  `github_connections` (migrazione `00000000000034`), collegata una sola volta
+  in Settings. Un'organizzazione puo' averne piu' di uno, quindi repository di
+  utenti o organizzazioni GitHub diverse restano raggiungibili. Il token e'
+  cifrato con `STUDIO_MASTER_KEY` e non torna mai al browser.
+- **Creare un progetto non richiede piu' di ricopiare owner, repo e branch.**
+  `GET /api/organizations/:id/github/repositories` elenca cio' che il token
+  vede; il progetto sceglie da quella lista e il branch di default arriva da
+  GitHub. `POST /api/projects/:id/repository` accetta `githubConnectionId` e
+  riusa la credenziale gia' verificata.
+- **La pagina Progetti e' una board di card.** `/projects` mostra una card per
+  progetto — repository, agenti allocati, task in volo, fatti e bloccati — con
+  un dettaglio espandibile; la creazione ha una vista dedicata `/projects/new`.
+  Un progetto senza repository puo' collegarlo dalla card stessa.
+- **I campi avanzati dell'agente non chiedono piu' di indovinare.** `Role key`
+  e' una scelta fra i ruoli che il sistema riconosce davvero (solo `reviewer`
+  puo' produrre una review); skills, tools e permissions sono checkbox sul
+  vocabolario realmente usato, con la possibilita' di aggiungere valori propri.
+  L'aiuto contestuale dice cosa sono davvero: dichiarazioni che accompagnano il
+  run, non un controllo di accesso — i limiti effettivi restano lo scope
+  read/write del task, gli approval gate e i permessi del token GitHub.
+
+Migrazione richiesta prima dell'uso: `supabase db push` (aggiunge
+`github_connections` e `repo_connections.github_connection_id`).
+
 ## Checkpoint 2026-09-03 — I sei ruoli sono collegati al provider
 
 Lead, Reviewer, Designer e i partecipanti alle riunioni invocano ora il modello
@@ -174,4 +214,4 @@ verification esterne.
 
 ## Ultimo aggiornamento
 
-2026-09-03
+2026-09-04

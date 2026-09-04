@@ -343,6 +343,19 @@ export class SupabaseAgentRepository {
     return Array.isArray(data) ? data.map(mapAssignment) : [];
   }
 
+  /** Every active assignment in the organization, for project-level views. */
+  async listAssignments(organizationId: string, actorUserId: string): Promise<AgentAssignment[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('agent_assignments')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('active', true),
+    );
+    return Array.isArray(data) ? data.map(mapAssignment) : [];
+  }
+
   async archiveAgentAssignment(
     assignmentId: string,
     organizationId: string,

@@ -21,6 +21,13 @@ import {
   getMeeting,
   getMemories,
   getRepository,
+  listRepositories,
+  listGitHubConnections,
+  getGitHubConnection,
+  saveGitHubConnection,
+  deleteGitHubConnection,
+  startAgentRun,
+  finishAgentRun,
   listDesignVersions,
   listDesignPreviews,
   listApprovals,
@@ -70,6 +77,9 @@ import {
   type VerificationRunRecord,
   type PushSubscriptionRecord,
   type RepositoryRecord,
+  type GitHubConnectionSummary,
+  type GitHubConnectionRecord,
+  type AgentRunRecord,
   type TaskRecord,
   type TaskCreateRecord,
   type ActivityRecord,
@@ -203,6 +213,43 @@ type LocalOperationalRepository = {
     actorUserId: string,
     encryptedCredential?: Record<string, unknown>,
   ) => RepositoryRecord;
+  listRepositories: (organizationId: string, actorUserId: string) => RepositoryRecord[];
+  listGitHubConnections: (organizationId: string, actorUserId: string) => GitHubConnectionSummary[];
+  getGitHubConnectionSecret: (
+    organizationId: string,
+    connectionId: string,
+    actorUserId: string,
+  ) => { connection: GitHubConnectionSummary; encryptedSecret: Record<string, unknown> } | null;
+  saveGitHubConnection: (
+    input: {
+      organizationId: string;
+      accountLogin: string;
+      accountType: 'USER' | 'ORGANIZATION';
+      encryptedSecret: Record<string, unknown>;
+    },
+    actorUserId: string,
+  ) => GitHubConnectionSummary;
+  deleteGitHubConnection: (
+    organizationId: string,
+    connectionId: string,
+    actorUserId: string,
+  ) => boolean;
+  startAgentRun: (
+    input: {
+      organizationId: string;
+      agentId: string;
+      correlationId: string;
+      meetingId?: string;
+    },
+    actorUserId: string,
+  ) => AgentRunRecord;
+  finishAgentRun: (
+    organizationId: string,
+    runId: string,
+    state: 'COMPLETED' | 'FAILED',
+    externalRunId: string | undefined,
+    actorUserId: string,
+  ) => AgentRunRecord | null;
   addMemory: (
     organizationId: string,
     input: Omit<MemoryUnit, 'id' | 'deletedAt'>,
@@ -332,6 +379,19 @@ type LocalOperationalRepository = {
   ) => TaskRecord;
 };
 
+/** The stored token stays server-side: only these fields reach a response. */
+function githubConnectionSummary(connection: GitHubConnectionRecord): GitHubConnectionSummary {
+  return {
+    id: connection.id,
+    organizationId: connection.organizationId,
+    accountLogin: connection.accountLogin,
+    accountType: connection.accountType,
+    status: connection.status,
+    createdAt: connection.createdAt,
+    updatedAt: connection.updatedAt,
+  };
+}
+
 const localOperationalRepository: LocalOperationalRepository = {
   getRole: (organizationId, actorUserId) => tenantStore.getRole(organizationId, actorUserId),
   listMeetings: (organizationId) => listMeetings(organizationId),
@@ -383,6 +443,29 @@ const localOperationalRepository: LocalOperationalRepository = {
   savePushSubscription: (userId, input) => savePushSubscription(userId, input),
   getRepository: (projectId) => getRepository(projectId),
   saveRepository: (input) => saveRepository(input),
+  listRepositories: (organizationId) => listRepositories(organizationId),
+  listGitHubConnections: (organizationId) =>
+    listGitHubConnections(organizationId).map(githubConnectionSummary),
+  getGitHubConnectionSecret: (organizationId, connectionId) => {
+    const connection = getGitHubConnection(organizationId, connectionId);
+    if (!connection) return null;
+    return {
+      connection: githubConnectionSummary(connection),
+      encryptedSecret: connection.encryptedSecret as unknown as Record<string, unknown>,
+    };
+  },
+  saveGitHubConnection: (input) =>
+    githubConnectionSummary(
+      saveGitHubConnection({
+        ...input,
+        encryptedSecret: input.encryptedSecret as unknown as EncryptedSecret,
+      }),
+    ),
+  deleteGitHubConnection: (organizationId, connectionId) =>
+    deleteGitHubConnection(organizationId, connectionId),
+  startAgentRun: (input) => startAgentRun(input),
+  finishAgentRun: (organizationId, runId, state, externalRunId) =>
+    finishAgentRun(organizationId, runId, state, externalRunId),
   addMemory: (organizationId, input) => addMemory(organizationId, input),
   listMemories: (organizationId) => getMemories(organizationId),
   deleteMemory: (organizationId, memoryId) => deleteMemory(organizationId, memoryId),

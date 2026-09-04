@@ -1009,3 +1009,184 @@ h2 {
   left: auto;
   right: 0;
 }
+
+/* Projects board -----------------------------------------------------------
+   Projects are things you scan and open, so they are cards, not rows in a
+   form. */
+.project-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  margin-top: 1rem;
+}
+.project-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.project-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.project-card-head h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+.project-badge {
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.project-badge-active {
+  color: #146c43;
+  border-color: #b7e4c7;
+  background: #f0fbf4;
+}
+.project-badge-archived {
+  color: var(--muted);
+  background: var(--paper);
+}
+.project-card-description {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.project-card-repository {
+  margin: 0;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.project-card-repository small {
+  color: var(--muted);
+}
+.project-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  display: inline-block;
+}
+.project-dot-ready {
+  background: #22a06b;
+}
+.project-dot-pending {
+  background: #d9822b;
+}
+.project-dot-missing {
+  background: var(--line);
+  border: 1px solid var(--muted);
+}
+.project-card-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--line);
+}
+.project-card-metrics div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.project-card-metrics dt {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.project-card-metrics dd {
+  margin: 0;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.project-card-detail {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.project-card-detail h3 {
+  margin: 8px 0 4px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.project-agent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.project-agent-list li {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.project-agent-list small {
+  color: var(--muted);
+}
+
+/* Capability pickers -------------------------------------------------------
+   The identifiers an agent declares are a known vocabulary, so they are
+   offered rather than guessed. */
+.capability-picker {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 8px 0 0;
+}
+.capability-picker legend {
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.capability-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px;
+}
+.capability-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  padding: 6px;
+  border-radius: 8px;
+}
+.capability-option:hover {
+  background: var(--paper);
+}
+.capability-option span {
+  display: flex;
+  flex-direction: column;
+}
+.capability-option small {
+  color: var(--muted);
+  line-height: 1.4;
+}
+.capability-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.capability-add input {
+  flex: 1;
+}
