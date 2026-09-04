@@ -22,7 +22,8 @@ export default function StudioLabsPage() {
       <p className="eyebrow">Bunker Studio / Labs</p>
       <h1>Improve the studio under guardrails.</h1>
       <p className="hero-copy">
-        Every proposal becomes reviewed work. Production deployment is never part of this flow.
+        Where the studio proposes improvements to itself. Every proposal goes through the same
+        review and checks as any other work, and nothing is ever deployed automatically.
       </p>
       <StudioLabsPanel />
     </main>

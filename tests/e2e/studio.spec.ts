@@ -21,7 +21,9 @@ test('team builder proposes editable hires without immediately creating agents',
     timeout: 60_000,
   });
   await page.goto('/teams');
-  await page.getByLabel('Team objective').fill('Ship a safe accessible dashboard');
+  await page
+    .getByRole('textbox', { name: 'Team objective' })
+    .fill('Ship a safe accessible dashboard');
   const proposal = page.waitForResponse(
     (response) =>
       response.url().includes('/api/staffing/proposals') && response.request().method() === 'POST',

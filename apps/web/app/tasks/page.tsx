@@ -7,8 +7,9 @@ export default function TasksPage() {
       <p className="eyebrow">Organization / Tasks</p>
       <h1>Keep work moving.</h1>
       <p className="hero-copy">
-        Tasks move through an auditable state machine and wait for dependencies, approvals, quota,
-        and verification when required.
+        A task is one piece of work handed to one agent. Each moves through clear stages you can
+        follow, and waits when it depends on other work, needs your approval, or has checks still to
+        pass.
       </p>
       <h2>Ask the Lead to plan</h2>
       <p className="hero-copy">

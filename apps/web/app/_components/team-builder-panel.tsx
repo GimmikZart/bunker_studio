@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { FieldLabel } from './help-tip';
 import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
@@ -182,7 +183,12 @@ export function TeamBuilderPanel() {
         </select>
       </div>
       <div className="resource-form">
-        <label htmlFor="team-goal">Team objective</label>
+        <FieldLabel
+          htmlFor="team-goal"
+          help="What this team must deliver, in plain words. The proposal is built from this, so describe the outcome rather than the tasks."
+        >
+          Team objective
+        </FieldLabel>
         <textarea
           id="team-goal"
           value={goal}
@@ -204,7 +210,12 @@ export function TeamBuilderPanel() {
             </option>
           ))}
         </select>
-        <label htmlFor="team-budget">Budget cap (optional)</label>
+        <FieldLabel
+          htmlFor="team-budget"
+          help="The most you want this team to spend on AI. It is used to size the proposal; your spending limits in Cost Center are what actually enforce it."
+        >
+          Budget cap (optional)
+        </FieldLabel>
         <input
           id="team-budget"
           type="number"
@@ -212,7 +223,12 @@ export function TeamBuilderPanel() {
           value={budget}
           onChange={(event) => setBudget(event.target.value)}
         />
-        <label htmlFor="team-capabilities">Required capabilities (comma-separated)</label>
+        <FieldLabel
+          htmlFor="team-capabilities"
+          help="Specific skills the work needs, such as accessibility or API design. The proposal favours roles that cover them. Leave empty for a general team."
+        >
+          Required capabilities (comma-separated)
+        </FieldLabel>
         <input
           id="team-capabilities"
           value={capabilities}

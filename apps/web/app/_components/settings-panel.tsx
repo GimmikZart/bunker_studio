@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { apiHeaders } from './live-panel';
+import { FieldLabel } from './help-tip';
 import { OrganizationCreateForm } from './organization-create-form';
+import { ProviderSummary } from './provider-summary';
 
 type Organization = { id: string; name: string };
 type SettingsPayload = {
@@ -515,9 +517,22 @@ export function SettingsPanel() {
                 className="settings-form-grid"
                 onSubmit={(event) => void connectProvider(event)}
               >
-                <label>
-                  Provider
+                <span className="settings-field">
+                  <FieldLabel
+                    htmlFor="provider-type"
+                    help={
+                      <>
+                        The company whose AI you want to use. Pick <strong>OpenAI</strong> or{' '}
+                        <strong>Anthropic</strong> if you have an account with them. Pick{' '}
+                        <strong>OpenAI-compatible</strong> for anything else that speaks the same
+                        protocol, such as a model running on your own machine.
+                      </>
+                    }
+                  >
+                    Provider
+                  </FieldLabel>
                   <select
+                    id="provider-type"
                     value={providerForm.providerType}
                     onChange={(event) => {
                       const providerType = event.target.value as ProviderType;
@@ -539,20 +554,39 @@ export function SettingsPanel() {
                     <option value="ANTHROPIC">Anthropic</option>
                     <option value="OPENAI_COMPATIBLE">OpenAI-compatible</option>
                   </select>
-                </label>
-                <label>
-                  Display name
+                </span>
+                <span className="settings-field">
+                  <FieldLabel
+                    htmlFor="provider-display-name"
+                    help="Only a label, so you can tell accounts apart in this list. Anything you recognise works."
+                  >
+                    Display name
+                  </FieldLabel>
                   <input
+                    id="provider-display-name"
                     value={providerForm.displayName}
                     onChange={(event) =>
                       setProviderForm({ ...providerForm, displayName: event.target.value })
                     }
                     required
                   />
-                </label>
-                <label>
-                  API key
+                </span>
+                <span className="settings-field">
+                  <FieldLabel
+                    htmlFor="provider-api-key"
+                    help={
+                      <>
+                        The secret string from your provider account, usually starting with{' '}
+                        <code>sk-</code>. You create it in the provider&apos;s own dashboard. It is
+                        encrypted before it is stored and is never shown again, so keep your own
+                        copy.
+                      </>
+                    }
+                  >
+                    API key
+                  </FieldLabel>
                   <input
+                    id="provider-api-key"
                     type="password"
                     autoComplete="new-password"
                     value={providerForm.apiKey}
@@ -561,12 +595,24 @@ export function SettingsPanel() {
                     }
                     required
                   />
-                </label>
+                </span>
                 {providerForm.providerType === 'OPENAI_COMPATIBLE' && (
                   <>
-                    <label>
-                      API base URL
+                    <span className="settings-field">
+                      <FieldLabel
+                        htmlFor="provider-base-url"
+                        help={
+                          <>
+                            The web address where that AI answers. For a model running on your own
+                            computer it usually looks like <code>http://127.0.0.1:11434/v1</code>.
+                            The tool you installed tells you this address.
+                          </>
+                        }
+                      >
+                        Address of the service
+                      </FieldLabel>
                       <input
+                        id="provider-base-url"
                         type="url"
                         placeholder="http://127.0.0.1:11434/v1"
                         value={providerForm.apiBaseUrl}
@@ -575,10 +621,16 @@ export function SettingsPanel() {
                         }
                         required
                       />
-                    </label>
-                    <label>
-                      Model IDs (comma separated)
+                    </span>
+                    <span className="settings-field">
+                      <FieldLabel
+                        htmlFor="provider-models"
+                        help="OpenAI and Anthropic tell us which models exist. Other services cannot, so list the names yourself, separated by commas, exactly as that service spells them."
+                      >
+                        Model names
+                      </FieldLabel>
                       <input
+                        id="provider-models"
                         placeholder="model-a, model-b"
                         value={providerForm.manualModels}
                         onChange={(event) =>
@@ -586,7 +638,7 @@ export function SettingsPanel() {
                         }
                         required
                       />
-                    </label>
+                    </span>
                   </>
                 )}
                 <button className="secondary-button" type="submit" disabled={savingProvider}>
@@ -604,17 +656,7 @@ export function SettingsPanel() {
                   </div>
                 )}
                 {settings.providers.map((provider) => (
-                  <div className="live-record" key={provider.id}>
-                    <span>
-                      <strong>{provider.displayName}</strong>
-                      <small>
-                        {provider.providerType} · {provider.status}
-                      </small>
-                    </span>
-                    <small>
-                      {provider.models.length ? provider.models.join(', ') : 'No catalog models'}
-                    </small>
-                  </div>
+                  <ProviderSummary key={provider.id} provider={provider} />
                 ))}
               </div>
             </div>
@@ -635,19 +677,41 @@ export function SettingsPanel() {
             <div>
               <h2>Workers</h2>
               <p>
-                The PC worker connects outward to this app. No router port or public IP is needed,
-                and queued work waits safely while the PC is off.
+                A worker is the program that runs on your own computer and does the work that needs
+                your code: reading it, changing it, running the tests. This app never opens a
+                connection to your computer — the worker calls out to the app, so you do not need to
+                open anything on your router.
               </p>
-              <label htmlFor="worker-scopes">Allowed repository paths</label>
-              <input
-                id="worker-scopes"
-                value={workerScopes}
-                onChange={(event) => setWorkerScopes(event.target.value)}
-                placeholder="apps, packages, docs"
-              />
+              <span className="settings-field">
+                <FieldLabel
+                  htmlFor="worker-scopes"
+                  help={
+                    <>
+                      <span>
+                        The folders of your project this computer is allowed to open and change.
+                        Anything outside them stays untouched, even if an agent asks.
+                      </span>
+                      <span>
+                        Write the folder names as they appear at the top level of your project,
+                        separated by commas — for example <code>apps, packages, docs</code>. Not
+                        sure? Start with the folder that holds the code you want worked on. You can
+                        change this later.
+                      </span>
+                    </>
+                  }
+                >
+                  Folders this computer may change
+                </FieldLabel>
+                <input
+                  id="worker-scopes"
+                  value={workerScopes}
+                  onChange={(event) => setWorkerScopes(event.target.value)}
+                  placeholder="apps, packages, docs"
+                />
+              </span>
               <p className="field-help">
-                Comma-separated paths this worker may read or change. Leave empty only for tasks
-                whose read/write scopes are also empty.
+                Separate folders with commas. Leaving this empty means the worker may not change any
+                file, which is only useful for tasks that read code without editing it.
               </p>
               <button
                 className="secondary-button"
@@ -769,9 +833,15 @@ export function SettingsPanel() {
               <h2>Cost policy</h2>
               <p>Set hard and soft budget limits for the selected organization.</p>
               <div className="settings-form-grid">
-                <label>
-                  Period
+                <span className="settings-field">
+                  <FieldLabel
+                    htmlFor="budget-period"
+                    help="How often the limit resets. Per run applies to a single AI call, per task to one task, and daily or monthly to everything in that window."
+                  >
+                    Period
+                  </FieldLabel>
                   <select
+                    id="budget-period"
                     value={policyForm.periodType}
                     onChange={(event) =>
                       setPolicyForm({
@@ -785,7 +855,7 @@ export function SettingsPanel() {
                     <option value="DAILY">Daily</option>
                     <option value="MONTHLY">Monthly</option>
                   </select>
-                </label>
+                </span>
                 <label>
                   Currency
                   <input
@@ -796,9 +866,15 @@ export function SettingsPanel() {
                     }
                   />
                 </label>
-                <label>
-                  Soft limit
+                <span className="settings-field">
+                  <FieldLabel
+                    htmlFor="budget-soft-limit"
+                    help="A warning level. Crossing it does not stop the work; it triggers the soft action below so you find out early."
+                  >
+                    Soft limit
+                  </FieldLabel>
                   <input
+                    id="budget-soft-limit"
                     type="number"
                     min="0"
                     step="0.01"
@@ -807,10 +883,16 @@ export function SettingsPanel() {
                       setPolicyForm({ ...policyForm, softLimit: Number(event.target.value) })
                     }
                   />
-                </label>
-                <label>
-                  Hard limit
+                </span>
+                <span className="settings-field">
+                  <FieldLabel
+                    htmlFor="budget-hard-limit"
+                    help="The ceiling. Work that would cross it is stopped or sent to you for approval before any paid call is made, so it cannot be crossed by accident."
+                  >
+                    Hard limit
+                  </FieldLabel>
                   <input
+                    id="budget-hard-limit"
                     type="number"
                     min="0"
                     step="0.01"
@@ -819,10 +901,16 @@ export function SettingsPanel() {
                       setPolicyForm({ ...policyForm, hardLimit: Number(event.target.value) })
                     }
                   />
-                </label>
-                <label>
-                  Soft action
+                </span>
+                <span className="settings-field">
+                  <FieldLabel
+                    htmlFor="budget-soft-action"
+                    help="What happens at the warning level: carry on quietly, notify you, or wait for your approval."
+                  >
+                    Soft action
+                  </FieldLabel>
                   <select
+                    id="budget-soft-action"
                     value={policyForm.actionOnSoft}
                     onChange={(event) =>
                       setPolicyForm({
@@ -835,10 +923,16 @@ export function SettingsPanel() {
                     <option value="NOTIFY">Notify</option>
                     <option value="REQUIRE_APPROVAL">Require approval</option>
                   </select>
-                </label>
-                <label>
-                  Hard action
+                </span>
+                <span className="settings-field">
+                  <FieldLabel
+                    htmlFor="budget-hard-action"
+                    help="What happens at the ceiling: block the work outright, or hold it until you approve it."
+                  >
+                    Hard action
+                  </FieldLabel>
                   <select
+                    id="budget-hard-action"
                     value={policyForm.actionOnHard}
                     onChange={(event) =>
                       setPolicyForm({
@@ -850,10 +944,16 @@ export function SettingsPanel() {
                     <option value="BLOCK">Block</option>
                     <option value="REQUIRE_APPROVAL">Require approval</option>
                   </select>
-                </label>
-                <label>
-                  Escalate after
+                </span>
+                <span className="settings-field">
+                  <FieldLabel
+                    htmlFor="budget-escalate"
+                    help="How many failed attempts before the studio stops retrying and asks a human. Keeps a stuck task from burning budget in a loop."
+                  >
+                    Escalate after
+                  </FieldLabel>
                   <input
+                    id="budget-escalate"
                     type="number"
                     min="0"
                     max="100"
@@ -865,7 +965,7 @@ export function SettingsPanel() {
                       })
                     }
                   />
-                </label>
+                </span>
                 <label className="checkbox-field">
                   <input
                     type="checkbox"
@@ -922,9 +1022,15 @@ export function SettingsPanel() {
                     <option value="6">Saturday</option>
                   </select>
                 </label>
-                <label>
-                  UTC hour
+                <span className="settings-field">
+                  <FieldLabel
+                    htmlFor="report-hour"
+                    help="The hour the weekly report is produced, in UTC. If you are in central Europe, subtract one hour in winter and two in summer to get your local time."
+                  >
+                    UTC hour
+                  </FieldLabel>
                   <input
+                    id="report-hour"
                     type="number"
                     min="0"
                     max="23"
@@ -933,7 +1039,7 @@ export function SettingsPanel() {
                       setReportForm({ ...reportForm, hourUtc: Number(event.target.value) })
                     }
                   />
-                </label>
+                </span>
                 <label>
                   UTC minute
                   <input
@@ -955,16 +1061,22 @@ export function SettingsPanel() {
                     }
                   />
                 </label>
-                <label>
-                  Recipients
+                <span className="settings-field">
+                  <FieldLabel
+                    htmlFor="report-recipients"
+                    help="Who receives the weekly cost report, as email addresses separated by commas."
+                  >
+                    Recipients
+                  </FieldLabel>
                   <input
+                    id="report-recipients"
                     placeholder="owner@example.com, finance@example.com"
                     value={reportForm.recipients}
                     onChange={(event) =>
                       setReportForm({ ...reportForm, recipients: event.target.value })
                     }
                   />
-                </label>
+                </span>
                 <label className="checkbox-field">
                   <input
                     type="checkbox"

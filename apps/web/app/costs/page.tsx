@@ -6,7 +6,8 @@ export default function CostsPage() {
       <p className="eyebrow">Organization / Costs</p>
       <h1>Keep the studio sustainable.</h1>
       <p className="hero-copy">
-        Track today, week, month, forecast, budgets, provider quota, and the runs driving spend.
+        What your studio is spending, and on what. Set a ceiling here and work that would cross it
+        is stopped before any paid call is made.
       </p>
       <CostCenterPanel />
     </main>

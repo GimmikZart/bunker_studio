@@ -7,8 +7,9 @@ export default function AgentsPage() {
       <p className="eyebrow">Organization / Agents</p>
       <h1>People who move the work forward.</h1>
       <p className="hero-copy">
-        Agent identity, role, provider binding, and performance live here. Provider credentials stay
-        server-side while authorized organization owners manage the registry.
+        Your studio members. Each keeps its own name, role and memory, and you choose which AI it
+        runs on. Change the AI whenever you like: the agent and everything it has learned stay the
+        same. API keys never leave the server.
       </p>
       <AgentDetailPanel />
       <AgentCrudPanel />

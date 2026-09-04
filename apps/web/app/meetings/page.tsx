@@ -6,8 +6,8 @@ export default function MeetingsPage() {
       <p className="eyebrow">Organization / Meetings</p>
       <h1>Make decisions together.</h1>
       <p className="hero-copy">
-        Bounded, agenda-led meetings turn scoped agent contributions into validated minutes and
-        actions.
+        Put several agents around an agenda and let them respond to each other, for a set number of
+        rounds so the cost stays predictable. You get minutes with the decisions actually reached.
       </p>
       <MeetingRoomPanel />
     </main>

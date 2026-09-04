@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { FieldLabel } from './help-tip';
 import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
@@ -348,7 +349,12 @@ export function TaskBoard() {
           maxLength={10_000}
           placeholder="Outcome, constraints, and acceptance checks for this work."
         />
-        <label htmlFor="task-agent">Assigned agent</label>
+        <FieldLabel
+          htmlFor="task-agent"
+          help="Which member of your studio does this work. Left unassigned, the task waits in the queue until you or the Lead picks someone."
+        >
+          Assigned agent
+        </FieldLabel>
         <select
           id="task-agent"
           value={assignedAgentId}
@@ -372,7 +378,12 @@ export function TaskBoard() {
             </Link>
           </div>
         )}
-        <label htmlFor="task-type">Type</label>
+        <FieldLabel
+          htmlFor="task-type"
+          help="What kind of work this is. Frontend is what people see, backend is what runs behind it, test checks the work, docs writes it down, review inspects the result, design draws it."
+        >
+          Type
+        </FieldLabel>
         <select
           id="task-type"
           value={taskType}
@@ -382,7 +393,12 @@ export function TaskBoard() {
             <option key={type}>{type}</option>
           ))}
         </select>
-        <label htmlFor="task-cost">Estimated cost</label>
+        <FieldLabel
+          htmlFor="task-cost"
+          help="Roughly how much you allow this task to spend on AI, in your budget currency. It is checked against your spending limits before any paid call, so a wrong guess costs nothing but a refusal."
+        >
+          Estimated cost
+        </FieldLabel>
         <input
           id="task-cost"
           type="number"
@@ -391,21 +407,36 @@ export function TaskBoard() {
           value={estimatedCost}
           onChange={(event) => setEstimatedCost(event.target.value)}
         />
-        <label htmlFor="task-read-scope">Read scope</label>
+        <FieldLabel
+          htmlFor="task-read-scope"
+          help="The folders the agent may look at while working. Give it what it needs to understand the problem. Leave empty if it needs nothing from your code."
+        >
+          Read scope
+        </FieldLabel>
         <input
           id="task-read-scope"
           value={readScope}
           onChange={(event) => setReadScope(event.target.value)}
           placeholder="apps/web, docs/product"
         />
-        <label htmlFor="task-write-scope">Write scope</label>
+        <FieldLabel
+          htmlFor="task-write-scope"
+          help="The folders the agent may actually change. Keep it as small as the task allows: anything outside stays untouched, and two tasks writing the same folders run one after the other instead of side by side."
+        >
+          Write scope
+        </FieldLabel>
         <input
           id="task-write-scope"
           value={writeScope}
           onChange={(event) => setWriteScope(event.target.value)}
           placeholder="apps/web/app, packages/contracts"
         />
-        <label htmlFor="task-package-manager">Verification package manager</label>
+        <FieldLabel
+          htmlFor="task-package-manager"
+          help="The tool that runs your project scripts, usually pnpm or npm. It is how the checks below are executed. If you are unsure, this project uses pnpm."
+        >
+          Verification package manager
+        </FieldLabel>
         <select
           id="task-package-manager"
           value={packageManager}
@@ -415,7 +446,12 @@ export function TaskBoard() {
             <option key={manager}>{manager}</option>
           ))}
         </select>
-        <label htmlFor="task-verification-scripts">Verification scripts</label>
+        <FieldLabel
+          htmlFor="task-verification-scripts"
+          help="The checks that must pass before the work is allowed out, typically lint, typecheck, test and build. If any fails, nothing is published: no branch and no pull request."
+        >
+          Verification scripts
+        </FieldLabel>
         <input
           id="task-verification-scripts"
           value={verificationScripts}
@@ -426,7 +462,12 @@ export function TaskBoard() {
           Comma-separated package scripts. The worker runs these checks after the agent edits and
           before it pushes a candidate branch. A failed or timed-out check blocks publication.
         </p>
-        <label htmlFor="task-dependencies">Dependencies</label>
+        <FieldLabel
+          htmlFor="task-dependencies"
+          help="Other tasks that must finish first. A task with dependencies waits for them instead of starting early on unfinished work."
+        >
+          Dependencies
+        </FieldLabel>
         <select
           id="task-dependencies"
           multiple
@@ -452,7 +493,12 @@ export function TaskBoard() {
         </p>
         {taskType === 'FRONTEND' && (
           <>
-            <label htmlFor="task-design">Approved design version</label>
+            <FieldLabel
+              htmlFor="task-design"
+              help="The approved drawing this screen must follow. Frontend work needs one so the result matches something you already agreed to, rather than an invented layout."
+            >
+              Approved design version
+            </FieldLabel>
             <select
               id="task-design"
               value={approvedDesignVersionId}

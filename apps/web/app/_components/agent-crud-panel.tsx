@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import { FieldLabel } from './help-tip';
 import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
@@ -332,7 +333,12 @@ export function AgentCrudPanel() {
         <p id="agent-name-help" className="field-help">
           This durable name stays with the agent even if you change model or provider later.
         </p>
-        <label htmlFor="agent-template">Agent template</label>
+        <FieldLabel
+          htmlFor="agent-template"
+          help="A starting point for a common studio role. It fills in the title and typical skills for you; you can change anything afterwards."
+        >
+          Agent template
+        </FieldLabel>
         <select
           id="agent-template"
           value={templateKey}
@@ -357,7 +363,12 @@ export function AgentCrudPanel() {
           required
           disabled={!organizationId}
         />
-        <label htmlFor="agent-provider">Provider</label>
+        <FieldLabel
+          htmlFor="agent-provider"
+          help="Which AI account this agent uses. Each agent can use a different one, so you can put a stronger model where it matters and a cheaper one elsewhere."
+        >
+          Provider
+        </FieldLabel>
         <select
           id="agent-provider"
           value={providerConnectionId}
@@ -374,7 +385,12 @@ export function AgentCrudPanel() {
             </option>
           ))}
         </select>
-        <label htmlFor="agent-model">Model</label>
+        <FieldLabel
+          htmlFor="agent-model"
+          help="The specific model from that account. Stronger models reason better and cost more; lighter ones are fine for routine work."
+        >
+          Model
+        </FieldLabel>
         <select
           id="agent-model"
           value={providerModelId}
@@ -421,14 +437,24 @@ export function AgentCrudPanel() {
           onToggle={(event) => setShowAdvanced(event.currentTarget.open)}
         >
           <summary>Advanced: capabilities and technical identifiers</summary>
-          <label htmlFor="agent-role">Role key</label>
+          <FieldLabel
+            htmlFor="agent-role"
+            help="A short internal name for the role, such as lead or frontend. The studio uses it to route work to the right kind of agent."
+          >
+            Role key
+          </FieldLabel>
           <input
             id="agent-role"
             value={roleKey}
             onChange={(event) => setRoleKey(event.target.value)}
             required
           />
-          <label htmlFor="agent-runtime">Execution runtime</label>
+          <FieldLabel
+            htmlFor="agent-runtime"
+            help="How this agent runs. Most agents just talk to the provider. Choose the coding runtime only for an agent that must open your repository and change files."
+          >
+            Execution runtime
+          </FieldLabel>
           <select
             id="agent-runtime"
             value={runtimeType}
@@ -446,7 +472,12 @@ export function AgentCrudPanel() {
             Choose Codex SDK for agents that must inspect, edit, and test repositories on the PC
             worker. The direct API runtime is suitable for planning, chat, and structured work.
           </p>
-          <label htmlFor="agent-reasoning">Reasoning effort</label>
+          <FieldLabel
+            htmlFor="agent-reasoning"
+            help="How long the model is allowed to think before answering. More effort means better decisions on hard problems and a higher cost per answer."
+          >
+            Reasoning effort
+          </FieldLabel>
           <select
             id="agent-reasoning"
             value={reasoningEffort}
@@ -459,19 +490,34 @@ export function AgentCrudPanel() {
             <option value="xhigh">Extra high</option>
             <option value="max">Maximum</option>
           </select>
-          <label htmlFor="agent-skills">Skills</label>
+          <FieldLabel
+            htmlFor="agent-skills"
+            help="What this agent is good at, in your own words, separated by commas. Used to match tasks that ask for a particular capability."
+          >
+            Skills
+          </FieldLabel>
           <input
             id="agent-skills"
             value={skills}
             onChange={(event) => setSkills(event.target.value)}
           />
-          <label htmlFor="agent-tools">Tools</label>
+          <FieldLabel
+            htmlFor="agent-tools"
+            help="Extra abilities this agent may use beyond writing text. Leave empty if you are not sure."
+          >
+            Tools
+          </FieldLabel>
           <input
             id="agent-tools"
             value={tools}
             onChange={(event) => setTools(event.target.value)}
           />
-          <label htmlFor="agent-permissions">Permissions</label>
+          <FieldLabel
+            htmlFor="agent-permissions"
+            help="What this agent is allowed to touch, such as reading the repository or writing artifacts. Grant the least that lets it do its job."
+          >
+            Permissions
+          </FieldLabel>
           <input
             id="agent-permissions"
             value={permissions}

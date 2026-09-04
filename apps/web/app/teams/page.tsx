@@ -7,7 +7,8 @@ export default function TeamsPage() {
       <p className="eyebrow">Organization / Teams</p>
       <h1>Shape the right team.</h1>
       <p className="hero-copy">
-        Teams group persistent agents around projects, scopes, capabilities, and reporting lines.
+        Describe what you need delivered and the studio proposes who to hire for it. You review
+        every proposed member and choose their AI before anyone is created.
       </p>
       <TeamBuilderPanel />
       <OrganizationCrudPanel kind="teams" />

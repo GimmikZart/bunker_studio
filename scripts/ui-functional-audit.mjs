@@ -126,7 +126,7 @@ try {
 
   await goto('/agents');
   await page.getByLabel('Name').fill('Audit Frontend Agent');
-  await page.getByLabel('Agent template').selectOption('frontend');
+  await page.getByRole('combobox', { name: 'Agent template' }).selectOption('frontend');
   await page.getByLabel('Provider and model').selectOption({ index: 1 });
   await page.getByRole('button', { name: 'Create agent' }).click();
   await page.getByText(/Agent created and ready/).waitFor();
@@ -139,12 +139,12 @@ try {
   );
 
   await goto('/tasks');
-  await page.getByLabel('Task title').fill('Audit backend task');
+  await page.getByRole('textbox', { name: 'Task title' }).fill('Audit backend task');
   await page
     .getByLabel('Description')
     .fill('Persist a task with scope and an explicit acceptance check.');
-  await page.getByLabel('Read scope').fill('apps/web');
-  await page.getByLabel('Write scope').fill('apps/web/app');
+  await page.getByRole('textbox', { name: 'Read scope' }).fill('apps/web');
+  await page.getByRole('textbox', { name: 'Write scope' }).fill('apps/web/app');
   await page.getByRole('button', { name: 'Create task' }).click();
   await page.getByText('Task created in DRAFT.').waitFor();
   await page.getByLabel('Transition Audit backend task').selectOption('READY');
