@@ -12,6 +12,11 @@ Questo e' l'indice: cosa collegare, in che ordine e cosa sblocca. La procedura
 passo-passo con gli screenshot delle dashboard e' in
 [`docs/quality/QUALITY_SETUP_GUIDE.md`](quality/QUALITY_SETUP_GUIDE.md).
 
+**C'e' un solo file `.env`, nella radice del repository**, accanto a
+`.env.example`. Lo leggono sia l'app web sia il worker: non serve un secondo
+file dentro `apps/web` o `apps/worker`. Le variabili d'ambiente vere (shell o
+piattaforma di hosting) hanno sempre la precedenza su quel file.
+
 ---
 
 ## Ordine consigliato
@@ -116,7 +121,7 @@ Il worker gira sul tuo computer, fa solo connessioni in uscita e non apre porte.
 
 1. Nell'app, **Settings → Workers**, genera un token di registrazione (è
    monouso e scade).
-2. Nel `.env` del worker:
+2. Nello stesso `.env` nella radice del repository, insieme al resto:
 
 ```
 WORKER_CONTROL_PLANE_URL=https://<url-della-tua-app>
@@ -124,11 +129,15 @@ WORKER_REGISTRATION_TOKEN=<token appena generato>
 WORKER_CAPABILITIES=chat,repository,codex
 ```
 
-3. Avvia:
+3. Avvia il worker, da qualunque cartella del repository:
 
 ```bash
 pnpm --filter @bunker-studio/worker dev
 ```
+
+Se il worker gira su un computer diverso da quello che ospita l'app, il `.env`
+va nella radice del repository **su quella macchina**, e
+`WORKER_CONTROL_PLANE_URL` deve puntare all'indirizzo pubblico dell'app.
 
 Alla prima connessione il worker scambia il token con una credenziale
 permanente salvata in `WORKER_IDENTITY_FILE` con permessi ristretti. Il token

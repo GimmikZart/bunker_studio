@@ -13,18 +13,14 @@ import { fileURLToPath } from 'node:url';
  * variables still win over the file.
  */
 function loadRootEnv(): void {
+  // `apps/worker/src` in development and `apps/worker/dist` once built: both
+  // sit three levels below the repository root. Only that path is tried, so a
+  // stray .env outside the repository can never be picked up.
   const here = path.dirname(fileURLToPath(import.meta.url));
-  // src/ during development, dist/ once built.
-  for (const candidate of [
-    path.resolve(here, '../../..', '.env'),
-    path.resolve(here, '../../../..', '.env'),
-  ]) {
-    try {
-      process.loadEnvFile(candidate);
-      return;
-    } catch {
-      // Try the next location; a missing root .env is a normal hosted setup.
-    }
+  try {
+    process.loadEnvFile(path.resolve(here, '../../..', '.env'));
+  } catch {
+    // A missing root .env is normal when the platform injects its own settings.
   }
 }
 
