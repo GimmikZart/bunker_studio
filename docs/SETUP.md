@@ -22,6 +22,16 @@ pnpm verify
 pnpm dev
 ```
 
+Per collegare un provider AI serve `STUDIO_MASTER_KEY` nel `.env`, anche in
+locale: e' la chiave con cui la API key viene cifrata prima di essere salvata.
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+Senza Supabase la connessione provider resta nella memoria del processo e sparisce
+al riavvio; con Supabase configurato e' permanente.
+
 Al primo avvio la home mostra un modulo per creare l'organizzazione: tutto nello
 studio (agenti, progetti, budget, provider) appartiene a un'organizzazione, quindi
 va creata prima di collegare una API key da Settings.

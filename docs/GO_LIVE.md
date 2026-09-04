@@ -74,9 +74,23 @@ dispositivo.
 o [Anthropic](https://console.anthropic.com/), oppure un endpoint
 OpenAI-compatible (per esempio Ollama o LM Studio in locale).
 
-**Dove si inserisce:** nell'app, in **Settings → Providers**. Non nel file
-`.env`. La chiave viene cifrata prima di toccare il database e non compare mai
-in export, log, errori o evidence.
+**Prima di tutto serve `STUDIO_MASTER_KEY`**, anche in locale: e' la chiave con
+cui la tua API key viene cifrata prima di essere salvata. Senza, la connessione
+viene rifiutata e Settings te lo dice apertamente.
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+Mettila in `.env` come `STUDIO_MASTER_KEY` e riavvia.
+
+**Dove si inserisce la API key:** nell'app, in **Settings → Providers**. Non nel
+file `.env`. La chiave viene cifrata prima di toccare il database e non compare
+mai in export, log, errori o evidence.
+
+Senza Supabase la connessione vive nella memoria del processo: funziona subito
+per provare lo studio, ma sparisce al riavvio. Con Supabase configurato e'
+permanente.
 
 Dopo aver aggiunto il provider, assegna a **ogni agente** un provider, un
 modello e un livello di ragionamento da **Agents**. Questa scelta è per agente,

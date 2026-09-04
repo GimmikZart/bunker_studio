@@ -1,7 +1,7 @@
 import { TenantStore, WorkerRegistry } from '@bunker-studio/db';
 import type { BudgetPolicy, CostEntry, DesignRecord, WeeklyCostReport } from '@bunker-studio/core';
 import type { LeadPlan, ReviewFinding, VerificationRun } from '@bunker-studio/contracts';
-import type { MemoryUnit } from '@bunker-studio/db';
+import type { EncryptedSecret, MemoryUnit } from '@bunker-studio/db';
 
 type WebRuntimeState = {
   tenantStore: TenantStore;
@@ -25,6 +25,7 @@ type WebRuntimeState = {
   budgetPolicies: Map<string, BudgetPolicyRecord[]>;
   reportSchedules: Map<string, ReportScheduleRecord>;
   budgetReports: Map<string, BudgetReportRecord[]>;
+  providerConnections: Map<string, ProviderConnectionRecord[]>;
 };
 
 type GlobalWithRuntime = typeof globalThis & { __bunkerStudioRuntime?: WebRuntimeState };
@@ -51,6 +52,7 @@ const state = (globalRuntime.__bunkerStudioRuntime ??= {
   budgetPolicies: new Map<string, BudgetPolicyRecord[]>(),
   reportSchedules: new Map<string, ReportScheduleRecord>(),
   budgetReports: new Map<string, BudgetReportRecord[]>(),
+  providerConnections: new Map<string, ProviderConnectionRecord[]>(),
 });
 state.notificationPreferences ??= new Map<string, NotificationPreferences>();
 state.designPreviews ??= new Map<string, DesignPreviewArtifact[]>();
@@ -62,6 +64,7 @@ state.workflows ??= new Map<string, WorkflowRecord[]>();
 state.budgetPolicies ??= new Map<string, BudgetPolicyRecord[]>();
 state.reportSchedules ??= new Map<string, ReportScheduleRecord>();
 state.budgetReports ??= new Map<string, BudgetReportRecord[]>();
+state.providerConnections ??= new Map<string, ProviderConnectionRecord[]>();
 
 export const tenantStore = state.tenantStore;
 export const workerRegistry = state.workerRegistry;
@@ -786,4 +789,63 @@ export function listReviews(organizationId: string, taskId?: string): ReviewReco
       (review) => !taskId || review.taskId === taskId,
     ),
   );
+}
+
+/**
+ * Provider connections held for a local run.
+ *
+ * The API key is stored the same way the database stores it: encrypted with
+ * `STUDIO_MASTER_KEY`, never in plain text. The record lives in process memory,
+ * so it is gone when the server stops — which is the correct trade for a local
+ * trial, and why Supabase remains the system of record for anything durable.
+ */
+export type ProviderConnectionRecord = {
+  id: string;
+  organizationId: string;
+  providerType: 'OPENAI' | 'ANTHROPIC' | 'OPENAI_COMPATIBLE';
+  displayName: string;
+  status: 'READY';
+  apiBaseUrl: string;
+  encryptedSecret: EncryptedSecret;
+  models: string[];
+  capabilities: string[];
+  createdAt: string;
+};
+
+export function addProviderConnection(
+  input: Omit<ProviderConnectionRecord, 'id' | 'status' | 'createdAt'>,
+): ProviderConnectionRecord {
+  const connection: ProviderConnectionRecord = {
+    ...input,
+    id: crypto.randomUUID(),
+    status: 'READY',
+    createdAt: new Date().toISOString(),
+  };
+  state.providerConnections.set(input.organizationId, [
+    ...(state.providerConnections.get(input.organizationId) ?? []),
+    connection,
+  ]);
+  return structuredClone(connection);
+}
+
+export function listProviderConnections(organizationId: string): ProviderConnectionRecord[] {
+  return structuredClone(state.providerConnections.get(organizationId) ?? []);
+}
+
+export function getProviderConnection(
+  organizationId: string,
+  connectionId: string,
+): ProviderConnectionRecord | null {
+  const found = (state.providerConnections.get(organizationId) ?? []).find(
+    (connection) => connection.id === connectionId,
+  );
+  return found ? structuredClone(found) : null;
+}
+
+export function deleteProviderConnection(organizationId: string, connectionId: string): boolean {
+  const existing = state.providerConnections.get(organizationId) ?? [];
+  const remaining = existing.filter((connection) => connection.id !== connectionId);
+  if (remaining.length === existing.length) return false;
+  state.providerConnections.set(organizationId, remaining);
+  return true;
 }

@@ -1,4 +1,4 @@
-import { collectRun } from '@bunker-studio/agent-runtime';
+import { collectRun, RuntimeError } from '@bunker-studio/agent-runtime';
 import { chatMessageSchema } from '@bunker-studio/contracts';
 import { evaluateBudgetPolicies } from '@bunker-studio/core';
 import { NextResponse } from 'next/server';
@@ -29,12 +29,19 @@ export async function POST(request: Request, context: { params: Promise<{ agentI
   const operations = await getWebOperationalRepository();
   if (!store || !operations)
     return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  // Parsed before anything else so a malformed body is the only thing that can
+  // produce a 400. A provider that cannot be reached is not a bad request.
+  let input: ReturnType<typeof chatMessageSchema.parse>;
+  try {
+    input = chatMessageSchema.parse(await request.json());
+  } catch {
+    return NextResponse.json({ error: 'Invalid chat message.' }, { status: 400 });
+  }
   try {
     const agent = await store.getAgent(agentId, organizationId, actorId);
     const runtime = await getWebAgentRuntime(agent);
     if (!runtime)
       return NextResponse.json({ error: 'Provider runtime is not configured.' }, { status: 503 });
-    const input = chatMessageSchema.parse(await request.json());
     const runId = crypto.randomUUID();
     const estimatedCost = chatEstimatedCost();
     const budget = evaluateBudgetPolicies({
@@ -125,6 +132,19 @@ export async function POST(request: Request, context: { params: Promise<{ agentI
   } catch (error) {
     if (error instanceof Error && error.name === 'AuthorizationError')
       return NextResponse.json({ error: 'Agent access denied.' }, { status: 403 });
-    return NextResponse.json({ error: 'Invalid chat message.' }, { status: 400 });
+    // Say what actually failed: a silent "invalid message" hides an unreachable
+    // provider, a rejected key or an exhausted quota.
+    const detail =
+      error instanceof RuntimeError
+        ? `${error.code}: ${error.message}`
+        : error instanceof Error
+          ? error.message
+          : 'Unknown provider failure.';
+    return NextResponse.json(
+      {
+        error: `The agent could not answer. ${detail.replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]')}`,
+      },
+      { status: 502 },
+    );
   }
 }

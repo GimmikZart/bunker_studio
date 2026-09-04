@@ -5,6 +5,8 @@ import { discoverOpenAITextModels } from '@bunker-studio/provider-openai';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../_auth';
 import { getWebOperationalRepository } from '../_data';
+import { usesSupabasePersistence } from '../_persistence';
+import { addProviderConnection } from '../_store';
 import { createWorkerServiceSupabaseClient } from '../_supabase';
 
 type CatalogModel = { id: string; displayName: string; capabilities: string[] };
@@ -63,11 +65,25 @@ export async function POST(request: Request) {
   if (role !== 'OWNER' && role !== 'ADMIN')
     return NextResponse.json({ error: 'Owner or admin access is required.' }, { status: 403 });
 
+  // The key is always encrypted before it is stored, in either mode, so the
+  // master key is non-negotiable.
   const masterKey = process.env.STUDIO_MASTER_KEY;
-  const service = createWorkerServiceSupabaseClient();
-  if (!masterKey || !service)
+  if (!masterKey)
     return NextResponse.json(
-      { error: 'Secure provider persistence is not configured.' },
+      {
+        error:
+          'STUDIO_MASTER_KEY is not set, so an API key cannot be encrypted before storage. Generate a 32-byte base64url value, add it to .env as STUDIO_MASTER_KEY, and restart the server.',
+      },
+      { status: 503 },
+    );
+  const usesSupabase = usesSupabasePersistence();
+  const service = usesSupabase ? createWorkerServiceSupabaseClient() : null;
+  if (usesSupabase && !service)
+    return NextResponse.json(
+      {
+        error:
+          'Supabase service credentials are required to store a provider connection. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, then restart.',
+      },
       { status: 503 },
     );
 
@@ -91,20 +107,36 @@ export async function POST(request: Request) {
       (input.providerType === 'OPENAI'
         ? 'https://api.openai.com/v1'
         : 'https://api.anthropic.com/v1');
-    const { data, error } = await service.rpc('create_provider_connection_with_catalog', {
-      target_organization_id: organizationId,
-      input_provider_type: input.providerType,
-      input_display_name: input.displayName,
-      input_encrypted_secret: encryptSecret(input.apiKey, masterKey),
-      input_api_base_url: apiBaseUrl,
-      input_catalog_source: catalog.source,
-      input_models: catalog.models,
-    });
-    if (error || typeof data !== 'string') throw new Error('Provider persistence failed.');
+    const encryptedSecret = encryptSecret(input.apiKey, masterKey);
+    let connectionId: string;
+    if (service) {
+      const { data, error } = await service.rpc('create_provider_connection_with_catalog', {
+        target_organization_id: organizationId,
+        input_provider_type: input.providerType,
+        input_display_name: input.displayName,
+        input_encrypted_secret: encryptedSecret,
+        input_api_base_url: apiBaseUrl,
+        input_catalog_source: catalog.source,
+        input_models: catalog.models,
+      });
+      if (error || typeof data !== 'string') throw new Error('Provider persistence failed.');
+      connectionId = data;
+    } else {
+      // Local run: the same encrypted blob, held in process memory only.
+      connectionId = addProviderConnection({
+        organizationId,
+        providerType: input.providerType,
+        displayName: input.displayName,
+        apiBaseUrl,
+        encryptedSecret,
+        models: catalog.models.map((model) => model.id),
+        capabilities: ['chat', 'streaming'],
+      }).id;
+    }
     return NextResponse.json(
       {
         provider: {
-          id: data,
+          id: connectionId,
           providerType: input.providerType,
           displayName: input.displayName,
           status: 'READY',

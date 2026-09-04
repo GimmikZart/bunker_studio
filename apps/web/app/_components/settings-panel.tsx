@@ -30,6 +30,7 @@ type SettingsPayload = {
     providerSelection: string;
     workerRequired: boolean;
   };
+  secureProviderStorage?: boolean;
 };
 
 type ProviderType = 'OPENAI' | 'ANTHROPIC' | 'OPENAI_COMPATIBLE';
@@ -488,6 +489,13 @@ export function SettingsPanel() {
                 never shown again. Reading the model catalog does not run a model or consume
                 inference tokens.
               </p>
+              {settings.secureProviderStorage === false && (
+                <p className="live-error" role="status">
+                  STUDIO_MASTER_KEY is not set, so a key cannot be encrypted before storage. Add a
+                  32-byte base64url value to .env as STUDIO_MASTER_KEY and restart the server before
+                  connecting a provider.
+                </p>
+              )}
               <form
                 className="settings-form-grid"
                 onSubmit={(event) => void connectProvider(event)}

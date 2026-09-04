@@ -25,6 +25,9 @@ export async function GET(request: Request) {
         providerSelection: 'Provider and model are selected per agent',
         workerRequired: true,
       },
+      // Lets the UI say up front that a key cannot be stored yet, instead of
+      // failing after someone has already pasted a secret into the form.
+      secureProviderStorage: Boolean(process.env.STUDIO_MASTER_KEY),
     });
   } catch {
     return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });

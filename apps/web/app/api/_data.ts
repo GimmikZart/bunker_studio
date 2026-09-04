@@ -52,6 +52,8 @@ import {
   getReportSchedule,
   saveReportSchedule,
   listBudgetReports,
+  listProviderConnections,
+  getProviderConnection,
   type BudgetReportRecord,
   createWorkflow,
   listWorkflows,
@@ -333,7 +335,7 @@ type LocalOperationalRepository = {
 const localOperationalRepository: LocalOperationalRepository = {
   getRole: (organizationId, actorUserId) => tenantStore.getRole(organizationId, actorUserId),
   listMeetings: (organizationId) => listMeetings(organizationId),
-  listProviders: () => [
+  listProviders: (organizationId) => [
     {
       id: '00000000-0000-4000-8000-000000000001',
       providerType: 'FAKE',
@@ -343,6 +345,16 @@ const localOperationalRepository: LocalOperationalRepository = {
       models: ['fake-default'],
       lastVerifiedAt: undefined,
     },
+    // Connections made during this local run. The secret is never included.
+    ...listProviderConnections(organizationId).map((connection) => ({
+      id: connection.id,
+      providerType: connection.providerType,
+      displayName: connection.displayName,
+      status: connection.status,
+      capabilities: connection.capabilities,
+      models: connection.models,
+      lastVerifiedAt: connection.createdAt,
+    })),
   ],
   createMeeting: (input) => createMeeting(input),
   getMeeting: (organizationId, meetingId) => getMeeting(organizationId, meetingId),
@@ -445,10 +457,47 @@ export async function getWebOperationalRepository(): Promise<WebOperationalRepos
   return client ? new SupabaseOperationalRepository(client as unknown as SupabaseDataClient) : null;
 }
 
+/** Builds the provider adapter for a binding. Shared by both persistence modes. */
+function runtimeForConnection(input: {
+  providerType: string;
+  apiBaseUrl: string;
+  apiKey: string;
+  model: string;
+  reasoningEffort: Agent['reasoningEffort'];
+}): AgentRuntime | null {
+  const baseUrl = input.apiBaseUrl.replace(/\/$/, '');
+  if (!baseUrl) return null;
+  const options = { apiKey: input.apiKey, model: input.model };
+  if (input.providerType === 'OPENAI')
+    return createOpenAIRuntime({
+      endpoint: `${baseUrl}/responses`,
+      reasoningEffort: input.reasoningEffort,
+      ...options,
+    });
+  if (input.providerType === 'ANTHROPIC')
+    return createAnthropicRuntime({ endpoint: `${baseUrl}/messages`, ...options });
+  if (input.providerType === 'OPENAI_COMPATIBLE')
+    return createCompatibleRuntime({ endpoint: `${baseUrl}/chat/completions`, ...options });
+  return null;
+}
+
 export async function getWebAgentRuntime(agent: Agent): Promise<AgentRuntime | null> {
-  // Memory persistence is the dev/test mode; the canned response lets a test
-  // drive the structured paths (plan, minutes, design draft) without a provider.
+  // Memory persistence is the dev/test mode. An agent bound to a provider
+  // connected during this run gets the real runtime, so a local trial exercises
+  // the same code path as a hosted deployment; everything else keeps the fake,
+  // and the canned response lets a test drive the structured paths (plan,
+  // minutes, design draft) without a provider.
   if (!usesSupabasePersistence()) {
+    const masterKey = process.env.STUDIO_MASTER_KEY;
+    const connection = getProviderConnection(agent.organizationId, agent.providerConnectionId);
+    if (connection && masterKey)
+      return runtimeForConnection({
+        providerType: connection.providerType,
+        apiBaseUrl: connection.apiBaseUrl,
+        apiKey: decryptSecret(connection.encryptedSecret, masterKey),
+        model: agent.providerModelId,
+        reasoningEffort: agent.reasoningEffort,
+      });
     const response = process.env.BUNKER_FAKE_RUNTIME_RESPONSE;
     return new FakeRuntime(response ? { response } : {});
   }
@@ -470,19 +519,11 @@ export async function getWebAgentRuntime(agent: Agent): Promise<AgentRuntime | n
     typeof record.api_base_url === 'string' ? record.api_base_url.replace(/\/$/, '') : '';
   const providerType = typeof record.provider_type === 'string' ? record.provider_type : '';
   if (!baseUrl) return null;
-  const options = {
+  return runtimeForConnection({
+    providerType,
+    apiBaseUrl: baseUrl,
     apiKey: decryptSecret(record.encrypted_secret_blob as EncryptedSecret, masterKey),
     model: agent.providerModelId,
-  };
-  if (providerType === 'OPENAI')
-    return createOpenAIRuntime({
-      endpoint: `${baseUrl}/responses`,
-      reasoningEffort: agent.reasoningEffort,
-      ...options,
-    });
-  if (providerType === 'ANTHROPIC')
-    return createAnthropicRuntime({ endpoint: `${baseUrl}/messages`, ...options });
-  if (providerType === 'OPENAI_COMPATIBLE')
-    return createCompatibleRuntime({ endpoint: `${baseUrl}/chat/completions`, ...options });
-  return null;
+    reasoningEffort: agent.reasoningEffort,
+  });
 }
