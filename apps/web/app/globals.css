@@ -49,6 +49,14 @@ button {
   max-width: 720px;
   padding-top: 80px;
 }
+/*
+ * Content pages keep the full shell width. They previously reused
+ * `onboarding-shell`, which caps the column at 720px and squeezed multi-column
+ * layouts such as the settings grid into unusable 215px cards.
+ */
+.content-shell {
+  padding-top: 56px;
+}
 .onboarding-form {
   display: grid;
   gap: 10px;
@@ -395,14 +403,6 @@ h2 {
   font-weight: 700;
   text-decoration: underline;
 }
-.settings-grid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.settings-grid .live-panel-card {
-  min-height: 100%;
-}
 .settings-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -581,7 +581,25 @@ h2 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .settings-grid .live-panel-card {
+  /* Beats `.getting-started`, which is defined later and would otherwise
+     re-centre and re-space these cards inside the grid. `.getting-started` is a
+     horizontal hero row; as a settings card its content must stack, or a label
+     and its input end up side by side. */
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
   min-height: 100%;
+  margin-top: 0;
+}
+.settings-grid .live-panel-card > div:first-child {
+  width: 100%;
+}
+/* `h2` is sized as a page title; inside a card it must be a card heading. */
+.live-panel-card h2,
+.settings-grid h2 {
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 .office-agent {
   display: block;

@@ -2,7 +2,7 @@ import { StudioLabsPanel } from '../_components/studio-labs-panel';
 
 export default function StudioLabsPage() {
   return (
-    <main className="shell onboarding-shell">
+    <main className="shell content-shell">
       <nav className="topbar" aria-label="Primary navigation">
         <div className="brand-mark">
           <span className="brand-dot" aria-hidden="true" />

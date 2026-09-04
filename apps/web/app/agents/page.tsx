@@ -3,7 +3,7 @@ import { AgentDetailPanel } from '../_components/agent-detail-panel';
 
 export default function AgentsPage() {
   return (
-    <main className="shell onboarding-shell">
+    <main className="shell content-shell">
       <p className="eyebrow">Organization / Agents</p>
       <h1>People who move the work forward.</h1>
       <p className="hero-copy">

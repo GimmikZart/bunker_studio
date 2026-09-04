@@ -2,7 +2,7 @@ import { LivePanel } from '../_components/live-panel';
 
 export default function ActivityPage() {
   return (
-    <main className="shell onboarding-shell">
+    <main className="shell content-shell">
       <p className="eyebrow">Organization / Activity</p>
       <h1>A timeline of real work.</h1>
       <p className="hero-copy">

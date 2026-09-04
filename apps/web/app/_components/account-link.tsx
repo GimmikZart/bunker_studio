@@ -19,11 +19,12 @@ export function AccountLink() {
 
   useEffect(() => {
     void fetch('/api/auth/me')
-      .then((response) => {
-        if (response.ok) return setState('SIGNED_IN');
-        // 503 means Supabase Auth is not configured; anything else means the
-        // visitor simply is not signed in yet.
-        setState(response.status === 503 ? 'NO_AUTH' : 'SIGNED_OUT');
+      .then(async (response) => {
+        if (!response.ok) return setState('SIGNED_OUT');
+        const payload = (await response.json()) as { user?: unknown; authConfigured?: boolean };
+        // Without cloud auth the studio runs on the local fixture actor, so
+        // there is nothing to sign in to and settings stays the destination.
+        setState(payload.authConfigured && payload.user ? 'SIGNED_IN' : 'NO_AUTH');
       })
       .catch(() => setState('NO_AUTH'));
   }, []);

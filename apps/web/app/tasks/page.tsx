@@ -3,7 +3,7 @@ import { TaskBoard } from '../_components/task-board';
 
 export default function TasksPage() {
   return (
-    <main className="shell onboarding-shell">
+    <main className="shell content-shell">
       <p className="eyebrow">Organization / Tasks</p>
       <h1>Keep work moving.</h1>
       <p className="hero-copy">

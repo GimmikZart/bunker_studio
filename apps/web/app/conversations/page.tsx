@@ -3,7 +3,7 @@ import { MemoryPanel } from '../_components/memory-panel';
 
 export default function ConversationsPage() {
   return (
-    <main className="shell onboarding-shell">
+    <main className="shell content-shell">
       <p className="eyebrow">Organization / Conversations</p>
       <h1>Find the decision you remember.</h1>
       <p className="hero-copy">

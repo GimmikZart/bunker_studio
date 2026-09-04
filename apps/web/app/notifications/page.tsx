@@ -2,7 +2,7 @@ import { NotificationInbox } from '../_components/notification-inbox';
 
 export default function NotificationsPage() {
   return (
-    <main className="shell onboarding-shell">
+    <main className="shell content-shell">
       <p className="eyebrow">Inbox / Notifications</p>
       <h1>Stay in control while work continues.</h1>
       <p className="hero-copy">

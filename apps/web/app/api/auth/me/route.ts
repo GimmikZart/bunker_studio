@@ -5,8 +5,11 @@ import { authEnvironment } from '../_config';
 
 export async function GET() {
   const environment = authEnvironment();
-  if (!environment)
-    return NextResponse.json({ error: 'Supabase Auth is not configured.' }, { status: 503 });
+  // "Who am I?" is a question, not a protected action: when cloud auth is not
+  // configured the honest answer is "nobody, and there is nothing to sign in
+  // to". Answering 503 made every page log a console error in local
+  // development. Sign-up and sign-in still fail closed.
+  if (!environment) return NextResponse.json({ user: null, authConfigured: false });
   const cookieStore = await cookies();
   const client = createStudioSupabaseClient(
     {
@@ -17,6 +20,7 @@ export async function GET() {
     environment,
   );
   const { data, error } = await client.auth.getUser();
-  if (error || !data.user) return NextResponse.json({ user: null }, { status: 401 });
-  return NextResponse.json({ user: data.user });
+  if (error || !data.user)
+    return NextResponse.json({ user: null, authConfigured: true }, { status: 401 });
+  return NextResponse.json({ user: data.user, authConfigured: true });
 }

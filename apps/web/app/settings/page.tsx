@@ -2,7 +2,7 @@ import { SettingsPanel } from '../_components/settings-panel';
 
 export default function SettingsPage() {
   return (
-    <main className="shell onboarding-shell">
+    <main className="shell content-shell">
       <p className="eyebrow">Organization / Settings</p>
       <h1>Make the rules explicit.</h1>
       <p className="hero-copy">

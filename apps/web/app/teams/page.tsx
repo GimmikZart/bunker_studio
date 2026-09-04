@@ -3,7 +3,7 @@ import { TeamBuilderPanel } from '../_components/team-builder-panel';
 
 export default function TeamsPage() {
   return (
-    <main className="shell onboarding-shell">
+    <main className="shell content-shell">
       <p className="eyebrow">Organization / Teams</p>
       <h1>Shape the right team.</h1>
       <p className="hero-copy">
