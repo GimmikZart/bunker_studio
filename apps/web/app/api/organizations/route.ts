@@ -22,15 +22,30 @@ export async function POST(request: Request) {
   const store = await getWebTenancyRepository();
   if (!store)
     return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  // Parsed on its own so a bad body is the only thing reported as a bad body.
+  let input: ReturnType<typeof organizationCreateSchema.parse>;
   try {
-    const input = organizationCreateSchema.parse(await request.json());
-    const organization = await store.createOrganization({ ...input, ownerUserId: userId });
-    return NextResponse.json({ organization }, { status: 201 });
+    input = organizationCreateSchema.parse(await request.json());
   } catch (error) {
     if (error instanceof SyntaxError)
       return NextResponse.json({ error: 'Invalid JSON.' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid organization payload.' }, { status: 400 });
+  }
+  try {
+    const organization = await store.createOrganization({ ...input, ownerUserId: userId });
+    return NextResponse.json({ organization }, { status: 201 });
+  } catch (error) {
     if (error instanceof Error && error.name === 'AuthorizationError')
       return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
-    return NextResponse.json({ error: 'Invalid organization payload.' }, { status: 400 });
+    // A storage failure is not a bad request: report what the database said so
+    // a misconfigured project or policy is diagnosable.
+    return NextResponse.json(
+      {
+        error: `The organization could not be created. ${
+          error instanceof Error ? error.message : 'Unknown storage failure.'
+        }`,
+      },
+      { status: 502 },
+    );
   }
 }

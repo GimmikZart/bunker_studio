@@ -119,7 +119,7 @@ test('settings monitors and revokes a local worker', async ({ page }) => {
   await expect(page.getByLabel('Import Bunker Studio export')).toBeVisible();
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Revoke' }).click();
-  await expect(page.getByText('E2E PC was revoked.')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('E2E PC was revoked.')).toBeVisible({ timeout: 60_000 });
 });
 
 test('login and signup flows expose accessible credential forms', async ({ page }) => {

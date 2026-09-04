@@ -50,6 +50,19 @@ La web app è disponibile su `http://localhost:3000`; il controllo salute è
 pnpm --filter @bunker-studio/worker dev
 ```
 
+## Locale o cloud
+
+L'app si comporta allo stesso modo nei due casi: cambia solo dove finiscono i
+dati. In `.env` (nella radice del repository, non in `apps/web`):
+
+- Supabase in Docker: `SUPABASE_URL=http://127.0.0.1:55421`
+- Supabase in cloud: `SUPABASE_URL=https://<progetto>.supabase.co`
+
+Con `SUPABASE_URL` e `SUPABASE_ANON_KEY` valorizzati lo studio usa quel progetto,
+sia che l'app giri sul PC sia che giri ospitata. Settings mostra sempre a quale
+database sei collegato. Solo `BUNKER_PERSISTENCE_MODE=memory` forza l'archivio in
+memoria, che serve ai test e sparisce al riavvio.
+
 ## Supabase locale
 
 ```bash

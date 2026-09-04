@@ -869,3 +869,8 @@ h2 {
 .header-account {
   white-space: nowrap;
 }
+.storage-target {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}

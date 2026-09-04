@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../_auth';
 import { getWebOperationalRepository } from '../_data';
+import { persistenceTarget } from '../_persistence';
 
 export async function GET(request: Request) {
   const organizationId = request.headers.get('x-bunker-organization-id')?.trim();
@@ -28,6 +29,8 @@ export async function GET(request: Request) {
       // Lets the UI say up front that a key cannot be stored yet, instead of
       // failing after someone has already pasted a secret into the form.
       secureProviderStorage: Boolean(process.env.STUDIO_MASTER_KEY),
+      // Which database this run is actually writing to. Host only, no credential.
+      persistence: persistenceTarget(),
     });
   } catch {
     return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });

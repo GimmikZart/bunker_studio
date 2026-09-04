@@ -1,3 +1,5 @@
+// Must be first: it loads the root .env before any module reads a setting.
+import './load-env.js';
 import { getWorkerHealth } from './health.js';
 import { createCompatibleRuntime } from '@bunker-studio/provider-openai-compatible';
 import { createOpenAIRuntime } from '@bunker-studio/provider-openai';

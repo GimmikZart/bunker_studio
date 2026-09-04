@@ -31,6 +31,7 @@ type SettingsPayload = {
     workerRequired: boolean;
   };
   secureProviderStorage?: boolean;
+  persistence?: { mode: 'SUPABASE' | 'MEMORY'; host: string | null; local: boolean };
 };
 
 type ProviderType = 'OPENAI' | 'ANTHROPIC' | 'OPENAI_COMPATIBLE';
@@ -471,6 +472,13 @@ export function SettingsPanel() {
           ))}
         </select>
       </div>
+      {settings?.persistence && (
+        <p className="storage-target">
+          {settings.persistence.mode === 'SUPABASE'
+            ? `Storing data in Supabase at ${settings.persistence.host ?? 'the configured project'}${settings.persistence.local ? ' (local Docker)' : ''}.`
+            : 'Storing data in memory for this run only.'}
+        </p>
+      )}
       {!organizations.length && (
         <OrganizationCreateForm description="Providers, budgets, workers and members are all configured per organization, so create one before adding an API key." />
       )}
@@ -484,6 +492,13 @@ export function SettingsPanel() {
           <div className="getting-started live-panel-card" id="providers">
             <div>
               <h2>Providers</h2>
+              {settings.persistence?.mode === 'MEMORY' && (
+                <p className="live-error" role="status">
+                  This run is not connected to a database, so anything you save disappears when the
+                  server stops. Set SUPABASE_URL and SUPABASE_ANON_KEY in the root .env — pointing
+                  at the local Docker project or a cloud one — and restart.
+                </p>
+              )}
               <p>
                 Connect one account per provider. The key is sent only to the server, encrypted, and
                 never shown again. Reading the model catalog does not run a model or consume

@@ -10,6 +10,12 @@ export default defineConfig({
   fullyParallel: true,
   workers: 1,
   reporter: [['list'], ['html', { open: 'never' }]],
+  // The functional suite runs against `next dev`, which compiles each route on
+  // its first request. A control can therefore stay disabled for several
+  // seconds while a request is in flight, and the 5s default is too tight for
+  // that. Response times on a built server are enforced separately by the p95
+  // smoke in playwright.production.config.ts.
+  expect: { timeout: 30_000 },
   use: {
     baseURL: `http://127.0.0.1:${port}`,
     trace: 'on-first-retry',
