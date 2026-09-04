@@ -117,7 +117,10 @@ export function StudioLabsPanel() {
         <div>
           <p className="eyebrow">Protected self-improvement</p>
           <h2>Studio Labs</h2>
-          <p>Analyze deterministic signals and prepare reviewed improvements for Studio Core.</p>
+          <p>
+            Improvements to the studio itself, prepared from measured signals rather than guesses.
+            Each one goes through the same review and checks as any other work.
+          </p>
           {snapshot && (
             <p className="live-summary">
               {snapshot.completedTasks} completed tasks ·{' '}

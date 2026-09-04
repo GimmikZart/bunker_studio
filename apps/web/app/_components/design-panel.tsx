@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { FieldLabel } from './help-tip';
 import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
@@ -130,7 +131,12 @@ export function DesignPanel() {
         </div>
       )}
       <div className="resource-form">
-        <label htmlFor="design-agent">Designer agent</label>
+        <FieldLabel
+          htmlFor="design-agent"
+          help="Which member of your studio draws the proposals. Only agents you have created appear here."
+        >
+          Designer agent
+        </FieldLabel>
         <select
           id="design-agent"
           value={designerAgentId}
@@ -148,7 +154,12 @@ export function DesignPanel() {
             Create and activate a Designer agent before submitting a request.
           </p>
         )}
-        <label htmlFor="design-brief">Design brief</label>
+        <FieldLabel
+          htmlFor="design-brief"
+          help="What the screen has to do, in your own words. Describe the job it does for the user and the mood you want, not the layout: that is what you are asking for."
+        >
+          Design brief
+        </FieldLabel>
         <textarea
           id="design-brief"
           value={brief}
@@ -157,7 +168,12 @@ export function DesignPanel() {
           maxLength={10_000}
           placeholder="User flow, required states, and constraints."
         />
-        <label htmlFor="design-constraints">Constraints (one per line)</label>
+        <FieldLabel
+          htmlFor="design-constraints"
+          help="Rules the design must respect, one per line, such as brand colours or keyboard navigation. Leave empty if there are none."
+        >
+          Constraints (one per line)
+        </FieldLabel>
         <textarea
           id="design-constraints"
           value={constraints}
@@ -166,7 +182,12 @@ export function DesignPanel() {
           maxLength={10_000}
           placeholder="Accessibility: keyboard navigation\nBrand: use the existing design tokens"
         />
-        <label htmlFor="design-variants">Variants</label>
+        <FieldLabel
+          htmlFor="design-variants"
+          help="How many different directions to propose, up to three. More variants cost more and give you more to compare before you commit."
+        >
+          Variants
+        </FieldLabel>
         <select
           id="design-variants"
           value={variantCount}

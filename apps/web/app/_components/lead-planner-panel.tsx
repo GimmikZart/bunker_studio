@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { FieldLabel } from './help-tip';
 import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
@@ -191,7 +192,12 @@ export function LeadPlannerPanel() {
           ))}
         </select>
 
-        <label htmlFor="plan-lead">Lead</label>
+        <FieldLabel
+          htmlFor="plan-lead"
+          help="The agent that breaks the goal into tasks. Give this one a stronger model: planning badly is expensive further down."
+        >
+          Lead
+        </FieldLabel>
         <select
           id="plan-lead"
           value={leadAgentId}
@@ -205,7 +211,12 @@ export function LeadPlannerPanel() {
           ))}
         </select>
 
-        <label htmlFor="plan-goal">What must be delivered</label>
+        <FieldLabel
+          htmlFor="plan-goal"
+          help="The outcome you want, in plain words. Describe the result, not the steps: working out the steps is what you are asking the Lead to do."
+        >
+          What must be delivered
+        </FieldLabel>
         <textarea
           id="plan-goal"
           value={goal}
@@ -215,7 +226,12 @@ export function LeadPlannerPanel() {
           placeholder="Describe the outcome, not the tasks."
         />
 
-        <label htmlFor="plan-constraints">Constraints (one per line, optional)</label>
+        <FieldLabel
+          htmlFor="plan-constraints"
+          help="Rules the plan must respect, one per line, such as a deadline or a technology to avoid."
+        >
+          Constraints (one per line, optional)
+        </FieldLabel>
         <textarea
           id="plan-constraints"
           value={constraints}

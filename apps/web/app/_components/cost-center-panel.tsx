@@ -167,7 +167,10 @@ export function CostCenterPanel() {
         <article className="live-panel-card cost-card">
           <div>
             <h2>Budget guardrails</h2>
-            <p>Hard caps are enforced before a paid chat, queue transition, and worker claim.</p>
+            <p>
+              Your spending limits. A ceiling is checked before any paid call, so work that would
+              cross it is stopped rather than billed and refunded.
+            </p>
           </div>
           <div className="live-records">
             {hardPolicies.length === 0 && (
@@ -191,8 +194,8 @@ export function CostCenterPanel() {
           <div>
             <h2>Provider quota status</h2>
             <p>
-              Provider readiness is shown here; quota pauses are resumed by the deterministic
-              scheduler.
+              Whether each connected account can currently be used. If a provider pauses you for
+              exceeding its own limits, waiting work resumes on its own once the pause lifts.
             </p>
           </div>
           <div className="live-records">
@@ -215,7 +218,7 @@ export function CostCenterPanel() {
         <article className="live-panel-card cost-card">
           <div>
             <h2>Top cost drivers</h2>
-            <p>Grouped from the immutable, tenant-scoped cost ledger.</p>
+            <p>Where the money went, largest first, taken from the spending record.</p>
           </div>
           <div className="live-records">
             {grouped(entries, (entry) => `${entry.provider} / ${entry.model}`)
@@ -232,7 +235,10 @@ export function CostCenterPanel() {
         <article className="live-panel-card cost-card">
           <div>
             <h2>Work attribution</h2>
-            <p>Project, agent and task identifiers remain available for audit.</p>
+            <p>
+              Which project, agent and task each amount belongs to, so any figure can be traced
+              back.
+            </p>
           </div>
           <div className="live-records">
             {grouped(

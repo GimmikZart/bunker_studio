@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { FieldLabel } from './help-tip';
 import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
@@ -98,21 +99,36 @@ export function MemoryPanel() {
         </select>
       </div>
       <div className="resource-form">
-        <label htmlFor="memory-content">Memory</label>
+        <FieldLabel
+          htmlFor="memory-content"
+          help="Something the studio should remember across conversations, such as a decision you made or a constraint that always applies. Write it as a fact, not a question."
+        >
+          Memory
+        </FieldLabel>
         <textarea
           id="memory-content"
           value={content}
           onChange={(event) => setContent(event.target.value)}
           rows={3}
         />
-        <label htmlFor="memory-type">Type</label>
+        <FieldLabel
+          htmlFor="memory-type"
+          help="What kind of thing this is: a decision taken, a fact about the project, or a preference to respect. It helps the studio find the right memory later."
+        >
+          Type
+        </FieldLabel>
         <select id="memory-type" value={type} onChange={(event) => setType(event.target.value)}>
           <option>DECISION</option>
           <option>PROJECT_KNOWLEDGE</option>
           <option>LESSON</option>
           <option>PINNED</option>
         </select>
-        <label htmlFor="memory-importance">Importance</label>
+        <FieldLabel
+          htmlFor="memory-importance"
+          help="How strongly this should weigh when the studio decides what to recall. Higher means it surfaces more readily; keep the top of the range for things that must never be forgotten."
+        >
+          Importance
+        </FieldLabel>
         <input
           id="memory-importance"
           type="number"
@@ -129,7 +145,12 @@ export function MemoryPanel() {
         >
           Save memory
         </button>
-        <label htmlFor="memory-search">Search memories</label>
+        <FieldLabel
+          htmlFor="memory-search"
+          help="Type a few words to find what the studio has stored. Only matching memories are used, so the whole archive never gets loaded into a conversation."
+        >
+          Search memories
+        </FieldLabel>
         <input
           id="memory-search"
           value={query}

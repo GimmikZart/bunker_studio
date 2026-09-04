@@ -58,7 +58,7 @@ test('structured memory is saved and retrieved without using the conversation ar
   );
   await page.getByRole('button', { name: 'Save memory' }).click();
   expect((await saved).status()).toBe(201);
-  await page.getByLabel('Search memories').fill('durable queue');
+  await page.getByRole('textbox', { name: 'Search memories' }).fill('durable queue');
   const memoryPanel = page.getByLabel('Structured memory');
   await expect(memoryPanel.getByRole('button', { name: 'Search', exact: true })).toBeEnabled();
   await memoryPanel.getByRole('button', { name: 'Search', exact: true }).click();

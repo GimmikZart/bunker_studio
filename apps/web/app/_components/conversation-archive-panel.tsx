@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { FieldLabel } from './help-tip';
 import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
@@ -91,7 +92,12 @@ export function ConversationArchivePanel() {
               void load();
             }}
           >
-            <label htmlFor="conversation-search">Search messages</label>
+            <FieldLabel
+              htmlFor="conversation-search"
+              help="Find past messages by their words. Searching the archive does not send it to an agent: it stays a record you can read."
+            >
+              Search messages
+            </FieldLabel>
             <input
               id="conversation-search"
               value={query}

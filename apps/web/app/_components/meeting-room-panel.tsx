@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { FieldLabel } from './help-tip';
 import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
@@ -141,7 +142,12 @@ export function MeetingRoomPanel() {
           value={title}
           onChange={(event) => setTitle(event.target.value)}
         />
-        <label htmlFor="meeting-type">Meeting type</label>
+        <FieldLabel
+          htmlFor="meeting-type"
+          help="What the meeting is for. It sets the tone and who is expected to weigh in, for example an architecture decision or a planning round."
+        >
+          Meeting type
+        </FieldLabel>
         <select
           id="meeting-type"
           value={meetingType}
@@ -151,7 +157,12 @@ export function MeetingRoomPanel() {
           <option>PLANNING</option>
           <option>REVIEW</option>
         </select>
-        <label htmlFor="meeting-agenda">Agenda (one item per line)</label>
+        <FieldLabel
+          htmlFor="meeting-agenda"
+          help="The points to settle, one per line. Everyone sees this list, and the minutes are written against it, so keep each line to one decision."
+        >
+          Agenda (one item per line)
+        </FieldLabel>
         <textarea
           id="meeting-agenda"
           value={agenda}
@@ -177,7 +188,12 @@ export function MeetingRoomPanel() {
             </label>
           ))}
         </fieldset>
-        <label htmlFor="meeting-rounds">Maximum rounds</label>
+        <FieldLabel
+          htmlFor="meeting-rounds"
+          help="How many times each participant may speak. More rounds means more back and forth and more cost. Three is the ceiling, and most meetings settle in two."
+        >
+          Maximum rounds
+        </FieldLabel>
         <select
           id="meeting-rounds"
           value={maxRounds}

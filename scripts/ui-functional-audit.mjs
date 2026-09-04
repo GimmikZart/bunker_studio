@@ -157,7 +157,7 @@ try {
     'UI-003-task',
   );
 
-  await page.getByLabel('Type').selectOption('FRONTEND');
+  await page.getByRole('combobox', { name: 'Type' }).selectOption('FRONTEND');
   await page.getByText('A frontend task needs an approved design.').waitFor();
   await record(
     'UI-006',

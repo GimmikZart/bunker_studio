@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import { FieldLabel } from './help-tip';
 import { apiHeaders } from './live-panel';
 
 type Organization = { id: string; name: string };
@@ -224,28 +225,48 @@ export function OrganizationCrudPanel({ kind }: { kind: 'projects' | 'teams' }) 
               </option>
             ))}
           </select>
-          <label htmlFor="repository-owner">GitHub owner or organization</label>
+          <FieldLabel
+            htmlFor="repository-owner"
+            help="The part of the repository address before the slash. In github.com/acme/studio that is acme."
+          >
+            GitHub owner or organization
+          </FieldLabel>
           <input
             id="repository-owner"
             value={repositoryOwner}
             onChange={(event) => setRepositoryOwner(event.target.value)}
             required
           />
-          <label htmlFor="repository-name">Repository name</label>
+          <FieldLabel
+            htmlFor="repository-name"
+            help="The part after the slash. In github.com/acme/studio that is studio."
+          >
+            Repository name
+          </FieldLabel>
           <input
             id="repository-name"
             value={repositoryName}
             onChange={(event) => setRepositoryName(event.target.value)}
             required
           />
-          <label htmlFor="repository-branch">Default branch</label>
+          <FieldLabel
+            htmlFor="repository-branch"
+            help="The branch the work starts from and targets, usually main. Agents never write to it directly: they open a pull request against it."
+          >
+            Default branch
+          </FieldLabel>
           <input
             id="repository-branch"
             value={repositoryBranch}
             onChange={(event) => setRepositoryBranch(event.target.value)}
             required
           />
-          <label htmlFor="repository-token">GitHub fine-grained access token</label>
+          <FieldLabel
+            htmlFor="repository-token"
+            help="A key you create in your GitHub settings that grants access to this one repository. Give it permission to read and write contents and pull requests, and nothing more. It is encrypted before storage."
+          >
+            GitHub fine-grained access token
+          </FieldLabel>
           <input
             id="repository-token"
             type="password"
