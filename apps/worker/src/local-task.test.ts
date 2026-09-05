@@ -53,6 +53,7 @@ function client(overrides: Partial<RuntimeWorkerClient> = {}): RuntimeWorkerClie
     claimTask: vi.fn(),
     renewLease: vi.fn(),
     completeTask: vi.fn(),
+    advanceProjects: vi.fn().mockResolvedValue({ moves: 0 }),
     ...overrides,
   } as unknown as RuntimeWorkerClient;
 }
@@ -77,6 +78,40 @@ describe('local worker task loop', () => {
     expect(completeTask).toHaveBeenCalledWith(
       expect.objectContaining({ leaseId: task.leaseId, success: true }),
     );
+  });
+
+  it('asks the control plane to move the projects on once a task ends', async () => {
+    // Nobody is at a screen when a worker finishes, and finishing is exactly
+    // what releases the next task.
+    const advanceProjects = vi.fn(async () => ({ moves: 2 }));
+    const controlPlane = client({
+      claimTask: vi.fn(async () => task),
+      completeTask: vi.fn(async () => ({ id: task.taskId, state: 'IMPLEMENTED', retryCount: 0 })),
+      advanceProjects,
+    });
+    const loop = new LocalWorkerTaskLoop(
+      controlPlane,
+      { nodeId: '55555555-5555-4555-8555-555555555555', credential: 'secret' },
+      async (claimed) => ({ taskId: claimed.taskId }),
+    );
+    await loop.runOnce();
+    expect(advanceProjects).toHaveBeenCalledWith('55555555-5555-4555-8555-555555555555', 'secret');
+  });
+
+  it('still reports a completed task when the control plane cannot advance', async () => {
+    const controlPlane = client({
+      claimTask: vi.fn(async () => task),
+      completeTask: vi.fn(async () => ({ id: task.taskId, state: 'IMPLEMENTED', retryCount: 0 })),
+      advanceProjects: vi.fn(async () => {
+        throw new Error('control plane unreachable');
+      }),
+    });
+    const loop = new LocalWorkerTaskLoop(
+      controlPlane,
+      { nodeId: '55555555-5555-4555-8555-555555555555', credential: 'secret' },
+      async (claimed) => ({ taskId: claimed.taskId }),
+    );
+    await expect(loop.runOnce()).resolves.toBe('COMPLETED');
   });
 
   it('reports executor failures and preserves retry state', async () => {

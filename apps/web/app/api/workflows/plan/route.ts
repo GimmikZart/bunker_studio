@@ -2,6 +2,7 @@ import { leadPlanSubmissionSchema } from '@bunker-studio/contracts';
 import { remainingHardBudget } from '@bunker-studio/core';
 import { assignTasks, validateLeadPlanProposal } from '@bunker-studio/orchestration';
 import { NextResponse } from 'next/server';
+import { advanceProject } from '../../_conductor';
 import { resolveActorId } from '../../_auth';
 import {
   getWebAgentRepository,
@@ -154,6 +155,17 @@ export async function POST(request: Request) {
       rootTaskId,
       actorUserId,
     );
+    // A committed plan is the human gate; from here the studio starts what it
+    // can without being asked again.
+    const advanced = agents
+      ? await advanceProject({
+          project,
+          organizationId,
+          actorId: actorUserId,
+          operations,
+          agents,
+        }).catch(() => null)
+      : null;
     await operations.recordActivity({
       organizationId,
       eventType: 'WORKFLOW_PLAN_CREATED',
@@ -165,6 +177,7 @@ export async function POST(request: Request) {
       {
         workflow: persistedWorkflow,
         tasks: createdTasks,
+        ...(advanced ? { advanced } : {}),
         // Named rather than hidden: a task with nobody on it will sit in the
         // queue forever, and the reason is something the user can act on.
         unassigned: assignment.unassigned.map((entry) => ({

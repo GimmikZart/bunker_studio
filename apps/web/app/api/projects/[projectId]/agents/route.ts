@@ -1,7 +1,12 @@
 import { projectAgentsAssignSchema } from '@bunker-studio/contracts';
 import { NextResponse } from 'next/server';
+import { advanceProject } from '../../../_conductor';
 import { resolveActorId } from '../../../_auth';
-import { getWebAgentRepository, getWebTenancyRepository } from '../../../_data';
+import {
+  getWebAgentRepository,
+  getWebOperationalRepository,
+  getWebTenancyRepository,
+} from '../../../_data';
 
 type Context = { params: Promise<{ projectId: string }> };
 
@@ -19,6 +24,8 @@ type Resolved =
       organizationId: string;
       actorId: string;
       agents: NonNullable<Awaited<ReturnType<typeof getWebAgentRepository>>>;
+      operations: NonNullable<Awaited<ReturnType<typeof getWebOperationalRepository>>>;
+      project: { id: string; autonomyMode: string };
     };
 
 async function context(request: Request, projectId: string): Promise<Resolved> {
@@ -34,7 +41,8 @@ async function context(request: Request, projectId: string): Promise<Resolved> {
     };
   const agents = await getWebAgentRepository();
   const tenancy = await getWebTenancyRepository();
-  if (!agents || !tenancy)
+  const operations = await getWebOperationalRepository();
+  if (!agents || !tenancy || !operations)
     return {
       ok: false,
       response: NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 }),
@@ -49,7 +57,7 @@ async function context(request: Request, projectId: string): Promise<Resolved> {
       ok: false,
       response: NextResponse.json({ error: 'Project not found.' }, { status: 404 }),
     };
-  return { ok: true, organizationId, actorId, agents };
+  return { ok: true, organizationId, actorId, agents, operations, project };
 }
 
 function failure(error: unknown): NextResponse {
@@ -145,7 +153,19 @@ export async function POST(request: Request, routeContext: Context): Promise<Nex
           input.agentIds.includes(assignment.agentId)
         )
           await agents.archiveAgentAssignment(assignment.id, organizationId, actorId);
-    return NextResponse.json({ assigned: input.agentIds.length }, { status: 201 });
+    // Somebody joining the project can unblock work that had nobody to do it,
+    // so the queue is reconsidered straight away rather than at the next visit.
+    const advanced = await advanceProject({
+      project: resolved.project,
+      organizationId,
+      actorId,
+      operations: resolved.operations,
+      agents,
+    }).catch(() => null);
+    return NextResponse.json(
+      { assigned: input.agentIds.length, ...(advanced ? { advanced } : {}) },
+      { status: 201 },
+    );
   } catch (error) {
     return failure(error);
   }

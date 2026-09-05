@@ -1,5 +1,46 @@
 # Development Worklog
 
+## 2026-09-05 — Fase 1 del framework: il progetto avanza da solo
+
+### Lavoro svolto
+
+- `packages/orchestration/src/conductor.ts`: funzione pura e idempotente che
+  decide ogni avanzamento — bozze, rilascio delle dipendenze, parcheggio con il
+  nome di cio' che si aspetta, blocco motivato, budget speso una volta sola per
+  passata, scope di scrittura disgiunti, limite di concorrenza. 14 test.
+- `apps/web/app/api/_conductor.ts` applica le decisioni: riassegna gli orfani con
+  il router della Fase 0, scrive activity e notifica solo cio' che richiede una
+  persona.
+- Nuovo `POST /api/projects/:projectId/advance`, e avanzamento automatico dopo:
+  piano committato, agente aggiunto al progetto, task terminato
+  (`DONE`/`CANCELED`/`FAILED_FINAL` soltanto, per non sovrascrivere una
+  transizione impostata a mano).
+- Nuovo `POST /api/workers/runtime/projects/advance`: il worker, finito un task,
+  chiede al control plane di proseguire con la credenziale che ha gia'; il
+  control plane agisce come owner dell'organizzazione (DEC-023).
+- `apps/web/app/api/_queue-gate.ts`: le condizioni di avvio estratte dalla PATCH
+  di un task e condivise con il conductor, cosi' le due strade non possono
+  divergere.
+- `project-delivery-panel.tsx`: il cantiere nella card di progetto, con
+  `Advance now`. Metrica di testa rinominata `Open`.
+- DEC-022 (l'autonomia del progetto e' il gate) e DEC-023 (il worker chiede di
+  proseguire).
+
+### Verifiche
+
+- `pnpm format:check`, `pnpm lint`, `pnpm typecheck`: PASS.
+- `pnpm test`: PASS — orchestration 102 test, worker 34, web 38 file / 109 test.
+- `pnpm build`: PASS 15/15. `pnpm security`: nessuna vulnerabilita' nota.
+- Verifica in esecuzione (memory mode): piano di tre task che avvia il primo e
+  parcheggia gli altri due dietro le dipendenze giuste; task REVIEW senza
+  reviewer che diventa `BLOCKED` con la notifica che nomina il ruolo mancante e
+  passa a `QUEUED` assegnato appena il reviewer entra nel progetto.
+
+### Stato finale
+
+Checkpoint stabile. Prossima attivita': Fase 2, ingaggio del Lead e documento
+tecnico nel repository (`docs/ai/NEXT_STEPS.md`).
+
 ## 2026-09-05 — Fase 0 del framework: chi esegue un piano
 
 ### Lavoro svolto

@@ -108,6 +108,12 @@ export class LocalWorkerTaskLoop {
       return completion.state === 'FAILED_FINAL' ? 'FAILED' : 'RETRY_SCHEDULED';
     } finally {
       clearInterval(renewalTimer);
+      // A task ending is what releases the next one, and there is nobody at a
+      // screen to notice. A failure to ask is not a failure of the task: the
+      // control plane will reach the same decision the next time it is asked.
+      await this.client
+        .advanceProjects(this.identity.nodeId, this.identity.credential)
+        .catch(() => undefined);
     }
   }
 }

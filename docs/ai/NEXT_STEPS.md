@@ -1,40 +1,43 @@
 # Next Steps
 
-## Prossima attivita' proposta — Fase 1: il Conductor
+## Prossima attivita' proposta — Fase 2: l'ingaggio e il documento
 
-La Fase 0 e' completa: un piano generato dal Lead esce con ogni task assegnato a
-un agente della squadra del progetto, e il worker puo' prenderlo. Il disegno
+Fasi 0 e 1 complete: un piano genera task assegnati, e il progetto li avvia da
+solo fino al prossimo gate umano, anche mentre nessuno guarda. Il disegno
 completo resta in `docs/product/STUDIO_PLAYBOOKS.md`.
 
 ### Il problema
 
-Nessuno fa avanzare il lavoro. Le transizioni esistono e sono corrette, ma le
-invoca sempre qualcuno a mano: non c'e' un processo che, quando le dipendenze di
-un task sono `DONE`, lo porti a `QUEUED` e avvisi l'utente. Il progetto non
-cammina da solo.
+Il Lead non conduce un'intervista. La chat esiste ma non e' legata a un progetto
+e non produce nulla di strutturato: manca il ciclo "il Lead chiede, tu rispondi,
+il Lead riassume, tu approvi" che porta a un brief condiviso, e manca la fase che
+scrive il documento tecnico nel repository del progetto.
 
 ### Da fare
 
-- Ciclo deterministico (nel worker o schedulato) che per ogni progetto attivo
-  promuove i task pronti, rispetta i gruppi paralleli e gli scope disgiunti, si
-  ferma quando il budget residuo non copre il costo stimato, e assegna un agente
-  ai task che non ne hanno.
-- Scrittura in `activity` e `notifications` a ogni chiusura di fase e a ogni
-  gate che richiede l'utente.
-- Vista di cantiere del progetto: cosa sta girando, cosa aspetta cosa, cosa e'
-  fermo e perche'.
+- Conversazione di ingaggio legata al progetto e alla fase corrente, distinta
+  dalla chat libera con un agente.
+- Contratto di risposta strutturato del Lead
+  (`{ questions[], understanding, openPoints[], proposedScope, readyForApproval }`),
+  validato con zod. `readyForApproval` e' un suggerimento visivo: la fase avanza
+  solo quando l'utente approva.
+- Fase `spec`: un task `DOCS` con write scope `docs/`, eseguito dal worker, che
+  produce il documento su un branch con la sua pull request.
+- I file di continuita' del progetto sul modello di questo repository:
+  `docs/specs/<slug>.md`, `docs/state/CURRENT.md`, `docs/state/NEXT.md`.
 
 ### Definition of Done
 
-Da un piano approvato, senza altre chiamate manuali, i task vengono eseguiti
-nell'ordine delle dipendenze fino al primo gate umano, e l'utente lo vede
-succedere.
+Da una conversazione con il Lead si arriva a un brief approvato dall'utente e a
+un documento tecnico committato nel repository del progetto, senza spiegare da
+capo come si lavora.
 
 ### Decisioni gia' prese
 
-D1 e' DEC-021: mockup reali in `design/<slug>/**` con anteprima in iframe
-sandbox, alla Fase 4. D2 (autonomia del Conductor) e D3 (dove vivono i playbook)
-restano da decidere, descritte in `docs/product/STUDIO_PLAYBOOKS.md`.
+D1 e' DEC-021 (mockup reali in sandbox, Fase 4). D2 e' DEC-022 (la modalita' di
+autonomia del progetto e' il gate). Resta aperta D3: dove vivono i playbook —
+in codice tipizzato, oppure in tabella ed esportabili con il pacchetto
+organizzazione.
 
 ## Prossima attivita' precisa — verifiche esterne AC-001, AC-006, AC-009, AC-011
 

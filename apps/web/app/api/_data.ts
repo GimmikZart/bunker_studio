@@ -384,6 +384,12 @@ type LocalOperationalRepository = {
     state: TaskState,
     actorUserId: string,
   ) => TaskRecord;
+  assignTaskAgent: (
+    taskId: string,
+    organizationId: string,
+    agentId: string,
+    actorUserId: string,
+  ) => void;
 };
 
 /** The stored token stays server-side: only these fields reach a response. */
@@ -540,6 +546,11 @@ const localOperationalRepository: LocalOperationalRepository = {
     if (!task) throw new Error('Task not found.');
     if (!canTransition(task.state as TaskState, state)) throw new Error('Invalid task transition.');
     return updateTask(organizationId, { ...task, state });
+  },
+  assignTaskAgent: (taskId, organizationId, agentId) => {
+    const task = listTasks(organizationId).find((item) => item.id === taskId);
+    if (!task) throw new Error('Task not found.');
+    updateTask(organizationId, { ...task, assignedAgentId: agentId });
   },
 };
 

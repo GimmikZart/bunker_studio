@@ -193,3 +193,21 @@
 **Motivazione:** Il contratto strutturato attuale non puo' descrivere l'interfaccia di un sito: produce una scheda con due colori e sei paragrafi. Senza mockup credibili, lo scenario "prendi un sito brutto, ridisegnalo, mostralo al cliente" non e' realizzabile.
 
 **Conseguenze:** La regola che il markup di un modello non viene mai eseguito nell'origine dello studio resta intatta: cambia dove il markup e' permesso, non il fatto che non lo si esegua in casa. Un prototipo passa per gli stessi gate di scope, review e approvazione di ogni altro task.
+
+## DEC-022 — L'autonomia del progetto e' gia' una policy, non un secondo interruttore
+**Status:** Accepted
+
+**Decisione:** Il conductor promuove il lavoro fino al prossimo gate umano quando il progetto e' in modalita' `AUTONOMOUS` o `LAB`, e si ferma a `READY` in `SUPERVISED` e `MANUAL`. Non esiste una seconda impostazione "quanto e' autonomo il conductor".
+
+**Motivazione:** La specifica definisce gia' la politica di autonomia per progetto (sezione 8) e gli approval gate che valgono in ogni modalita'. Aggiungere un secondo interruttore avrebbe creato due fonti di verita' che possono contraddirsi.
+
+**Conseguenze:** Chi vuole approvare ogni avvio mette il progetto in `SUPERVISED`. I gate che richiedono comunque una persona — budget, design, sicurezza, deploy — restano applicati dove sono gia' implementati, indipendentemente dalla modalita'.
+
+## DEC-023 — Un worker che finisce un task chiede al control plane di proseguire
+**Status:** Accepted
+
+**Decisione:** Quando un task termina, il worker chiama `POST /api/workers/runtime/projects/advance` con la credenziale che possiede gia'. Il control plane autentica il nodo, risolve la sua organizzazione e agisce come **owner** dell'organizzazione.
+
+**Motivazione:** La fine di un task e' il momento che sblocca il successivo, ed e' anche il momento in cui non c'e' nessun browser aperto. Senza questo, un progetto avanzerebbe solo quando qualcuno apre una pagina.
+
+**Conseguenze:** Il worker non acquisisce alcun potere nuovo: agisce con l'identita' dell'owner, la stessa a cui appartengono budget, permessi e notifiche di quel lavoro, e ogni controllo del repository layer resta applicato. Un fallimento della chiamata non fa fallire il task: la decisione e' idempotente e verra' presa alla prossima occasione.

@@ -76,6 +76,12 @@ export type RuntimeWorkerClient = {
     result?: Record<string, unknown>;
     error?: string;
   }) => Promise<{ id: string; state: string; retryCount: number }>;
+  /**
+   * Asks the control plane to move this organization's projects on. Called
+   * after a task ends, which is the moment most likely to release the next one
+   * and the moment nobody is watching a screen.
+   */
+  advanceProjects: (nodeId: string, credential: string) => Promise<{ moves: number }>;
 };
 
 export function createRuntimeWorkerClient(input: {
@@ -188,6 +194,17 @@ export function createRuntimeWorkerClient(input: {
       )
         throw new Error('Worker task completion response is invalid.');
       return { id: body.task.id, state: body.task.state, retryCount: body.task.retryCount };
+    },
+    advanceProjects: async (nodeId, credential) => {
+      const response = await fetchImpl(`${baseUrl}/api/workers/runtime/projects/advance`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${credential}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ nodeId }),
+      });
+      if (!response.ok)
+        throw new Error(`Advancing the projects failed with status ${response.status}.`);
+      const body = (await response.json()) as { moves?: unknown };
+      return { moves: typeof body.moves === 'number' ? body.moves : 0 };
     },
   };
 }

@@ -8,6 +8,7 @@ import {
   type GitHubRepository,
 } from './github-repository-picker';
 import { apiHeaders } from './live-panel';
+import { ProjectDeliveryPanel } from './project-delivery-panel';
 import { ProjectTeamPanel } from './project-team-panel';
 import { TeamBuilderPanel } from './team-builder-panel';
 
@@ -240,7 +241,11 @@ export function ProjectDirectory() {
                   <dd>{project.agents.length}</dd>
                 </div>
                 <div>
-                  <dt>In flight</dt>
+                  {/* Everything not finished. The delivery panel below splits it
+                      into what is running and what is waiting; a headline number
+                      that claimed three tasks were in flight when one was would
+                      contradict it. */}
+                  <dt>Open</dt>
                   <dd>{project.tasks.active}</dd>
                 </div>
                 <div>
@@ -301,10 +306,14 @@ export function ProjectDirectory() {
                       )}
                     </>
                   )}
-                  <h3>Delivery</h3>
+                  <ProjectDeliveryPanel
+                    agentNames={new Map(project.agents.map((agent) => [agent.id, agent.name]))}
+                    onChanged={() => void load(organizationId)}
+                    organizationId={organizationId}
+                    projectId={project.id}
+                  />
                   <p className="field-help">
-                    {project.tasks.total} task{project.tasks.total === 1 ? '' : 's'} recorded ·
-                    autonomy {statusLabel(project.autonomyMode)} · created{' '}
+                    Autonomy {statusLabel(project.autonomyMode)} · created{' '}
                     {new Date(project.createdAt).toLocaleDateString()}
                   </p>
                   <div className="action-row">

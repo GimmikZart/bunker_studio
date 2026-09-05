@@ -1678,3 +1678,78 @@ h2 {
 .project-team-add button {
   justify-self: start;
 }
+
+/* Project delivery --------------------------------------------------------
+   Where the work is, and what it waits for. */
+.project-delivery {
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 10px;
+}
+.delivery-group {
+  margin-top: 10px;
+}
+.delivery-group h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.delivery-group h4 span {
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+.delivery-group ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.delivery-group li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+}
+.delivery-task {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.delivery-task small {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.delivery-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--muted);
+}
+.delivery-dot-running {
+  background: #3c6df0;
+}
+.delivery-dot-review {
+  background: #d9822b;
+}
+.delivery-dot-waiting {
+  background: var(--line);
+  border: 1px solid var(--muted);
+}
+.delivery-dot-stuck {
+  background: #d64545;
+}
+.delivery-dot-done {
+  background: #22a06b;
+}

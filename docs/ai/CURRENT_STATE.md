@@ -1,5 +1,45 @@
 # Current Project State
 
+## Checkpoint 2026-09-05 — Fase 1: il progetto cammina da solo
+
+Fase 1 del framework di consegna (`docs/product/STUDIO_PLAYBOOKS.md`).
+
+- **`packages/orchestration/src/conductor.ts`** decide ogni avanzamento, in modo
+  puro e idempotente: promuove le bozze, rimette in coda cio' che la review ha
+  respinto, libera i task le cui dipendenze sono `DONE`, parcheggia dietro le
+  dipendenze nominandole, blocca cio' che nessuno puo' fare, ferma cio' che il
+  budget residuo non copre — spendendolo una volta sola per passata — e non
+  avvia due task che scrivono gli stessi percorsi.
+- **Il momento in cui avanza** non e' un timer ma un evento: un piano
+  committato, un agente che entra nel progetto, un task che finisce. Un secondo
+  passaggio non cambia nulla, quindi tutte queste chiamate convivono.
+- **Anche senza browser aperto.** Il worker, finito un task, chiama
+  `POST /api/workers/runtime/projects/advance` con la credenziale che ha gia';
+  il control plane autentica il nodo e agisce come owner dell'organizzazione
+  (DEC-023). Un fallimento della chiamata non fa fallire il task.
+- **Le condizioni di avvio sono una sola** (`apps/web/app/api/_queue-gate.ts`):
+  agente assegnato, provider configurato, e per un task Codex write scope,
+  comandi di verifica con almeno un controllo di sicurezza e repository GitHub
+  collegato. Prima vivevano solo dentro la PATCH di un task; ora il conductor
+  applica le stesse, quindi nessuna delle due strade puo' avviare cio' che
+  l'altra rifiuterebbe.
+- **La modalita' di autonomia del progetto e' il gate** (DEC-022): `AUTONOMOUS`
+  e `LAB` avanzano fino al prossimo gate umano, `SUPERVISED` e `MANUAL` si
+  fermano a `READY`.
+- **La card di progetto mostra il cantiere**: cosa e' in volo, cosa aspetta e
+  che cosa esattamente sta aspettando, cosa e' fermo e perche', con un pulsante
+  `Advance now`. Il numero in testa alla card e' ora `Open`, non "in flight",
+  perche' contava anche cio' che sta fermo.
+
+Verificato in esecuzione: un piano di tre task committato su un progetto con
+lead e backend avvia il primo e parcheggia gli altri due dietro le rispettive
+dipendenze; un task REVIEW su un progetto senza reviewer diventa `BLOCKED` con
+la notifica «A REVIEW task can only be done by an agent whose role is
+"reviewer", and this project has none», e passa a `QUEUED` assegnato a Kenji nel
+momento in cui il reviewer entra nel progetto, senza nessuna altra chiamata.
+
+Nessuna migrazione richiesta.
+
 ## Checkpoint 2026-09-05 — Fase 0: un piano ora ha qualcuno che lo esegue
 
 Il disegno completo del framework di consegna e' in

@@ -1831,6 +1831,30 @@ export class SupabaseOperationalRepository {
     });
   }
 
+  /**
+   * Puts a task in someone's hands. Kept apart from a state change because the
+   * worker refuses a task with no assigned agent, so an agent joining a project
+   * has to be able to pick up work that was blocked for want of one.
+   */
+  async assignTaskAgent(
+    taskId: string,
+    organizationId: string,
+    agentId: string,
+    actorUserId: string,
+  ): Promise<void> {
+    await this.requireWrite(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('tasks')
+        .update({ assigned_agent_id: agentId })
+        .eq('id', taskId)
+        .eq('organization_id', organizationId)
+        .select('id')
+        .maybeSingle(),
+    );
+    if (!data) throw new AuthorizationError('Task not found.');
+  }
+
   async transitionTask(
     taskId: string,
     organizationId: string,

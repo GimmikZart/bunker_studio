@@ -1,7 +1,9 @@
 import { taskCreateSchema, taskStateSchema, taskTransitionSchema } from '@bunker-studio/contracts';
 import { canWrite, evaluateBudgetPolicies } from '@bunker-studio/core';
-import { taskReviewGate } from '@bunker-studio/orchestration';
+import { taskReviewGate, type TaskState } from '@bunker-studio/orchestration';
 import { NextResponse } from 'next/server';
+import { queueReadiness } from '../_queue-gate';
+import { advanceProject } from '../_conductor';
 import { resolveActorId } from '../_auth';
 import {
   getWebAgentRepository,
@@ -89,6 +91,9 @@ export async function POST(request: Request) {
   }
 }
 
+/** Ending a task is what can let the next one start. */
+const RELEASING_STATES: TaskState[] = ['DONE', 'CANCELED', 'FAILED_FINAL'];
+
 export async function PATCH(request: Request) {
   const actorId = await resolveActorId(request);
   const organizationId = request.headers.get('x-bunker-organization-id')?.trim();
@@ -100,7 +105,8 @@ export async function PATCH(request: Request) {
     );
   const operations = await getWebOperationalRepository();
   const agents = await getWebAgentRepository();
-  if (!operations || !agents)
+  const tenancy = await getWebTenancyRepository();
+  if (!operations || !agents || !tenancy)
     return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   const role = await operations.getRole(organizationId, actorId);
   if (!role) return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
@@ -117,51 +123,20 @@ export async function PATCH(request: Request) {
     );
     if (!task) return NextResponse.json({ error: 'Task not found.' }, { status: 404 });
     if (state === 'QUEUED' || state === 'RUNNING') {
-      if (!task.assignedAgentId)
-        return NextResponse.json(
-          { error: 'Assign an agent before queueing this task.' },
-          { status: 409 },
-        );
-      const assignedAgent = await agents.getAgent(task.assignedAgentId, organizationId, actorId);
-      if (
-        assignedAgent.providerConnectionId === 'unbound' ||
-        assignedAgent.providerModelId === 'unconfigured' ||
-        assignedAgent.runtimeType === 'UNCONFIGURED'
-      )
-        return NextResponse.json(
-          { error: 'The assigned agent needs a provider, model, and runtime before queueing.' },
-          { status: 409 },
-        );
-      if (assignedAgent.runtimeType === 'CODEX_SDK') {
-        if (!task.writeScope.length)
-          return NextResponse.json(
-            { error: 'A Codex repository task requires at least one write scope.' },
-            { status: 409 },
-          );
-        if (!task.verificationCommands?.length)
-          return NextResponse.json(
-            {
-              error:
-                'A Codex repository task requires at least one deterministic verification command.',
-            },
-            { status: 409 },
-          );
-        if (!task.verificationCommands.some((command) => command.kind === 'SECURITY'))
-          return NextResponse.json(
-            { error: 'A Codex repository task requires a baseline security verification command.' },
-            { status: 409 },
-          );
-        const repository = await operations.getRepository(task.projectId, organizationId, actorId);
-        if (
-          !repository ||
-          repository.providerType !== 'GITHUB' ||
-          repository.status !== 'CONNECTED'
-        )
-          return NextResponse.json(
-            { error: 'Connect a writable GitHub repository before queueing a Codex task.' },
-            { status: 409 },
-          );
-      }
+      // The same conditions the conductor applies when it queues work on its
+      // own, so neither path can start something the other would refuse.
+      const assignedAgent = task.assignedAgentId
+        ? await agents.getAgent(task.assignedAgentId, organizationId, actorId)
+        : null;
+      const readiness = queueReadiness({
+        task,
+        agent: assignedAgent,
+        repository:
+          assignedAgent?.runtimeType === 'CODEX_SDK'
+            ? await operations.getRepository(task.projectId, organizationId, actorId)
+            : null,
+      });
+      if (!readiness.ok) return NextResponse.json({ error: readiness.reason }, { status: 409 });
       const budget = evaluateBudgetPolicies({
         policies: await operations.listBudgetPolicies(organizationId, actorId),
         entries: await operations.listCosts(organizationId, actorId),
@@ -242,9 +217,21 @@ export async function PATCH(request: Request) {
           { status: 409 },
         );
     }
-    return NextResponse.json({
-      task: await operations.transitionTask(taskId, organizationId, state, actorId),
-    });
+    const updated = await operations.transitionTask(taskId, organizationId, state, actorId);
+    // Only the end of a task can release what waited on it. Reconsidering the
+    // project after every transition would also mean overriding a state a person
+    // had just set by hand, which is not the studio's business.
+    const project = RELEASING_STATES.includes(state)
+      ? (await tenancy.listProjects(organizationId, actorId)).find(
+          (candidate) => candidate.id === task.projectId,
+        )
+      : undefined;
+    const advanced = project
+      ? await advanceProject({ project, organizationId, actorId, operations, agents }).catch(
+          () => null,
+        )
+      : null;
+    return NextResponse.json({ task: updated, ...(advanced ? { advanced } : {}) });
   } catch (error) {
     if (error instanceof Error && error.name === 'AuthorizationError')
       return NextResponse.json({ error: 'Task not found.' }, { status: 404 });
