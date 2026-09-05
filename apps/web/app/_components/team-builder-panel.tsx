@@ -44,13 +44,25 @@ const runtimeFor = (provider?: Provider): Hire['runtimeType'] =>
       ? 'OPENAI'
       : 'OPENAI_COMPATIBLE';
 
-export function TeamBuilderPanel() {
+/**
+ * "Who do I need for this?" — a staffing proposal you edit before anyone is
+ * created. It lives inside a project when one is given, because that is where
+ * the question is actually asked; the organization and project selectors then
+ * disappear, since the answer is already known.
+ */
+export function TeamBuilderPanel({
+  organizationId: fixedOrganizationId,
+  projectId: fixedProjectId,
+}: {
+  organizationId?: string;
+  projectId?: string;
+} = {}) {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [organizationId, setOrganizationId] = useState('');
+  const [organizationId, setOrganizationId] = useState(fixedOrganizationId ?? '');
   const [projects, setProjects] = useState<Project[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [goal, setGoal] = useState('');
-  const [projectId, setProjectId] = useState('');
+  const [projectId, setProjectId] = useState(fixedProjectId ?? '');
   const [budget, setBudget] = useState('');
   const [capabilities, setCapabilities] = useState('');
   const [requiredRoles, setRequiredRoles] = useState<string[]>([
@@ -78,6 +90,12 @@ export function TeamBuilderPanel() {
     );
   }
   useEffect(() => {
+    if (fixedOrganizationId) {
+      void load(fixedOrganizationId).catch(() =>
+        setError('The providers of this organization could not be read.'),
+      );
+      return;
+    }
     void fetch('/api/organizations', { headers: apiHeaders() })
       .then(async (response) => {
         if (!response.ok) throw new Error('organizations');
@@ -90,7 +108,9 @@ export function TeamBuilderPanel() {
         await load(id);
       })
       .catch(() => setError('Create an organization before building a team.'));
-  }, []);
+    // The panel reads the organization once; the caller that fixes it owns any
+    // later change by remounting.
+  }, [fixedOrganizationId]);
   function toggleRole(role: string) {
     setRequiredRoles((current) =>
       current.includes(role) ? current.filter((value) => value !== role) : [...current, role],
@@ -158,30 +178,48 @@ export function TeamBuilderPanel() {
     });
     if (!response.ok)
       return setError('The team could not be confirmed. Check the selected bindings.');
+    const hired = ((await response.json()) as { hired?: { id: string }[] }).hired ?? [];
     setHires([]);
-    setNotice('Team hired. Each agent can now be edited or assigned from Agents.');
+    if (!fixedProjectId || !hired.length) {
+      setNotice('Team hired. Put them on a project from the project card.');
+      return;
+    }
+    // Hired for this project, so they land on it. Being hired and then left
+    // unassigned is the state in which nothing they could do can actually run.
+    const assigned = await fetch(`/api/projects/${fixedProjectId}/agents`, {
+      method: 'POST',
+      headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
+      body: JSON.stringify({ agentIds: hired.map((agent) => agent.id) }),
+    }).catch(() => null);
+    setNotice(
+      assigned?.ok
+        ? 'Team hired and put on this project.'
+        : 'Team hired, but they could not be put on this project. Assign them from the team list above.',
+    );
   }
   return (
     <section className="live-panel" aria-label="New team builder">
-      <div className="live-panel-toolbar">
-        <label htmlFor="team-org">Organization</label>
-        <select
-          id="team-org"
-          value={organizationId}
-          onChange={(event) => {
-            setOrganizationId(event.target.value);
-            window.localStorage.setItem('bunker-organization-id', event.target.value);
-            void load(event.target.value);
-          }}
-        >
-          <option value="">Choose an organization</option>
-          {organizations.map((organization) => (
-            <option key={organization.id} value={organization.id}>
-              {organization.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      {!fixedOrganizationId && (
+        <div className="live-panel-toolbar">
+          <label htmlFor="team-org">Organization</label>
+          <select
+            id="team-org"
+            value={organizationId}
+            onChange={(event) => {
+              setOrganizationId(event.target.value);
+              window.localStorage.setItem('bunker-organization-id', event.target.value);
+              void load(event.target.value);
+            }}
+          >
+            <option value="">Choose an organization</option>
+            {organizations.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="resource-form">
         <FieldLabel
           htmlFor="team-goal"
@@ -197,19 +235,23 @@ export function TeamBuilderPanel() {
           rows={3}
           placeholder="What must this team deliver?"
         />
-        <label htmlFor="team-project">Project (optional)</label>
-        <select
-          id="team-project"
-          value={projectId}
-          onChange={(event) => setProjectId(event.target.value)}
-        >
-          <option value="">No project yet</option>
-          {projects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
+        {!fixedProjectId && (
+          <>
+            <label htmlFor="team-project">Project (optional)</label>
+            <select
+              id="team-project"
+              value={projectId}
+              onChange={(event) => setProjectId(event.target.value)}
+            >
+              <option value="">No project yet</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         <FieldLabel
           htmlFor="team-budget"
           help="The most you want this team to spend on AI. It is used to size the proposal; your spending limits in Cost Center are what actually enforce it."

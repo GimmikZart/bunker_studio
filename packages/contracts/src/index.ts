@@ -317,6 +317,17 @@ export const agentAssignmentSchema = z
   });
 export type AgentAssignmentInput = z.infer<typeof agentAssignmentSchema>;
 
+/**
+ * Putting agents on a project, or moving them from another one. Moving is one
+ * request rather than a remove followed by an add, so a transfer cannot leave
+ * an agent on neither project when the second call fails.
+ */
+export const projectAgentsAssignSchema = z.object({
+  agentIds: z.array(z.string().uuid()).min(1).max(50),
+  fromProjectId: z.string().uuid().optional(),
+});
+export type ProjectAgentsAssignInput = z.infer<typeof projectAgentsAssignSchema>;
+
 export const studioLabRequestSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('INITIALIZE') }),
   z.object({ action: z.literal('ANALYZE') }),

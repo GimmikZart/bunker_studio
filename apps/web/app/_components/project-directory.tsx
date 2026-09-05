@@ -8,6 +8,8 @@ import {
   type GitHubRepository,
 } from './github-repository-picker';
 import { apiHeaders } from './live-panel';
+import { ProjectTeamPanel } from './project-team-panel';
+import { TeamBuilderPanel } from './team-builder-panel';
 
 type Organization = { id: string; name: string };
 type ProjectSummary = {
@@ -252,24 +254,19 @@ export function ProjectDirectory() {
               </dl>
               {expanded && (
                 <div className="project-card-detail">
-                  <h3>Agents allocated</h3>
-                  {project.agents.length === 0 ? (
-                    <p className="field-help">
-                      No agent is assigned to this project yet. Assign one from the team builder, or
-                      give it a task.
-                    </p>
-                  ) : (
-                    <ul className="project-agent-list">
-                      {project.agents.map((agent) => (
-                        <li key={agent.id}>
-                          <strong>{agent.name}</strong>
-                          <small>
-                            {agent.title} · {agent.roleKey}
-                          </small>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <ProjectTeamPanel
+                    onChanged={() => void load(organizationId)}
+                    organizationId={organizationId}
+                    otherProjects={projects
+                      .filter((candidate) => candidate.id !== project.id)
+                      .map((candidate) => ({ id: candidate.id, name: candidate.name }))}
+                    projectId={project.id}
+                    projectName={project.name}
+                  />
+                  <details className="advanced-section">
+                    <summary>Not sure who you need? Ask for a staffing proposal</summary>
+                    <TeamBuilderPanel organizationId={organizationId} projectId={project.id} />
+                  </details>
                   {!project.repository && (
                     <>
                       <h3>Repository</h3>
@@ -313,9 +310,6 @@ export function ProjectDirectory() {
                   <div className="action-row">
                     <Link className="secondary-button" href="/tasks">
                       Open tasks
-                    </Link>
-                    <Link className="secondary-button" href="/teams">
-                      Manage team
                     </Link>
                     <button
                       className="secondary-button"

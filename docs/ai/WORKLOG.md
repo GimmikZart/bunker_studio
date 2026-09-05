@@ -1,5 +1,45 @@
 # Development Worklog
 
+## 2026-09-05 — Fase 0 del framework: chi esegue un piano
+
+### Lavoro svolto
+
+- `packages/orchestration/src/assignment.ts`: router deterministico task →
+  agente. Capacita' richiesta, poi ruolo che possiede il tipo di lavoro, poi
+  carico, poi ordine stabile per id. `REVIEW` e `DESIGN` sono esclusivi del
+  ruolo corrispondente; un task senza candidati non viene assegnato e il motivo
+  viene riportato.
+- `POST /api/workflows/plan` assegna ogni task alla creazione e restituisce
+  `unassigned` con titolo e motivo per quelli che nessuno puo' prendere. Le
+  `teamCapabilities` offerte al Lead sono ora quelle degli agenti assegnati al
+  progetto, non di tutta l'organizzazione.
+- Nuovo `GET/POST/DELETE /api/projects/:projectId/agents` e
+  `project-team-panel.tsx` dentro la card di progetto: membri, agenti
+  disponibili, spostamento su un altro progetto in una richiesta sola,
+  rimozione.
+- `TeamBuilderPanel` accetta organizzazione e progetto come props, vive dentro
+  la card di progetto e mette sul progetto gli agenti appena assunti.
+- Rimossi la vista `/teams`, `team-crud-panel.tsx` e la voce di navigazione
+  (DEC-020). Aggiornato il test E2E che ci passava.
+- `docs/product/STUDIO_PLAYBOOKS.md` con il disegno del framework di consegna;
+  DEC-020 (Team fuori dall'interfaccia) e DEC-021 (mockup reali in sandbox).
+
+### Verifiche
+
+- `pnpm format:check`, `pnpm lint`, `pnpm typecheck`: PASS.
+- `pnpm test`: PASS — 26 task, orchestration 88 test (8 nuovi sul router), web
+  37 file / 104 test (6 nuovi su squadra di progetto e assegnazione del piano).
+- `pnpm build`: PASS 15/15. `pnpm security`: nessuna vulnerabilita' nota.
+- Verifica in esecuzione (memory mode): assegnazione, spostamento fra progetti
+  con l'agente su un solo progetto alla fine, rimozione; piano DOCS+REVIEW su un
+  progetto con frontend e reviewer che esce interamente assegnato; stesso piano
+  su un progetto senza reviewer che risponde con il motivo.
+
+### Stato finale
+
+Checkpoint stabile. Prossima attivita': Fase 1, il Conductor
+(`docs/ai/NEXT_STEPS.md`).
+
 ## 2026-09-05 — Directory agenti a card, chat con storico, creazione progetto onesta
 
 ### Lavoro svolto

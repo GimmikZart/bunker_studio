@@ -16,6 +16,7 @@ export * from './meeting-agenda.js';
 export * from './design-brief.js';
 export * from './review-brief.js';
 export * from './scope.js';
+export * from './assignment.js';
 
 export const PACKAGE_NAME = '@bunker-studio/orchestration';
 

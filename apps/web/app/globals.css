@@ -1599,3 +1599,82 @@ h2 {
     grid-template-columns: 1fr;
   }
 }
+
+/* Project team ------------------------------------------------------------
+   Who is on a project, and where they go next. */
+.project-team {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.project-member-list {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.project-member-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  /* A project card is narrow. Rather than squeezing a name, a role, a select
+     and a button onto one line until the title breaks mid-word, the actions
+     drop to their own row as soon as the name needs the width. */
+  flex-wrap: wrap;
+}
+.project-member-identity {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.project-member-identity small {
+  overflow-wrap: anywhere;
+}
+.project-member-identity strong {
+  font-size: 14px;
+}
+.project-member-identity small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.project-member-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.project-member-actions select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: white;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+}
+.project-team-add {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.project-team-add label {
+  font-size: 12px;
+  font-weight: 700;
+}
+.project-team-add select {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+}
+.project-team-add button {
+  justify-self: start;
+}

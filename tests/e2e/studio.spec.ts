@@ -11,16 +11,23 @@ test('onboarding creates a local development organization', async ({ page }) => 
   });
 });
 
-test('team builder proposes editable hires without immediately creating agents', async ({
-  page,
-}) => {
+test('the staffing proposal lives in a project and creates nobody on its own', async ({ page }) => {
   await page.goto('/onboarding');
   await page.getByLabel('Organization name').fill(`E2E Team ${Date.now()}`);
   await page.getByRole('button', { name: 'Create organization' }).click();
   await expect(page.getByText('Organization created. Your studio is ready.')).toBeVisible({
     timeout: 60_000,
   });
-  await page.goto('/teams');
+
+  // The builder now answers "who do I need for this project", so the flow goes
+  // through a project rather than a dedicated Teams page.
+  await page.goto('/projects/new');
+  await page.getByLabel('Project name').fill(`Dashboard ${Date.now()}`);
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 60_000 });
+  await page.getByRole('button', { name: 'Details' }).first().click();
+  await page.getByText('Ask for a staffing proposal').click();
+
   await page
     .getByRole('textbox', { name: 'Team objective' })
     .fill('Ship a safe accessible dashboard');

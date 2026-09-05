@@ -1,38 +1,40 @@
 # Next Steps
 
-## Prossima attivita' proposta — Fase 0 del framework di consegna
+## Prossima attivita' proposta — Fase 1: il Conductor
 
-Il disegno completo e' in `docs/product/STUDIO_PLAYBOOKS.md`. La Fase 0 e' la
-sola che sblocca tutte le altre.
+La Fase 0 e' completa: un piano generato dal Lead esce con ogni task assegnato a
+un agente della squadra del progetto, e il worker puo' prenderlo. Il disegno
+completo resta in `docs/product/STUDIO_PLAYBOOKS.md`.
 
 ### Il problema
 
-`POST /api/workflows/plan` crea i task **senza `assignedAgentId`**, ma
-`/api/workers/runtime/tasks/claim` richiede `assigned_agent_id` per costruire il
-contesto di esecuzione. Un piano generato dal Lead non e' quindi eseguibile da
-nessuno. Non esiste nemmeno un punto nell'interfaccia per mettere un agente su
-un progetto: le assegnazioni si creano solo via API.
+Nessuno fa avanzare il lavoro. Le transizioni esistono e sono corrette, ma le
+invoca sempre qualcuno a mano: non c'e' un processo che, quando le dipendenze di
+un task sono `DONE`, lo porti a `QUEUED` e avvisi l'utente. Il progetto non
+cammina da solo.
 
 ### Da fare
 
-- Superficie nella vista progetto per assegnare, spostare e togliere agenti,
-  che sostituisce la vista `/teams` rimossa (DEC-020).
-- Spostare la proposta di organico (`TeamBuilderPanel`) nel progetto.
-- Router deterministico task → agente: ruolo, `requiredCapability` ⊆ skills,
-  carico, costo. Nessun LLM. Un task senza candidati resta `BLOCKED` con il
-  motivo dichiarato.
-- Rimuovere la voce `Teams` dalla navigazione e la pagina `/teams`.
+- Ciclo deterministico (nel worker o schedulato) che per ogni progetto attivo
+  promuove i task pronti, rispetta i gruppi paralleli e gli scope disgiunti, si
+  ferma quando il budget residuo non copre il costo stimato, e assegna un agente
+  ai task che non ne hanno.
+- Scrittura in `activity` e `notifications` a ogni chiusura di fase e a ogni
+  gate che richiede l'utente.
+- Vista di cantiere del progetto: cosa sta girando, cosa aspetta cosa, cosa e'
+  fermo e perche'.
 
 ### Definition of Done
 
-Un piano generato dal Lead su un progetto con agenti assegnati diventa una coda
-di task che il worker puo' effettivamente prendere, senza alcuna chiamata API
-manuale.
+Da un piano approvato, senza altre chiamate manuali, i task vengono eseguiti
+nell'ordine delle dipendenze fino al primo gate umano, e l'utente lo vede
+succedere.
 
-### Decisioni ancora aperte
+### Decisioni gia' prese
 
-D1 (mockup del Designer, rivede DEC-017), D2 (autonomia del Conductor) e D3
-(dove vivono i playbook), tutte descritte in `docs/product/STUDIO_PLAYBOOKS.md`.
+D1 e' DEC-021: mockup reali in `design/<slug>/**` con anteprima in iframe
+sandbox, alla Fase 4. D2 (autonomia del Conductor) e D3 (dove vivono i playbook)
+restano da decidere, descritte in `docs/product/STUDIO_PLAYBOOKS.md`.
 
 ## Prossima attivita' precisa — verifiche esterne AC-001, AC-006, AC-009, AC-011
 

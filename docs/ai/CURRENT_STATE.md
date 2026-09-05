@@ -1,5 +1,43 @@
 # Current Project State
 
+## Checkpoint 2026-09-05 — Fase 0: un piano ora ha qualcuno che lo esegue
+
+Il disegno completo del framework di consegna e' in
+`docs/product/STUDIO_PLAYBOOKS.md`. Questa e' la sua Fase 0, la sola che
+sbloccava tutte le altre.
+
+- **Il collo di bottiglia era l'assegnazione.** `POST /api/workflows/plan`
+  creava i task senza `assignedAgentId`, ma `/api/workers/runtime/tasks/claim`
+  lo richiede per costruire il contesto di esecuzione: un piano generato dal
+  Lead non era eseguibile da nessuno. Non esisteva nemmeno un punto
+  nell'interfaccia per mettere un agente su un progetto.
+- **Router deterministico** (`packages/orchestration/src/assignment.ts`): la
+  capacita' richiesta prima, poi il ruolo che possiede quel tipo di lavoro, poi
+  il carico piu' leggero, poi un ordine stabile per id. Nessun LLM decide chi
+  fa cosa. `REVIEW` e `DESIGN` sono esclusivi — una review scritta da chi ha
+  scritto il codice non e' una review — e un task senza candidati non viene
+  assegnato a caso: la risposta del piano lo elenca con il motivo.
+- **La squadra si gestisce dal progetto.** Nuovo
+  `GET/POST/DELETE /api/projects/:id/agents` e pannello nella card: chi c'e',
+  chi puo' entrare, `Move to…` per spostare qualcuno su un altro progetto in
+  una sola richiesta, e `Remove`. Lo spostamento libera il progetto vecchio solo
+  dopo che la nuova assegnazione esiste.
+- **Le capacita' del piano sono quelle del progetto.** Il Lead riceveva le skill
+  di tutti gli agenti dell'organizzazione, quindi poteva chiedere una capacita'
+  di qualcuno che nessuno aveva messo su quel progetto. Ora l'elenco e' quello
+  della squadra reale.
+- **La vista `/teams` e' stata rimossa** (DEC-020). La proposta di organico e'
+  dentro la card di progetto, dove la domanda e' "chi mi serve per questo
+  progetto", e gli assunti vengono messi sul progetto per cui sono stati
+  proposti.
+
+Verificato in esecuzione: un piano con un task DOCS e uno REVIEW su un progetto
+con frontend e reviewer esce con entrambi assegnati alla persona giusta; lo
+stesso piano su un progetto senza reviewer risponde
+`A REVIEW task can only be done by an agent whose role is "reviewer"`.
+
+Nessuna migrazione richiesta.
+
 ## Checkpoint 2026-09-05 — La vista Agents e' fatta di card, e creare un progetto dice cosa non va
 
 Tre interventi sulla superficie che l'utente tocca ogni giorno.

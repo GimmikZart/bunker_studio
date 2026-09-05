@@ -184,3 +184,12 @@
 **Motivazione:** Un progetto con i suoi agenti assegnati e' gia' concettualmente un team. Nessuna transizione di stato, nessun instradamento del lavoro e nessun gate dipende dal team: e' solo un raggruppamento. Un livello di navigazione dedicato a un raggruppamento che non fa nulla costa attenzione all'utente senza restituire niente. Si tiene l'entita' perche' e' l'unita' naturale del "team templates marketplace" previsto dalla specifica: un template che esporta una squadra pronta ha bisogno di un nome per quella squadra.
 
 **Conseguenze:** FR-002 resta valido a livello di modello. La proposta di organico (`/api/staffing/proposals`, oggi in `TeamBuilderPanel`) va spostata nel progetto, dove ha senso: "chi mi serve per questo progetto". Serve una superficie per assegnare e spostare gli agenti fra progetti, oggi assente: le assegnazioni si creano solo via API.
+
+## DEC-021 — Un mockup vero vive nel repository, non nell'origine dello studio
+**Status:** Accepted — da implementare nella Fase 4 di `docs/product/STUDIO_PLAYBOOKS.md`
+
+**Decisione:** DEC-017 e' emendata. Il Designer puo' produrre HTML, CSS e JavaScript reali, ma soltanto come task `DESIGN_PROTOTYPE` eseguito dal worker con write scope limitato a `design/<slug>/**`: il risultato finisce su un branch `bunker/<task-id>` con la sua pull request, come qualunque altro artefatto. L'anteprima si apre in un iframe `sandbox` senza `allow-same-origin`, servito da una route dedicata con CSP stretta. La risposta diretta del Designer resta dati strutturati.
+
+**Motivazione:** Il contratto strutturato attuale non puo' descrivere l'interfaccia di un sito: produce una scheda con due colori e sei paragrafi. Senza mockup credibili, lo scenario "prendi un sito brutto, ridisegnalo, mostralo al cliente" non e' realizzabile.
+
+**Conseguenze:** La regola che il markup di un modello non viene mai eseguito nell'origine dello studio resta intatta: cambia dove il markup e' permesso, non il fatto che non lo si esegua in casa. Un prototipo passa per gli stessi gate di scope, review e approvazione di ogni altro task.

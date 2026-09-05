@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 const items = [
   ['Office', '/'],
   ['Projects', '/projects'],
-  ['Teams', '/teams'],
   ['Agents', '/agents'],
   ['Tasks', '/tasks'],
   ['Approvals', '/approvals'],

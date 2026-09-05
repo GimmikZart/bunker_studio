@@ -1,6 +1,6 @@
 import { leadPlanSubmissionSchema } from '@bunker-studio/contracts';
 import { remainingHardBudget } from '@bunker-studio/core';
-import { validateLeadPlanProposal } from '@bunker-studio/orchestration';
+import { assignTasks, validateLeadPlanProposal } from '@bunker-studio/orchestration';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../_auth';
 import {
@@ -35,13 +35,24 @@ export async function POST(request: Request) {
       .filter((design) => design.status === 'APPROVED')
       .map((design) => design.id);
     const agents = await getWebAgentRepository();
-    const teamCapabilities = agents
-      ? [
-          ...new Set(
-            (await agents.listAgents(organizationId, actorUserId)).flatMap((agent) => agent.skills),
-          ),
-        ]
+    // The team of this project, not of the whole organization. Offering the
+    // Lead capabilities that belong to agents nobody put on this project
+    // produced plans requiring people who were never going to show up.
+    const projectAgents = agents
+      ? await (async () => {
+          const [roster, assignments] = await Promise.all([
+            agents.listAgents(organizationId, actorUserId),
+            agents.listAssignments(organizationId, actorUserId),
+          ]);
+          const staffed = new Set(
+            assignments
+              .filter((assignment) => assignment.projectId === input.projectId)
+              .map((assignment) => assignment.agentId),
+          );
+          return roster.filter((agent) => staffed.has(agent.id) && !agent.archivedAt);
+        })()
       : [];
+    const teamCapabilities = [...new Set(projectAgents.flatMap((agent) => agent.skills))];
     // The same gates the planner applies, enforced again here: this is the only
     // place a plan becomes real work, so it cannot be bypassed by posting a plan
     // that was never generated.
@@ -75,6 +86,29 @@ export async function POST(request: Request) {
     );
     const idMap = new Map<string, string>();
     const tasksById = new Map(input.plan.tasks.map((task) => [task.id, task]));
+    // Who does what is decided here, deterministically, from the agents this
+    // project has. The worker cannot claim a task without an assigned agent, so
+    // a plan whose tasks nobody can take would otherwise become a queue that
+    // never moves and never says why.
+    const openTasks = (await operations.listTasks(organizationId, actorUserId)).filter(
+      (task) => !['DONE', 'CANCELED', 'FAILED_FINAL'].includes(task.state),
+    );
+    const assignment = assignTasks(
+      input.plan.tasks.map((task) => ({
+        key: task.id,
+        taskType: task.taskType,
+        ...(task.requiredCapability ? { requiredCapability: task.requiredCapability } : {}),
+      })),
+      projectAgents.map((agent) => ({
+        id: agent.id,
+        roleKey: agent.roleKey,
+        skills: agent.skills,
+        activeTaskCount: openTasks.filter((task) => task.assignedAgentId === agent.id).length,
+      })),
+    );
+    const agentByTaskKey = new Map(
+      assignment.assigned.map((entry) => [entry.task.key, entry.agentId]),
+    );
     const createdTasks = [];
     for (const taskKey of order) {
       const planTask = tasksById.get(taskKey)!;
@@ -86,6 +120,9 @@ export async function POST(request: Request) {
           organizationId,
           projectId: input.projectId,
           workflowId: workflow.id,
+          ...(agentByTaskKey.has(planTask.id)
+            ? { assignedAgentId: agentByTaskKey.get(planTask.id)! }
+            : {}),
           title: planTask.title,
           description: `${planTask.description}\n\nDefinition of done:\n${planTask.definitionOfDone.map((item) => `- ${item}`).join('\n')}`,
           taskType: planTask.taskType,
@@ -124,7 +161,19 @@ export async function POST(request: Request) {
       aggregateId: workflow.id,
       payload: { actorUserId, taskCount: createdTasks.length },
     });
-    return NextResponse.json({ workflow: persistedWorkflow, tasks: createdTasks }, { status: 201 });
+    return NextResponse.json(
+      {
+        workflow: persistedWorkflow,
+        tasks: createdTasks,
+        // Named rather than hidden: a task with nobody on it will sit in the
+        // queue forever, and the reason is something the user can act on.
+        unassigned: assignment.unassigned.map((entry) => ({
+          title: tasksById.get(entry.task.key)?.title ?? entry.task.key,
+          reason: entry.reason,
+        })),
+      },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof Error && error.name === 'AuthorizationError')
       return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });

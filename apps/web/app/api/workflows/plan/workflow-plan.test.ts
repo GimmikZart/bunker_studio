@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { POST as createOrganization } from '../../organizations/route';
 import { POST as createProject } from '../../organizations/[organizationId]/projects/route';
 import { GET as listWorkflows, POST as createWorkflowPlan } from './route';
+import { POST as createAgent } from '../../agents/route';
+import { POST as assignAgents } from '../../projects/[projectId]/agents/route';
 
 describe('Lead workflow plan route', () => {
   it('validates and persists a structured plan with remapped task dependencies', async () => {
@@ -91,6 +93,120 @@ describe('Lead workflow plan route', () => {
       }),
     );
     expect(intruder.status).toBe(403);
+  });
+
+  it('gives every task an agent from the project team, and names the ones nobody can take', async () => {
+    const owner = `lead-owner-${crypto.randomUUID()}`;
+    const baseHeaders = { 'content-type': 'application/json', 'x-bunker-user-id': owner };
+    const organizationId = (
+      await (
+        await createOrganization(
+          new Request('http://localhost', {
+            method: 'POST',
+            headers: baseHeaders,
+            body: JSON.stringify({ name: 'Staffed Studio' }),
+          }),
+        )
+      ).json()
+    ).organization.id;
+    const headers = { ...baseHeaders, 'x-bunker-organization-id': organizationId };
+    const projectId = (
+      await (
+        await createProject(
+          new Request('http://localhost', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ name: 'Staffed delivery' }),
+          }),
+          { params: Promise.resolve({ organizationId }) },
+        )
+      ).json()
+    ).project.id;
+
+    const backendId = (
+      await (
+        await createAgent(
+          new Request('http://localhost/api/agents', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              name: 'Backend Bea',
+              roleKey: 'backend',
+              title: 'Backend Engineer',
+              skills: ['backend'],
+              providerConnectionId: '00000000-0000-4000-8000-000000000001',
+              providerModelId: 'fake-default',
+              runtimeType: 'OPENAI_COMPATIBLE',
+              reasoningEffort: 'medium',
+            }),
+          }),
+        )
+      ).json()
+    ).agent.id;
+    await assignAgents(
+      new Request(`http://localhost/api/projects/${projectId}/agents`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ agentIds: [backendId] }),
+      }),
+      { params: Promise.resolve({ projectId }) },
+    );
+
+    const response = await createWorkflowPlan(
+      new Request('http://localhost', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          projectId,
+          plan: {
+            goal: 'Ship the service',
+            assumptions: [],
+            verificationSteps: ['Run tests.'],
+            tasks: [
+              {
+                id: 'build',
+                title: 'Build the endpoint',
+                taskType: 'BACKEND',
+                description: 'Add the endpoint.',
+                dependencies: [],
+                readScope: [],
+                writeScope: ['packages/service'],
+                definitionOfDone: ['Tests pass.'],
+                estimatedCost: 1,
+              },
+              {
+                id: 'check',
+                title: 'Review the endpoint',
+                taskType: 'REVIEW',
+                description: 'Review the candidate branch.',
+                dependencies: ['build'],
+                readScope: ['packages/service'],
+                writeScope: [],
+                definitionOfDone: ['Findings recorded.'],
+                estimatedCost: 1,
+              },
+            ],
+          },
+        }),
+      }),
+    );
+    expect(response.status).toBe(201);
+    const payload = await response.json();
+
+    // The backend task is executable: the worker refuses a task with no agent.
+    const build = payload.tasks.find(
+      (task: { title: string }) => task.title === 'Build the endpoint',
+    );
+    expect(build.assignedAgentId).toBe(backendId);
+
+    // The review is not, and says why instead of sitting in the queue silently.
+    const review = payload.tasks.find(
+      (task: { title: string }) => task.title === 'Review the endpoint',
+    );
+    expect(review.assignedAgentId).toBeUndefined();
+    expect(payload.unassigned).toEqual([
+      { title: 'Review the endpoint', reason: expect.stringContaining('reviewer') },
+    ]);
   });
 
   it('rejects cyclic plans before creating a workflow', async () => {
