@@ -18,6 +18,8 @@ export * from './review-brief.js';
 export * from './scope.js';
 export * from './assignment.js';
 export * from './conductor.js';
+export * from './playbooks.js';
+export * from './engagement.js';
 
 export const PACKAGE_NAME = '@bunker-studio/orchestration';
 

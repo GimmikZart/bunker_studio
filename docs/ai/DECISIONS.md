@@ -211,3 +211,21 @@
 **Motivazione:** La fine di un task e' il momento che sblocca il successivo, ed e' anche il momento in cui non c'e' nessun browser aperto. Senza questo, un progetto avanzerebbe solo quando qualcuno apre una pagina.
 
 **Conseguenze:** Il worker non acquisisce alcun potere nuovo: agisce con l'identita' dell'owner, la stessa a cui appartengono budget, permessi e notifiche di quel lavoro, e ogni controllo del repository layer resta applicato. Un fallimento della chiamata non fa fallire il task: la decisione e' idempotente e verra' presa alla prossima occasione.
+
+## DEC-024 — I playbook vivono in codice tipizzato
+**Status:** Accepted
+
+**Decisione:** I processi di consegna sono definiti in `packages/orchestration/src/playbooks.ts` come dati tipizzati, versionati con il repository e coperti da test. Il Lead sceglie **quale** playbook si applica a cio' che l'utente ha descritto; il motore verifica che la chiave esista e, se non esiste, usa il default dicendolo.
+
+**Motivazione:** Un processo e' logica di dominio: deve poter essere rivisto in code review, testato e cambiato con una migrazione di codice, non modificato per errore da un form. I flussi previsti condividono la maggior parte delle fasi, quindi definirli per composizione evita che divergano.
+
+**Conseguenze:** Aggiungere un modo di lavorare significa comporre fasi esistenti in un nuovo array. Una fase che richiede una capacita' non ancora costruita la dichiara in `requires`, cosi' il playbook puo' dire in anticipo quali fasi si fermeranno invece di scoprirlo a meta' strada. Se in futuro servisse un editor utente, la strada resta l'export nel pacchetto organizzazione, non la sostituzione del codice.
+
+## DEC-025 — Nessun agente ha strumenti; cio' che serve lo esegue il server
+**Status:** Accepted
+
+**Decisione:** Gli adapter provider inviano prompt e ricevono testo. Non viene inviato alcun array `tools`, quindi nessun agente puo' invocare funzioni, leggere URL o eseguire ricerche. Il campo `tools` di un agente e' una dichiarazione che accompagna il run, non una capacita'. Quando servira' leggere il web, sara' uno strumento **eseguito dal server** con allowlist per progetto, che restituisce dati all'agente.
+
+**Motivazione:** Tre ragioni. Il tool calling e' un protocollo che differisce fra provider e legarvisi contraddirebbe DEC-002. Una pagina web letta da un modello diventa testo che il modello tratta come istruzioni: e' una superficie di prompt injection che va attraversata da codice deterministico, non dall'agente. E cio' che un agente puo' raggiungere deve restare enumerabile dal control plane, non dipendere da cosa il provider ha attivato quel giorno.
+
+**Conseguenze:** L'unico percorso con accesso di rete resta il worker Codex (`sandboxMode: 'workspace-write'`, `networkAccessEnabled` disattivato per default e controllato da `WORKER_CODEX_NETWORK_ACCESS`), che e' una shell in un workspace Git, non una capacita' di lettura del web. La fase `harvest` del playbook `site-redesign` dichiara `requires: ['WEB_HARVEST']` e si dichiara non disponibile finche' quello strumento non esiste.

@@ -1753,3 +1753,59 @@ h2 {
 .delivery-dot-done {
   background: #22a06b;
 }
+
+/* The brief the Lead is working out with you --------------------------------- */
+.engagement-drawer {
+  width: min(520px, 100%);
+}
+.engagement-brief {
+  max-height: 46%;
+  padding: 12px 16px;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+  background: var(--card);
+}
+.engagement-brief h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.engagement-approved {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid #b7e4c7;
+  background: #f0fbf4;
+  color: #146c43;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.engagement-brief h5 {
+  margin: 12px 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.engagement-brief p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.engagement-brief ul,
+.engagement-stages {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.engagement-stages li {
+  margin-bottom: 4px;
+}
+.engagement-stages small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}

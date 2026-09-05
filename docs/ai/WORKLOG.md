@@ -1,5 +1,38 @@
 # Development Worklog
 
+## 2026-09-05 — Fase 2 del framework: il Lead capisce prima di costruire
+
+### Lavoro svolto
+
+- `packages/orchestration/src/playbooks.ts`: tre processi tipizzati composti
+  dalle stesse fasi, con `requires` per dichiarare cio' che il studio non sa
+  ancora fare (DEC-024).
+- `packages/orchestration/src/engagement.ts`: prompt limitato agli ultimi turni e
+  lettura della risposta strutturata del Lead. Una chiave di playbook inesistente
+  viene corretta al default e la sostituzione e' riportata;
+  `readyForApproval` viene forzato a `false` se restano domande aperte.
+- `GET/POST /api/projects/:id/engagement` e
+  `POST /api/projects/:id/engagement/approve`. Il brief approvato diventa memoria
+  di progetto `PINNED`, cosi' viaggia con ogni run successivo.
+- `project-engagement-drawer.tsx` e il pulsante `Talk to the Lead` nella card.
+- DEC-025: nessun agente ha strumenti; gli adapter non inviano `tools` e cio'
+  che serve verra' eseguito dal server con allowlist.
+
+### Verifiche
+
+- `pnpm format:check`, `pnpm lint`, `pnpm typecheck`: PASS.
+- `pnpm test`: PASS — orchestration 114 test, worker 34, web 39 file / 117 test.
+- `pnpm build`: PASS 15/15. `pnpm security`: nessuna vulnerabilita' nota.
+- Verifica in esecuzione (memory mode): un Lead che si dichiara pronto avendo una
+  domanda aperta viene riportato a non pronto; l'approvazione di un brief con
+  domande aperte risponde 409; il brief approvato ricompare alla riapertura ed e'
+  memoria `PINNED` del progetto.
+
+### Stato finale
+
+Checkpoint stabile. Prossima attivita': Fase 3, dal brief approvato al documento
+tecnico e al piano (`docs/ai/NEXT_STEPS.md`).
+
 ## 2026-09-05 — Fase 1 del framework: il progetto avanza da solo
 
 ### Lavoro svolto

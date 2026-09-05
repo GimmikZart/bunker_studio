@@ -1,43 +1,41 @@
 # Next Steps
 
-## Prossima attivita' proposta — Fase 2: l'ingaggio e il documento
+## Prossima attivita' proposta — Fase 3: dal brief approvato al documento e al piano
 
-Fasi 0 e 1 complete: un piano genera task assegnati, e il progetto li avvia da
-solo fino al prossimo gate umano, anche mentre nessuno guarda. Il disegno
-completo resta in `docs/product/STUDIO_PLAYBOOKS.md`.
+Fasi 0, 1 e 2 complete: il Lead conduce l'intervista, sceglie il processo e il
+brief approvato e' memoria di progetto; i task che ne derivano vengono assegnati
+ed eseguiti da soli. Manca l'anello che li unisce.
 
 ### Il problema
 
-Il Lead non conduce un'intervista. La chat esiste ma non e' legata a un progetto
-e non produce nulla di strutturato: manca il ciclo "il Lead chiede, tu rispondi,
-il Lead riassume, tu approvi" che porta a un brief condiviso, e manca la fase che
-scrive il documento tecnico nel repository del progetto.
+Un brief approvato non fa ancora partire nulla. Chi lo ha approvato deve
+comunque generare un piano a mano dalla vista dei workflow, e la fase `spec` —
+il documento tecnico che diventa la linea guida del progetto — non e' orchestrata
+da nessuno.
 
 ### Da fare
 
-- Conversazione di ingaggio legata al progetto e alla fase corrente, distinta
-  dalla chat libera con un agente.
-- Contratto di risposta strutturato del Lead
-  (`{ questions[], understanding, openPoints[], proposedScope, readyForApproval }`),
-  validato con zod. `readyForApproval` e' un suggerimento visivo: la fase avanza
-  solo quando l'utente approva.
-- Fase `spec`: un task `DOCS` con write scope `docs/`, eseguito dal worker, che
-  produce il documento su un branch con la sua pull request.
-- I file di continuita' del progetto sul modello di questo repository:
-  `docs/specs/<slug>.md`, `docs/state/CURRENT.md`, `docs/state/NEXT.md`.
+- Motore delle fasi: il progetto ricorda a che punto del playbook si trova e
+  quale gate lo tiene fermo. Le transizioni restano deterministiche; il gate
+  `HUMAN_APPROVAL` avanza solo su azione dell'utente.
+- Fase `spec`: dal brief approvato nasce un task `DOCS` con write scope `docs/`,
+  eseguito dal worker, che produce `docs/specs/<slug>.md` su un branch con la
+  sua pull request.
+- Fase `decomposition`: il brief e il documento approvati diventano l'obiettivo
+  passato a `POST /api/workflows/plan/generate`, invece di riscriverlo a mano.
+- I file di continuita' del progetto: `docs/state/CURRENT.md`, `docs/state/NEXT.md`.
 
 ### Definition of Done
 
-Da una conversazione con il Lead si arriva a un brief approvato dall'utente e a
-un documento tecnico committato nel repository del progetto, senza spiegare da
-capo come si lavora.
+Da un brief approvato si arriva, senza chiamate manuali, a un documento tecnico
+committato e a un piano proposto per l'approvazione.
 
 ### Decisioni gia' prese
 
-D1 e' DEC-021 (mockup reali in sandbox, Fase 4). D2 e' DEC-022 (la modalita' di
-autonomia del progetto e' il gate). Resta aperta D3: dove vivono i playbook —
-in codice tipizzato, oppure in tabella ed esportabili con il pacchetto
-organizzazione.
+DEC-021 (mockup reali in sandbox, Fase 4), DEC-022 (l'autonomia del progetto e'
+il gate), DEC-023 (il worker chiede di proseguire), DEC-024 (playbook in codice
+tipizzato), DEC-025 (nessun agente ha strumenti; il web si leggera' con uno
+strumento server-side con allowlist, Fase 5).
 
 ## Prossima attivita' precisa — verifiche esterne AC-001, AC-006, AC-009, AC-011
 

@@ -1,5 +1,41 @@
 # Current Project State
 
+## Checkpoint 2026-09-05 — Fase 2: il Lead conduce l'intervista
+
+Fase 2 del framework di consegna (`docs/product/STUDIO_PLAYBOOKS.md`).
+
+- **I playbook sono codice tipizzato** (`packages/orchestration/src/playbooks.ts`,
+  DEC-024). Tre processi — feature su repository esistente, redesign di un sito,
+  prodotto nuovo — composti dalle **stesse fasi**: `discovery`, `spec`,
+  `decomposition`, `execution` e `delivery` sono condivise, e i flussi
+  differiscono solo per cio' che aggiungono attorno. Una fase che richiede una
+  capacita' non ancora costruita la dichiara in `requires`, quindi il playbook
+  dice subito quali fasi si fermeranno.
+- **Il Lead sceglie il processo** dalle parole dell'utente. Il motore verifica
+  che la chiave esista; se il Lead ne inventa una, usa il default e lo dice.
+- **L'intervista e' strutturata, non prosa.** Il Lead risponde con
+  `{questions, understanding, openPoints, proposedScope, outOfScope, playbookKey,
+  readyForApproval}`. `readyForApproval` e' una sua opinione e non fa avanzare
+  nulla: se ha ancora domande aperte, il motore lo riporta a `false` qualunque
+  cosa dichiari.
+- **Il brief lo approva una persona.** `POST /api/projects/:id/engagement/approve`
+  rifiuta un brief con domande aperte e un playbook inesistente. Cio' che viene
+  salvato e' esattamente cio' che era sullo schermo, come memoria di progetto
+  `PINNED` con importanza 95: da li' in avanti viaggia con ogni run del
+  progetto senza che nessuno lo riincolli.
+- **Il prompt e' limitato**: solo gli ultimi turni vengono ripercorsi, quindi
+  l'ultima domanda di una conversazione lunga non e' la piu' cara.
+- **Nella card di progetto** c'e' `Talk to the Lead`: un pannello con la
+  conversazione, cio' che il Lead ha capito sempre in vista, le fasi del
+  processo scelto e il pulsante di approvazione.
+
+Verificato in esecuzione: il Lead dichiara `readyForApproval: true` avendo una
+domanda aperta e il motore lo riporta a `false`; l'approvazione di un brief con
+domande aperte risponde 409; il brief approvato ricompare riaprendo il pannello
+ed e' presente come memoria `PINNED` del progetto.
+
+Nessuna migrazione richiesta.
+
 ## Checkpoint 2026-09-05 — Fase 1: il progetto cammina da solo
 
 Fase 1 del framework di consegna (`docs/product/STUDIO_PLAYBOOKS.md`).

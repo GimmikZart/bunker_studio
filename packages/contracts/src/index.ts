@@ -328,6 +328,29 @@ export const projectAgentsAssignSchema = z.object({
 });
 export type ProjectAgentsAssignInput = z.infer<typeof projectAgentsAssignSchema>;
 
+/** One turn of the user speaking to the Lead about a project. */
+export const engagementMessageSchema = z.object({
+  content: z.string().trim().min(1).max(8_000),
+});
+export type EngagementMessageInput = z.infer<typeof engagementMessageSchema>;
+
+/**
+ * The brief the user approves. It is sent back rather than recovered from the
+ * conversation on purpose: what becomes authoritative is exactly what was on
+ * screen when the user said yes, not a later re-reading of it.
+ */
+export const engagementBriefSchema = z.object({
+  questions: z.array(z.string().trim().min(1).max(500)).max(6).default([]),
+  understanding: z.string().trim().min(1).max(4_000),
+  openPoints: z.array(z.string().trim().min(1).max(500)).max(10).default([]),
+  proposedScope: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
+  outOfScope: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
+  playbookKey: z.string().trim().min(1).max(80),
+  readyForApproval: z.boolean().default(false),
+});
+export const engagementApprovalSchema = z.object({ brief: engagementBriefSchema });
+export type EngagementApprovalInput = z.infer<typeof engagementApprovalSchema>;
+
 export const studioLabRequestSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('INITIALIZE') }),
   z.object({ action: z.literal('ANALYZE') }),

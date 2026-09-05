@@ -9,6 +9,7 @@ import {
 } from './github-repository-picker';
 import { apiHeaders } from './live-panel';
 import { ProjectDeliveryPanel } from './project-delivery-panel';
+import { ProjectEngagementDrawer } from './project-engagement-drawer';
 import { ProjectTeamPanel } from './project-team-panel';
 import { TeamBuilderPanel } from './team-builder-panel';
 
@@ -45,6 +46,7 @@ export function ProjectDirectory() {
   const [organizationId, setOrganizationId] = useState('');
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [expandedId, setExpandedId] = useState('');
+  const [briefingId, setBriefingId] = useState('');
   const { connections } = useGitHubConnections(organizationId);
   const [connectionId, setConnectionId] = useState('');
   const [repository, setRepository] = useState<GitHubRepository | null>(null);
@@ -332,6 +334,13 @@ export function ProjectDirectory() {
               )}
               <div className="action-row">
                 <button
+                  className="primary-button"
+                  onClick={() => setBriefingId(project.id)}
+                  type="button"
+                >
+                  Talk to the Lead
+                </button>
+                <button
                   className="secondary-button"
                   type="button"
                   aria-expanded={expanded}
@@ -348,6 +357,17 @@ export function ProjectDirectory() {
           );
         })}
       </div>
+      {briefingId && (
+        <ProjectEngagementDrawer
+          onApproved={() => void load(organizationId)}
+          onClose={() => setBriefingId('')}
+          organizationId={organizationId}
+          projectId={briefingId}
+          projectName={
+            projects.find((project) => project.id === briefingId)?.name ?? 'this project'
+          }
+        />
+      )}
     </section>
   );
 }
