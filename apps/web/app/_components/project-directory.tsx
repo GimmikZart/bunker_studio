@@ -10,6 +10,7 @@ import {
 import { apiHeaders } from './live-panel';
 import { ProjectDeliveryPanel } from './project-delivery-panel';
 import { ProjectEngagementDrawer } from './project-engagement-drawer';
+import { ProjectStagesPanel } from './project-stages-panel';
 import { ProjectTeamPanel } from './project-team-panel';
 import { TeamBuilderPanel } from './team-builder-panel';
 
@@ -308,6 +309,11 @@ export function ProjectDirectory() {
                       )}
                     </>
                   )}
+                  <ProjectStagesPanel
+                    onChanged={() => void load(organizationId)}
+                    organizationId={organizationId}
+                    projectId={project.id}
+                  />
                   <ProjectDeliveryPanel
                     agentNames={new Map(project.agents.map((agent) => [agent.id, agent.name]))}
                     onChanged={() => void load(organizationId)}

@@ -1,5 +1,35 @@
 # Development Worklog
 
+## 2026-09-05 — Fase 3 del framework: capire e costruire si toccano
+
+### Lavoro svolto
+
+- `packages/orchestration/src/stage.ts`: la fase del progetto derivata dai fatti,
+  mai memorizzata (DEC-026). Fasi opzionali `SKIPPED` finche' non servono. 11 test.
+- `GET /api/projects/:id/stages`: dove si trova il progetto e cosa lo tiene fermo.
+- `POST /api/projects/:id/stages/spec`: il brief approvato diventa un task `DOCS`
+  con write scope `docs/`, assegnato a un agente che raggiunge davvero il
+  repository; rifiuta con il motivo quando manca il repository, il writer o il
+  controllo di sicurezza (DEC-027).
+- `POST /api/workflows/plan/generate` accetta `goal` opzionale e usa il brief
+  approvato quando manca, esclusioni comprese.
+- `project-stages-panel.tsx` nella card di progetto.
+
+### Verifiche
+
+- `pnpm format:check`, `pnpm lint`, `pnpm typecheck`: PASS.
+- `pnpm test`: PASS — orchestration 125 test, worker 34, web 40 file / 127 test.
+- `pnpm build`: PASS 15/15. `pnpm security`: nessuna vulnerabilita' nota.
+- Verifica in esecuzione (memory mode): progetto nuovo su `discovery`, passaggio
+  a `spec` all'approvazione del brief, rifiuto della spec senza repository,
+  generazione del piano dal brief approvato e messaggio esplicito quando non c'e'
+  ne' goal ne' brief.
+
+### Stato finale
+
+Checkpoint stabile. Prossima attivita': Fase 4, mockup reali in sandbox
+(`docs/ai/NEXT_STEPS.md`).
+
 ## 2026-09-05 — Fase 2 del framework: il Lead capisce prima di costruire
 
 ### Lavoro svolto

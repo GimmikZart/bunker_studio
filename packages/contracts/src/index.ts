@@ -98,7 +98,12 @@ export type LeadPlan = z.infer<typeof leadPlanSchema>;
 export const leadPlanGenerationSchema = z.object({
   projectId: z.string().uuid(),
   leadAgentId: z.string().uuid(),
-  goal: z.string().trim().min(1).max(4_000),
+  /**
+   * Omitted once a brief has been approved for the project: the agreement is
+   * already written down, and retyping it is how a plan quietly ends up
+   * planning something slightly different.
+   */
+  goal: z.string().trim().min(1).max(4_000).optional(),
   constraints: z.array(z.string().trim().min(1).max(300)).max(20).default([]),
 });
 export type LeadPlanGenerationRequest = z.infer<typeof leadPlanGenerationSchema>;
@@ -348,6 +353,18 @@ export const engagementBriefSchema = z.object({
   playbookKey: z.string().trim().min(1).max(80),
   readyForApproval: z.boolean().default(false),
 });
+/**
+ * Starting the stage that writes the specification. The verification commands
+ * are asked for rather than invented: they run against the user's repository,
+ * and a studio that made up a plausible-looking check would be pretending to
+ * verify something.
+ */
+export const specStageSchema = z.object({
+  verificationCommands: z.array(verificationCommandSchema).min(1).max(20),
+  estimatedCost: z.number().nonnegative().max(1_000_000).default(0),
+});
+export type SpecStageInput = z.infer<typeof specStageSchema>;
+
 export const engagementApprovalSchema = z.object({ brief: engagementBriefSchema });
 export type EngagementApprovalInput = z.infer<typeof engagementApprovalSchema>;
 

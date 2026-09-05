@@ -7,6 +7,7 @@ import {
   validateLeadPlanProposal,
 } from '@bunker-studio/orchestration';
 import { NextResponse } from 'next/server';
+import { approvedBrief, briefAsGoal } from '../../../_stages';
 import { resolveActorId } from '../../../_auth';
 import {
   getWebAgentRepository,
@@ -59,6 +60,25 @@ export async function POST(request: Request) {
       (candidate) => candidate.id === input.projectId,
     );
     if (!project) return NextResponse.json({ error: 'Project not found.' }, { status: 404 });
+
+    // The approved brief is the goal unless one is given explicitly. Planning
+    // against a retyped summary is how the scope that was agreed and the scope
+    // that gets built start to differ.
+    const brief = await approvedBrief({
+      projectId: input.projectId,
+      organizationId,
+      actorId,
+      operations,
+    });
+    const goal = input.goal ?? (brief ? briefAsGoal(brief) : '');
+    if (!goal)
+      return NextResponse.json(
+        {
+          error:
+            'Say what this plan is for, or approve a brief with the Lead first and the plan will follow it.',
+        },
+        { status: 400 },
+      );
 
     const lead = await agents.getAgent(input.leadAgentId, organizationId, actorId);
     const runtime = await getWebAgentRuntime(lead);
@@ -125,7 +145,7 @@ export async function POST(request: Request) {
       result = await collectRun(runtime, {
         agentId: lead.id,
         prompt: buildLeadPlanPrompt({
-          goal: input.goal,
+          goal,
           constraints: input.constraints,
           teamCapabilities,
           approvedDesignVersionIds,

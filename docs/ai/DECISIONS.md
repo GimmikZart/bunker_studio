@@ -229,3 +229,21 @@
 **Motivazione:** Tre ragioni. Il tool calling e' un protocollo che differisce fra provider e legarvisi contraddirebbe DEC-002. Una pagina web letta da un modello diventa testo che il modello tratta come istruzioni: e' una superficie di prompt injection che va attraversata da codice deterministico, non dall'agente. E cio' che un agente puo' raggiungere deve restare enumerabile dal control plane, non dipendere da cosa il provider ha attivato quel giorno.
 
 **Conseguenze:** L'unico percorso con accesso di rete resta il worker Codex (`sandboxMode: 'workspace-write'`, `networkAccessEnabled` disattivato per default e controllato da `WORKER_CODEX_NETWORK_ACCESS`), che e' una shell in un workspace Git, non una capacita' di lettura del web. La fase `harvest` del playbook `site-redesign` dichiara `requires: ['WEB_HARVEST']` e si dichiara non disponibile finche' quello strumento non esiste.
+
+## DEC-026 — La fase di un progetto si deduce, non si memorizza
+**Status:** Accepted
+
+**Decisione:** Il punto in cui un progetto si trova nel suo playbook e' derivato ogni volta dai fatti — brief approvato, task della specifica, workflow, task di lavoro, design approvati — da `projectProgress()` in `packages/orchestration/src/stage.ts`. Nessuna colonna e nessun campo conserva la fase corrente.
+
+**Motivazione:** Una fase memorizzata e' una seconda copia della verita': diverge al primo task annullato o documento rifiutato, e da quel momento il sistema dichiara con sicurezza una fase che il lavoro ha lasciato giorni prima. I fatti da cui si deduce sono gli stessi su cui agisce il resto del motore, quindi non possono contraddirlo.
+
+**Conseguenze:** Non serve alcuna migrazione. Una fase opzionale che nessuno ha richiesto risulta `SKIPPED` e non trattiene il progetto; diventa `DONE` se il suo artefatto viene approvato. Il task che scrive la specifica e' riconosciuto dal titolo, perche' introdurre un campo "quale fase mi ha creato" rimetterebbe la fase fra i dati memorizzati.
+
+## DEC-027 — Un documento nel repository lo scrive chi il repository lo raggiunge
+**Status:** Accepted
+
+**Decisione:** La fase `spec` crea un task `DOCS` assegnato a un agente del progetto con runtime `CODEX_SDK`, con write scope `docs/` e i comandi di verifica forniti da chi la avvia. Se il progetto non ha un repository collegato, o nessun agente in grado di raggiungerlo, la fase viene rifiutata dicendo cosa manca.
+
+**Motivazione:** Un task di documentazione assegnato a un agente su runtime API produrrebbe il testo di un documento e nulla piu': il task risulterebbe completato e il repository resterebbe intatto. Un successo apparente e' peggio di un rifiuto. I comandi di verifica sono chiesti e non inventati perche' girano sul repository dell'utente: uno studio che inventasse un controllo plausibile fingerebbe di verificare qualcosa.
+
+**Conseguenze:** La specifica passa dagli stessi gate di ogni altra modifica — branch `bunker/<task-id>`, pull request, verifica, review. Il documento vive dove lo cercano sia le persone sia gli agenti, e il playbook chiede allo stesso task di tenere aggiornati `docs/state/CURRENT.md` e `docs/state/NEXT.md`.

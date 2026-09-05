@@ -1,5 +1,42 @@
 # Current Project State
 
+## Checkpoint 2026-09-05 — Fase 3: dal brief approvato al documento e al piano
+
+Fase 3 del framework di consegna (`docs/product/STUDIO_PLAYBOOKS.md`). Le due
+meta' del sistema — capire e costruire — sono ora collegate.
+
+- **La fase si deduce dai fatti** (`packages/orchestration/src/stage.ts`,
+  DEC-026): brief approvato, task della specifica, workflow, task aperti,
+  design approvati. Niente viene memorizzato, quindi il progetto non puo'
+  dichiarare una fase che il lavoro ha gia' lasciato. Una fase opzionale che
+  nessuno ha chiesto risulta `SKIPPED` e non trattiene niente.
+- **`GET /api/projects/:id/stages`** dice dove si trova il progetto e cosa lo
+  tiene fermo, in parole d'uso: «Talk to the Lead until the brief is right, then
+  approve it», «The specification is running», «1 task still open».
+- **`POST /api/projects/:id/stages/spec`** trasforma il brief approvato in un
+  task `DOCS` con write scope `docs/`, che produce `docs/specs/<slug>.md` e
+  mantiene `docs/state/CURRENT.md` e `docs/state/NEXT.md`. Cio' che era fuori
+  scope e i punti ancora aperti viaggiano dentro la descrizione del task: sono
+  la parte che un piano tende a far ricrescere.
+- **Rifiuta invece di fingere** (DEC-027): senza repository collegato, senza un
+  agente che possa raggiungerlo, o senza un controllo di sicurezza fra i comandi
+  di verifica, la fase non parte e dice cosa manca. Un task di documentazione
+  dato a un agente su runtime API risulterebbe completato lasciando il
+  repository intatto.
+- **Il piano parte dal brief.** `POST /api/workflows/plan/generate` accetta ora
+  un `goal` opzionale: quando manca, usa il brief approvato — comprese le
+  esclusioni. Senza ne' goal ne' brief risponde dicendo entrambe le strade.
+- **Nella card di progetto** c'e' la sequenza delle fasi con quella corrente,
+  cosa la tiene ferma, e il pulsante che avvia la scrittura della specifica.
+
+Verificato in esecuzione: un progetto nuovo e' su `discovery`; approvato il
+brief passa a `spec`; la fase `spec` rifiuta senza repository; la generazione
+del piano senza `goal` procede sul brief approvato e, su un progetto senza
+brief, risponde «Say what this plan is for, or approve a brief with the Lead
+first».
+
+Nessuna migrazione richiesta.
+
 ## Checkpoint 2026-09-05 — Fase 2: il Lead conduce l'intervista
 
 Fase 2 del framework di consegna (`docs/product/STUDIO_PLAYBOOKS.md`).

@@ -4,6 +4,7 @@ import { POST as createProject } from '../../../organizations/[organizationId]/p
 import { POST as createAgent } from '../../../agents/route';
 import { POST as createWorkflowPlan } from '../route';
 import { POST as generatePlan } from './route';
+import { POST as approveBrief } from '../../../projects/[projectId]/engagement/approve/route';
 
 async function studio() {
   const owner = `plan-owner-${crypto.randomUUID()}`;
@@ -116,6 +117,69 @@ describe('Lead plan generation route', () => {
     const { GET: listWorkflows } = await import('../route');
     const listed = await listWorkflows(new Request('http://localhost', { headers }));
     expect((await listed.json()).workflows).toHaveLength(0);
+  });
+
+  it('plans against the approved brief when no goal is given', async () => {
+    const context = await studio();
+    await approveBrief(
+      new Request('http://localhost', {
+        method: 'POST',
+        headers: context.headers,
+        body: JSON.stringify({
+          brief: {
+            questions: [],
+            understanding: 'Let a guest pay without an account.',
+            openPoints: [],
+            proposedScope: ['Guest checkout'],
+            outOfScope: ['Changing the payment provider'],
+            playbookKey: 'feature-on-existing-repo',
+            readyForApproval: true,
+          },
+        }),
+      }),
+      { params: Promise.resolve({ projectId: context.projectId }) },
+    );
+    process.env.BUNKER_FAKE_RUNTIME_RESPONSE = planResponse([
+      {
+        id: 'a',
+        title: 'Build guest checkout',
+        taskType: 'BACKEND',
+        description: 'x',
+        dependencies: [],
+        readScope: [],
+        writeScope: ['packages/checkout'],
+        definitionOfDone: ['ok'],
+        verificationCommands: [],
+        estimatedCost: 1,
+      },
+    ]);
+    const response = await generatePlan(
+      new Request('http://localhost', {
+        method: 'POST',
+        headers: context.headers,
+        body: JSON.stringify({
+          projectId: context.projectId,
+          leadAgentId: context.leadAgentId,
+        }),
+      }),
+    );
+    expect(response.status).toBe(200);
+  });
+
+  it('says what is missing when there is neither a goal nor an approved brief', async () => {
+    const context = await studio();
+    const response = await generatePlan(
+      new Request('http://localhost', {
+        method: 'POST',
+        headers: context.headers,
+        body: JSON.stringify({
+          projectId: context.projectId,
+          leadAgentId: context.leadAgentId,
+        }),
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toContain('approve a brief');
   });
 
   it('rejects a plan whose frontend task has no approved design', async () => {

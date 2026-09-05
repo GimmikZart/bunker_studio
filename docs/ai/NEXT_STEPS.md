@@ -1,41 +1,41 @@
 # Next Steps
 
-## Prossima attivita' proposta — Fase 3: dal brief approvato al documento e al piano
+## Prossima attivita' proposta — Fase 4: i mockup veri
 
-Fasi 0, 1 e 2 complete: il Lead conduce l'intervista, sceglie il processo e il
-brief approvato e' memoria di progetto; i task che ne derivano vengono assegnati
-ed eseguiti da soli. Manca l'anello che li unisce.
+Fasi 0-3 complete. Dal brief approvato nascono il documento tecnico e il piano;
+i task che ne derivano vengono assegnati ed eseguiti da soli fino al prossimo
+gate umano.
 
 ### Il problema
 
-Un brief approvato non fa ancora partire nulla. Chi lo ha approvato deve
-comunque generare un piano a mano dalla vista dei workflow, e la fase `spec` —
-il documento tecnico che diventa la linea guida del progetto — non e' orchestrata
-da nessuno.
+Il Designer non puo' produrre un mockup. Il contratto attuale restituisce dati
+strutturati — titolo, sommario, due colori, sei sezioni — e lo studio ne rende un
+HTML da template con ogni campo escapato. E' una scheda, non un'interfaccia.
+Senza mockup credibili lo scenario «prendi un sito brutto, ridisegnalo, mostralo
+al cliente» non e' realizzabile, e la fase `prototype` del playbook
+`site-redesign` si dichiara non disponibile.
 
-### Da fare
+### Da fare (DEC-021, gia' approvata)
 
-- Motore delle fasi: il progetto ricorda a che punto del playbook si trova e
-  quale gate lo tiene fermo. Le transizioni restano deterministiche; il gate
-  `HUMAN_APPROVAL` avanza solo su azione dell'utente.
-- Fase `spec`: dal brief approvato nasce un task `DOCS` con write scope `docs/`,
-  eseguito dal worker, che produce `docs/specs/<slug>.md` su un branch con la
-  sua pull request.
-- Fase `decomposition`: il brief e il documento approvati diventano l'obiettivo
-  passato a `POST /api/workflows/plan/generate`, invece di riscriverlo a mano.
-- I file di continuita' del progetto: `docs/state/CURRENT.md`, `docs/state/NEXT.md`.
+- Task `DESIGN_PROTOTYPE` eseguito dal worker con write scope
+  `design/<slug>/**`: HTML, CSS e JavaScript veri su un branch `bunker/<task-id>`
+  con la sua pull request, come qualunque altro artefatto.
+- Anteprima servita da una route dedicata in un iframe `sandbox` **senza**
+  `allow-same-origin`, con CSP stretta: il markup del modello non viene mai
+  eseguito nell'origine dello studio.
+- La capacita' `DESIGN_PROTOTYPE` diventa disponibile, quindi la fase `design`
+  smette di dichiararsi non costruita.
 
 ### Definition of Done
 
-Da un brief approvato si arriva, senza chiamate manuali, a un documento tecnico
-committato e a un piano proposto per l'approvazione.
+Da un brief approvato si arriva a un mockup navigabile, aperto in sandbox e
+approvabile, che un task FRONTEND puo' poi citare.
 
-### Decisioni gia' prese
+### Poi la Fase 5
 
-DEC-021 (mockup reali in sandbox, Fase 4), DEC-022 (l'autonomia del progetto e'
-il gate), DEC-023 (il worker chiede di proseguire), DEC-024 (playbook in codice
-tipizzato), DEC-025 (nessun agente ha strumenti; il web si leggera' con uno
-strumento server-side con allowlist, Fase 5).
+`web.harvest`: strumento eseguito dal server con allowlist per progetto, che
+scarica una pagina e ne restituisce testo, struttura e riferimenti alle immagini
+come dati (DEC-025). Sblocca la prima fase di `site-redesign`.
 
 ## Prossima attivita' precisa — verifiche esterne AC-001, AC-006, AC-009, AC-011
 
