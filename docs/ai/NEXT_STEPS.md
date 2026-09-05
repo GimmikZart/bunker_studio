@@ -1,48 +1,38 @@
 # Next Steps
 
-## Decisione di prodotto aperta — il concetto di Team
+## Prossima attivita' proposta — Fase 0 del framework di consegna
 
-Sollevata dall'utente il 2026-09-05. Non e' stata eseguita alcuna modifica:
-FR-002 e FR-003 della specifica tecnica prevedono i Team, quindi toglierli e'
-una scelta di prodotto, non un refactor.
+Il disegno completo e' in `docs/product/STUDIO_PLAYBOOKS.md`. La Fase 0 e' la
+sola che sblocca tutte le altre.
 
-### Cosa fa oggi un Team
+### Il problema
 
-Nulla di deterministico. Ricognizione del repository:
+`POST /api/workflows/plan` crea i task **senza `assignedAgentId`**, ma
+`/api/workers/runtime/tasks/claim` richiede `assigned_agent_id` per costruire il
+contesto di esecuzione. Un piano generato dal Lead non e' quindi eseguibile da
+nessuno. Non esiste nemmeno un punto nell'interfaccia per mettere un agente su
+un progetto: le assegnazioni si creano solo via API.
 
-- un `agent_assignments` puo' citare un `team_id` oppure un `project_id`;
-- un progetto puo' avere `default_team_id` e `project_teams`;
-- `GET /api/agents/:id/metrics` risolve i progetti di un agente per assegnazione
-  diretta **oppure** attraverso i team del progetto;
-- export e import di un'organizzazione trasportano `teams.jsonl`.
+### Da fare
 
-Nessuna transizione di stato, nessun instradamento del lavoro e nessun gate
-dipende dal team. Le "team capabilities" del Lead planner sono l'unione delle
-skill degli agenti del progetto: la parola e' generica, non l'entita'.
-
-### L'unico argomento serio per tenerli
-
-Riusabilita' della composizione. Un team e' un gruppo che si attacca a piu'
-progetti in una mossa sola invece di N assegnazioni, ed e' l'unita' naturale del
-"team templates marketplace local/import-export" previsto dalla specifica
-(riga 129): un template che esporta una squadra pronta ha bisogno di un nome per
-quella squadra. Senza team, un template e' un sacchetto di agenti.
-
-### Opzioni
-
-1. **Tenerli, ma toglierli dalla strada.** Via la voce `Teams` dalla
-   navigazione e il campo team dalla creazione progetto; restano tabella, API,
-   export/import per il marketplace dei template. Costo basso, nessuna perdita.
-2. **Rimuoverli del tutto.** Migrazione che elimina `teams`, `project_teams`,
-   `projects.default_team_id` e `agent_assignments.team_id`; semplificazione di
-   metriche, portabilita' e contratti; aggiornamento di FR-002/FR-003. Va deciso
-   prima se il marketplace dei template resta in scope.
-3. **Lasciarli come sono.**
+- Superficie nella vista progetto per assegnare, spostare e togliere agenti,
+  che sostituisce la vista `/teams` rimossa (DEC-020).
+- Spostare la proposta di organico (`TeamBuilderPanel`) nel progetto.
+- Router deterministico task → agente: ruolo, `requiredCapability` ⊆ skills,
+  carico, costo. Nessun LLM. Un task senza candidati resta `BLOCKED` con il
+  motivo dichiarato.
+- Rimuovere la voce `Teams` dalla navigazione e la pagina `/teams`.
 
 ### Definition of Done
 
-L'utente sceglie. La decisione va scritta in `docs/ai/DECISIONS.md` e, se cambia
-il modello, la specifica va aggiornata prima del codice.
+Un piano generato dal Lead su un progetto con agenti assegnati diventa una coda
+di task che il worker puo' effettivamente prendere, senza alcuna chiamata API
+manuale.
+
+### Decisioni ancora aperte
+
+D1 (mockup del Designer, rivede DEC-017), D2 (autonomia del Conductor) e D3
+(dove vivono i playbook), tutte descritte in `docs/product/STUDIO_PLAYBOOKS.md`.
 
 ## Prossima attivita' precisa — verifiche esterne AC-001, AC-006, AC-009, AC-011
 

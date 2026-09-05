@@ -175,3 +175,12 @@
 **Motivazione:** Senza questo, un checkout Windows con `core.autocrlf=true` produce file CRLF che fanno fallire `prettier --check` su ogni file del repository, rendendo impossibile far passare `pnpm verify` su una macchina di sviluppo Windows.
 
 **Conseguenze:** Il working tree usa LF su ogni piattaforma indipendentemente dalla configurazione git locale. Gli asset binari sono esclusi esplicitamente dalla conversione.
+
+## DEC-020 — Il Team resta nel modello, sparisce dall'interfaccia
+**Status:** Accepted
+
+**Decisione:** La vista `/teams` viene rimossa. Il Team resta come entita' nel modello dati, nelle API e nel pacchetto di export/import, ma non ha piu' una sezione dedicata nell'interfaccia. Gli agenti si mettono e si spostano da un progetto all'altro dalla vista del progetto.
+
+**Motivazione:** Un progetto con i suoi agenti assegnati e' gia' concettualmente un team. Nessuna transizione di stato, nessun instradamento del lavoro e nessun gate dipende dal team: e' solo un raggruppamento. Un livello di navigazione dedicato a un raggruppamento che non fa nulla costa attenzione all'utente senza restituire niente. Si tiene l'entita' perche' e' l'unita' naturale del "team templates marketplace" previsto dalla specifica: un template che esporta una squadra pronta ha bisogno di un nome per quella squadra.
+
+**Conseguenze:** FR-002 resta valido a livello di modello. La proposta di organico (`/api/staffing/proposals`, oggi in `TeamBuilderPanel`) va spostata nel progetto, dove ha senso: "chi mi serve per questo progetto". Serve una superficie per assegnare e spostare gli agenti fra progetti, oggi assente: le assegnazioni si creano solo via API.
