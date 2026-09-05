@@ -1,41 +1,42 @@
 # Next Steps
 
-## Prossima attivita' proposta — Fase 4: i mockup veri
+## Prossima attivita' proposta — Fase 5: leggere il web
 
-Fasi 0-3 complete. Dal brief approvato nascono il documento tecnico e il piano;
-i task che ne derivano vengono assegnati ed eseguiti da soli fino al prossimo
-gate umano.
+Fasi 0-4 complete. Il Designer produce mockup navigabili, sigillati in sandbox e
+approvabili; un task FRONTEND puo' citarne uno.
 
 ### Il problema
 
-Il Designer non puo' produrre un mockup. Il contratto attuale restituisce dati
-strutturati — titolo, sommario, due colori, sei sezioni — e lo studio ne rende un
-HTML da template con ogni campo escapato. E' una scheda, non un'interfaccia.
-Senza mockup credibili lo scenario «prendi un sito brutto, ridisegnalo, mostralo
-al cliente» non e' realizzabile, e la fase `prototype` del playbook
-`site-redesign` si dichiara non disponibile.
+Nessun agente puo' leggere una pagina web (DEC-025): gli adapter provider non
+inviano alcun array `tools`, quindi nessun modello puo' invocare funzioni. La
+fase `harvest` del playbook `site-redesign` dichiara `requires: ['WEB_HARVEST']`
+e resta non disponibile, quindi lo scenario «prendi un sito, tienine i contenuti,
+rifallo» non parte.
 
-### Da fare (DEC-021, gia' approvata)
+### Da fare
 
-- Task `DESIGN_PROTOTYPE` eseguito dal worker con write scope
-  `design/<slug>/**`: HTML, CSS e JavaScript veri su un branch `bunker/<task-id>`
-  con la sua pull request, come qualunque altro artefatto.
-- Anteprima servita da una route dedicata in un iframe `sandbox` **senza**
-  `allow-same-origin`, con CSP stretta: il markup del modello non viene mai
-  eseguito nell'origine dello studio.
-- La capacita' `DESIGN_PROTOTYPE` diventa disponibile, quindi la fase `design`
-  smette di dichiararsi non costruita.
+- Strumento `web.harvest` **eseguito dal server**, non dal modello: dato un URL,
+  verifica che il dominio sia nella allowlist del progetto, scarica con un limite
+  di dimensione e di tempo, estrae testo, struttura dei titoli e riferimenti alle
+  immagini, e restituisce dati.
+- Allowlist per progetto, con l'aggiunta di un dominio come azione esplicita
+  dell'utente.
+- Il risultato entra nella conversazione con il Lead come contesto, non come
+  istruzioni: cio' che arriva da una pagina e' testo di terzi, e va trattato come
+  dato.
+- La capacita' `WEB_HARVEST` diventa disponibile e la fase `harvest` smette di
+  dichiararsi non costruita.
 
 ### Definition of Done
 
-Da un brief approvato si arriva a un mockup navigabile, aperto in sandbox e
-approvabile, che un task FRONTEND puo' poi citare.
+Dato un URL, il Lead puo' descrivere struttura e contenuti del sito sorgente, e
+il playbook `site-redesign` non ha piu' fasi indisponibili.
 
-### Poi la Fase 5
+### Poi
 
-`web.harvest`: strumento eseguito dal server con allowlist per progetto, che
-scarica una pagina e ne restituisce testo, struttura e riferimenti alle immagini
-come dati (DEC-025). Sblocca la prima fase di `site-redesign`.
+Il mockup approvato committato nel repository sotto `design/<slug>/`, che e' la
+meta' di DEC-021 non ancora fatta: oggi il mockup vive come artefatto di
+anteprima approvabile, non come file nel repository del progetto.
 
 ## Prossima attivita' precisa — verifiche esterne AC-001, AC-006, AC-009, AC-011
 

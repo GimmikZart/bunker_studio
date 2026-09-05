@@ -185,12 +185,31 @@ export const designProposalRequestSchema = z.object({
   brief: z.string().trim().min(1).max(10_000),
   constraints: z.array(z.string().trim().min(1).max(500)).max(30).default([]),
   variantCount: z.number().int().min(1).max(3).default(1),
+  /** Ask for a navigable mockup rather than a described direction. */
+  prototype: z.boolean().default(false),
 });
 export type DesignProposalRequest = z.infer<typeof designProposalRequestSchema>;
 /**
- * What a Designer agent is allowed to return.  It is structured data only: the
- * preview HTML is rendered from these fields by the studio, so model output is
- * never treated as markup and cannot inject styles or script.
+ * A real mockup, authored by the Designer.
+ *
+ * The three parts are separate because the studio owns the envelope: it writes
+ * the doctype, the head and the content security policy itself, and the model
+ * fills the body. A model returning a whole document could put its own head
+ * first and the policy would be the second one the browser reads — which is to
+ * say, not the policy at all.
+ */
+export const designPrototypeSchema = z.object({
+  body: z.string().min(1).max(30_000),
+  css: z.string().max(15_000).default(''),
+  js: z.string().max(8_000).default(''),
+});
+export type DesignPrototype = z.infer<typeof designPrototypeSchema>;
+
+/**
+ * What a Designer agent is allowed to return.  The described fields are
+ * rendered by the studio into a safe card; a `prototype`, when present, is the
+ * Designer's own markup and is shown in a sandbox that has no access to this
+ * origin and no way to reach the network.
  */
 export const designVariantDraftSchema = z.object({
   title: z.string().trim().min(1).max(120),
@@ -210,6 +229,8 @@ export const designVariantDraftSchema = z.object({
     .max(6)
     .default([]),
   mainStates: z.array(z.string().trim().min(1).max(40)).max(8).default([]),
+  /** Present when the Designer was asked for a navigable mockup. */
+  prototype: designPrototypeSchema.optional(),
 });
 export type DesignVariantDraft = z.infer<typeof designVariantDraftSchema>;
 

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildDesignPrompt, parseDesignDraft } from './design-brief.js';
+import {
+  MAX_DESIGN_RESPONSE_CHARACTERS,
+  buildDesignPrompt,
+  parseDesignDraft,
+} from './design-brief.js';
 
 function variant(overrides: Record<string, unknown> = {}) {
   return {
@@ -74,7 +78,12 @@ describe('parseDesignDraft', () => {
   });
 
   it('rejects an oversized response before parsing it', () => {
-    const result = parseDesignDraft(`{"variants":"${'x'.repeat(60_001)}"}`, 1);
+    // Tied to the limit itself: a mockup makes a legitimate response much
+    // larger, and the number has already moved once.
+    const result = parseDesignDraft(
+      `{"variants":"${'x'.repeat(MAX_DESIGN_RESPONSE_CHARACTERS + 1)}"}`,
+      1,
+    );
     expect(result).toEqual({
       ok: false,
       reason: 'The design response exceeded the accepted size.',

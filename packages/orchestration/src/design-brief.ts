@@ -3,12 +3,13 @@ import { designDraftSchema, type DesignDraft } from '@bunker-studio/contracts';
 /**
  * Prompt and parsing for a provider-backed Designer.
  *
- * The Designer returns structured data, never markup: the studio renders the
- * preview itself from these fields, so a model cannot introduce HTML, CSS or
- * script into a page a reviewer will open.
+ * The described fields are rendered by the studio into a safe card. When a
+ * mockup is asked for, the Designer also writes real markup — and that markup
+ * is never rendered in this origin: it goes into a sandbox with no access to
+ * the page around it and no way to reach the network.
  */
 
-export const MAX_DESIGN_RESPONSE_CHARACTERS = 60_000;
+export const MAX_DESIGN_RESPONSE_CHARACTERS = 200_000;
 
 const MAX_BRIEF_CHARACTERS = 10_000;
 const MAX_CONSTRAINTS = 30;
@@ -18,6 +19,8 @@ export function buildDesignPrompt(input: {
   brief: string;
   constraints: string[];
   variantCount: number;
+  /** Ask for a navigable mockup rather than a described direction. */
+  prototype?: boolean;
 }): string {
   const constraints = input.constraints
     .map((constraint) => constraint.trim())
@@ -35,15 +38,30 @@ export function buildDesignPrompt(input: {
     '',
     `Propose exactly ${input.variantCount} distinct variant${input.variantCount === 1 ? '' : 's'}.`,
     'Each variant needs a different visual and structural direction, not a restyle of the same one.',
-    'Describe the design in words and colours only. Do not write HTML, CSS or code:',
-    'the studio renders the preview from your fields.',
     'Colours must be six-digit hex values such as #7c3aed, with readable contrast against the surface.',
     'List the main states the screen must handle, for example default, empty, loading and error.',
+    ...(input.prototype
+      ? [
+          '',
+          'Also build each variant as a real mockup, in three parts:',
+          '- body: the HTML inside <body>. No <html>, <head>, <script> or <style> tags.',
+          '- css: the stylesheet, as plain CSS with no <style> tag.',
+          '- js: any behaviour, as plain JavaScript with no <script> tag. Leave it empty if the mockup needs none.',
+          'It runs sealed: no network, no fonts, no images from anywhere. Use data: URIs, CSS and',
+          'system fonts only, and inline SVG for anything drawn. Anything fetched will simply not appear.',
+          'Make it look like the real screen, not a wireframe of one.',
+        ]
+      : [
+          'Describe the design in words and colours only. Do not write HTML, CSS or code:',
+          'the studio renders the preview from your fields.',
+        ]),
     '',
     'Answer with a single JSON object and no prose, matching exactly:',
     '{"variants":[{"title":string,"rationale":string,"headline":string,"summary":string,',
     '"accentColor":string,"surfaceColor":string,"primaryAction":string,',
-    '"sections":[{"heading":string,"body":string}],"mainStates":string[]}]}',
+    `"sections":[{"heading":string,"body":string}],"mainStates":string[]${
+      input.prototype ? ',"prototype":{"body":string,"css":string,"js":string}' : ''
+    }}]}`,
   ].join('\n');
 }
 

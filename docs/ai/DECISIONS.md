@@ -247,3 +247,12 @@
 **Motivazione:** Un task di documentazione assegnato a un agente su runtime API produrrebbe il testo di un documento e nulla piu': il task risulterebbe completato e il repository resterebbe intatto. Un successo apparente e' peggio di un rifiuto. I comandi di verifica sono chiesti e non inventati perche' girano sul repository dell'utente: uno studio che inventasse un controllo plausibile fingerebbe di verificare qualcosa.
 
 **Conseguenze:** La specifica passa dagli stessi gate di ogni altra modifica — branch `bunker/<task-id>`, pull request, verifica, review. Il documento vive dove lo cercano sia le persone sia gli agenti, e il playbook chiede allo stesso task di tenere aggiornati `docs/state/CURRENT.md` e `docs/state/NEXT.md`.
+
+## DEC-028 — Del mockup il modello scrive il contenuto, lo studio l'involucro
+**Status:** Accepted — implementa DEC-021
+
+**Decisione:** Il Designer restituisce il mockup in tre parti separate — `body`, `css`, `js` — e mai un documento intero. Lo studio scrive doctype, `<head>`, la Content-Security-Policy e i tag `<style>` e `<script>`. L'anteprima gira in un iframe con `sandbox="allow-scripts"` e **senza** `allow-same-origin`; la policy e' `default-src 'none'` con immagini, media e font solo come data URI, stili e script solo inline, `form-action 'none'` e `base-uri 'none'`.
+
+**Motivazione:** Un modello che restituisse un documento intero potrebbe aprirlo con il proprio `<head>`, e la policy dello studio sarebbe la seconda che il browser legge — cioe' nessuna policy. Separando le tre parti l'involucro resta nostro senza togliere nulla al Designer, che scrive HTML, CSS e JavaScript veri. `allow-scripts` senza `allow-same-origin` e' deliberato: con entrambi un documento puo' raggiungere la pagina che lo contiene e disfare il proprio sandbox.
+
+**Conseguenze:** Nessuna sanificazione del markup, perche' il confine e' il sandbox e non un filtro: il documento gira in un'origine opaca, non puo' leggere la pagina dello studio ne' raggiungere la rete. Un mockup che supera il limite di dimensione viene rifiutato dicendolo. La capacita' `DESIGN_PROTOTYPE` risulta disponibile, quindi la fase `design` non si dichiara piu' non costruita; resta indisponibile `harvest`, che aspetta `WEB_HARVEST`.

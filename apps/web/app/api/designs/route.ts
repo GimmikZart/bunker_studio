@@ -61,6 +61,7 @@ async function proposeDesigns(
           brief: input.brief,
           constraints: input.constraints,
           variantCount: input.variantCount,
+          prototype: input.prototype,
         }),
         correlationId,
         capabilities: {

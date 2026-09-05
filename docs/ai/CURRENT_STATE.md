@@ -1,5 +1,36 @@
 # Current Project State
 
+## Checkpoint 2026-09-05 — Fase 4: il Designer disegna davvero
+
+Fase 4 del framework di consegna, che implementa DEC-021.
+
+- **Il Designer produce un mockup navigabile**: HTML, CSS e JavaScript suoi, in
+  tre campi separati (`body`, `css`, `js`). Lo studio scrive doctype, head,
+  Content-Security-Policy e i tag `<style>` e `<script>` (DEC-028): un modello
+  che restituisse un documento intero potrebbe anteporre il proprio head, e la
+  policy dello studio sarebbe la seconda che il browser legge.
+- **Gira sigillato.** `sandbox="allow-scripts"` senza `allow-same-origin`, e
+  `default-src 'none'` con immagini, media e font solo come data URI. Verificato
+  in esecuzione: dalla pagina dello studio `iframe.contentDocument` e' `null` e
+  `contentWindow.document` solleva `SecurityError`. Il mockup non puo' leggere la
+  pagina che lo contiene ne' raggiungere la rete.
+- **Resta la direzione descritta** per chi non vuole un mockup: la casella nel
+  pannello Designs sceglie fra le due, e senza mockup il prompt continua a
+  vietare al Designer di scrivere markup.
+- **La capacita' `DESIGN_PROTOTYPE` e' disponibile**, quindi la fase `design`
+  non si dichiara piu' non costruita. `harvest` resta indisponibile in attesa di
+  `WEB_HARVEST`.
+- Il limite di risposta del Designer sale a 200.000 caratteri, perche' un mockup
+  vero e' molto piu' grande di una direzione descritta; il test sulla dimensione
+  e' ora legato alla costante invece che a un numero copiato.
+
+Verificato in esecuzione: chiesto un mockup di un checkout, il documento servito
+parte con il doctype dello studio, ha la CSP prima di ogni stile, conserva
+markup, CSS e JavaScript del Designer, e nel browser il pulsante risponde
+davvero — «Ricevuta inviata a …» compare al click.
+
+Nessuna migrazione richiesta.
+
 ## Checkpoint 2026-09-05 — Fase 3: dal brief approvato al documento e al piano
 
 Fase 3 del framework di consegna (`docs/product/STUDIO_PLAYBOOKS.md`). Le due

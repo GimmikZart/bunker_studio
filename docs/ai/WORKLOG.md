@@ -1,5 +1,39 @@
 # Development Worklog
 
+## 2026-09-05 — Fase 4 del framework: mockup veri, in sandbox
+
+### Lavoro svolto
+
+- `designPrototypeSchema` (`body`, `css`, `js`) e campo `prototype` opzionale sul
+  draft del Designer; `prototype: boolean` sulla richiesta di proposta.
+- `renderPrototypeDocument()` in `apps/web/app/api/designs/_designer.ts`: lo
+  studio scrive doctype, head, CSP e i tag `<style>`/`<script>`; il modello
+  scrive il contenuto (DEC-028). Limite di dimensione applicato.
+- `buildDesignPrompt` chiede le tre parti e vieta i tag che scrive lo studio;
+  senza mockup continua a vietare del tutto il markup. Limite di risposta a
+  200.000 caratteri, con il test legato alla costante.
+- `design-panel.tsx`: casella per chiedere un mockup, iframe
+  `sandbox="allow-scripts"` senza `allow-same-origin` per i prototipi e
+  `sandbox=""` per le direzioni descritte.
+- La capacita' `DESIGN_PROTOTYPE` risulta disponibile alla fase `design`.
+
+### Verifiche
+
+- `pnpm format:check`, `pnpm lint`, `pnpm typecheck`: PASS.
+- `pnpm test`: PASS — orchestration 125, worker 34, web 41 file / 139 test
+  (12 nuovi sull'involucro e sul prompt del mockup).
+- `pnpm build`: PASS 15/15. `pnpm security`: nessuna vulnerabilita' nota.
+- Verifica in esecuzione: mockup di checkout generato e servito con doctype
+  dello studio e CSP prima di ogni stile; nel browser il pulsante risponde
+  davvero; dalla pagina dello studio `iframe.contentDocument` e' `null` e
+  `contentWindow.document` solleva `SecurityError`.
+
+### Stato finale
+
+Checkpoint stabile. Prossima attivita': Fase 5, `web.harvest`
+(`docs/ai/NEXT_STEPS.md`). Resta da fare la meta' di DEC-021 relativa al commit
+del mockup approvato sotto `design/<slug>/` nel repository del progetto.
+
 ## 2026-09-05 — Fase 3 del framework: capire e costruire si toccano
 
 ### Lavoro svolto

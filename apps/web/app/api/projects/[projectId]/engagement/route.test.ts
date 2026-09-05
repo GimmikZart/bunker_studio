@@ -131,11 +131,10 @@ describe('talking to the Lead about a project', () => {
     expect(payload.brief.understanding).toContain('guest');
     expect(payload.brief.readyForApproval).toBe(true);
     expect(payload.playbook.key).toBe('feature-on-existing-repo');
-    // The stages that cannot run yet are named now, not when the studio reaches
-    // one and stops.
-    expect(payload.playbook.unavailable.map((entry: { stage: string }) => entry.stage)).toEqual([
-      'Design what needs designing',
-    ]);
+    // Every stage of this playbook can now run: the Designer produces real
+    // mockups. The redesign playbook still reports its harvest stage as
+    // unavailable, which `unavailableStages` covers directly.
+    expect(payload.playbook.unavailable).toEqual([]);
   });
 
   it('keeps the conversation, so it can be reopened', async () => {

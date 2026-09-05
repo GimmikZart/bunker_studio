@@ -7,6 +7,7 @@ import {
   parseEngagementReply,
   unavailableStages,
   type EngagementTurn,
+  type StageCapability,
 } from '@bunker-studio/orchestration';
 import { NextResponse } from 'next/server';
 import {
@@ -27,7 +28,7 @@ function engagementCost(): number {
 }
 
 /** Capabilities the studio can actually perform today. */
-const AVAILABLE_STAGE_CAPABILITIES: [] = [];
+const AVAILABLE_STAGE_CAPABILITIES: StageCapability[] = ['DESIGN_PROTOTYPE'];
 
 async function turnsOf(
   context: Extract<Awaited<ReturnType<typeof engagementContext>>, { ok: true }>,

@@ -13,6 +13,7 @@ type Design = {
   version: number;
   status: string;
   rationale?: string;
+  spec?: { previewKind?: string };
   previews?: DesignPreview[];
 };
 
@@ -25,6 +26,7 @@ export function DesignPanel() {
   const [brief, setBrief] = useState('');
   const [constraints, setConstraints] = useState('');
   const [variantCount, setVariantCount] = useState(1);
+  const [prototype, setPrototype] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   async function load(id: string) {
@@ -72,6 +74,7 @@ export function DesignPanel() {
           .map((constraint) => constraint.trim())
           .filter(Boolean),
         variantCount,
+        prototype,
       }),
     });
     if (!response.ok) {
@@ -197,9 +200,19 @@ export function DesignPanel() {
           <option value={2}>2 proposals</option>
           <option value={3}>3 proposals</option>
         </select>
+        <label className="checkbox-row">
+          <input
+            checked={prototype}
+            onChange={(event) => setPrototype(event.target.checked)}
+            type="checkbox"
+          />
+          <span>Build a navigable mockup, not just a described direction</span>
+        </label>
         <p className="field-help">
-          Each proposal includes a bounded, sandboxed static HTML preview. No script or remote
-          content runs in the preview. Approving one is the owner-only gate for frontend tasks.
+          A mockup is the Designer&rsquo;s own HTML, CSS and JavaScript. It opens sealed: it cannot
+          reach the network, load anything from outside itself, or touch the page around it. Without
+          this you get a described direction rendered by the studio. Approving one is the owner-only
+          gate for frontend tasks.
         </p>
         <button
           className="primary-button"
@@ -233,22 +246,32 @@ export function DesignPanel() {
               <small>{version.status}</small>
             </span>
             {version.rationale && <p>{version.rationale}</p>}
-            {version.previews?.map((preview) => (
-              <figure key={preview.id}>
-                <figcaption>{preview.title}</figcaption>
-                <iframe
-                  title={`${version.id}-${preview.title}`}
-                  sandbox=""
-                  srcDoc={preview.html}
-                  style={{
-                    border: '1px solid #d7dce5',
-                    borderRadius: 8,
-                    height: 280,
-                    width: '100%',
-                  }}
-                />
-              </figure>
-            ))}
+            {version.previews?.map((preview) => {
+              const prototype = version.spec?.previewKind === 'PROTOTYPE';
+              return (
+                <figure key={preview.id}>
+                  <figcaption>
+                    {preview.title}
+                    {prototype && <small> · runs sealed: no network, no access to this page</small>}
+                  </figcaption>
+                  <iframe
+                    title={`${version.id}-${preview.title}`}
+                    // A mockup needs its own scripts to be navigable. It never
+                    // gets `allow-same-origin`: with both, a document can reach
+                    // into this page and undo its own sandbox. A described
+                    // preview needs nothing at all, and gets nothing.
+                    sandbox={prototype ? 'allow-scripts' : ''}
+                    srcDoc={preview.html}
+                    style={{
+                      border: '1px solid #d7dce5',
+                      borderRadius: 8,
+                      height: prototype ? 520 : 280,
+                      width: '100%',
+                    }}
+                  />
+                </figure>
+              );
+            })}
             {version.status === 'SUBMITTED' && (
               <span className="approval-actions">
                 <button

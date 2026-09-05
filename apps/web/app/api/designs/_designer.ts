@@ -1,4 +1,4 @@
-import type { DesignDraft, DesignProposalRequest } from '@bunker-studio/contracts';
+import type { DesignDraft, DesignPrototype, DesignProposalRequest } from '@bunker-studio/contracts';
 
 const MAX_PREVIEW_BYTES = 60_000;
 /** Re-checked at render time so a colour can never carry arbitrary CSS. */
@@ -22,6 +22,45 @@ function escapeHtml(value: string): string {
     };
     return entities[character] ?? character;
   });
+}
+
+/**
+ * The policy a mockup runs under.
+ *
+ * `default-src 'none'` is the whole point: the document cannot fetch anything —
+ * no image, no font, no analytics, no exfiltration of whatever the reviewer has
+ * on screen. Styles and scripts are allowed only inline, which is where the
+ * studio puts the Designer's own, and images only as data URIs the document
+ * carries itself.
+ */
+const PROTOTYPE_POLICY =
+  "default-src 'none'; img-src data:; media-src data:; font-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'none'; base-uri 'none'";
+
+/**
+ * Wraps a Designer's mockup in a document the studio controls.
+ *
+ * The envelope is ours and the content is theirs. A model that returned a whole
+ * document could open with its own head, and the policy below would be the
+ * second one the browser read — which is no policy at all. Nothing here
+ * sanitises the markup, because the sandbox is the boundary: the iframe that
+ * shows this has no access to the studio's origin, and this document cannot
+ * reach the network.
+ */
+export function renderPrototypeDocument(prototype: DesignPrototype, title: string): string {
+  const html = [
+    '<!doctype html><html lang="en"><head><meta charset="utf-8">',
+    `<meta http-equiv="Content-Security-Policy" content="${PROTOTYPE_POLICY}">`,
+    '<meta name="viewport" content="width=device-width,initial-scale=1">',
+    `<title>${escapeHtml(title)}</title>`,
+    `<style>${prototype.css}</style>`,
+    '</head><body>',
+    prototype.body,
+    prototype.js ? `<script>${prototype.js}</script>` : '',
+    '</body></html>',
+  ].join('');
+  if (new TextEncoder().encode(html).byteLength > MAX_PREVIEW_BYTES)
+    throw new Error('The mockup is larger than the studio will store.');
+  return html;
 }
 
 /**
@@ -86,7 +125,10 @@ export function renderDesignProposals(
           .map((state) => `<li>${escapeHtml(state)}</li>`)
           .join('')}</ul></section>`
       : '';
-    const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>*{box-sizing:border-box}body{margin:0;background:${surface};color:#172033;font:16px system-ui,sans-serif}.shell{max-width:900px;margin:32px auto;padding:24px}.badge{color:${accent};font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.08em}.card{margin-top:16px;padding:24px;border:1px solid #d7dce5;border-radius:16px;background:#fff;box-shadow:0 12px 32px #17203312}h1{margin:8px 0 12px;font-size:28px}h2{margin:0 0 8px;font-size:18px}ul{padding-left:20px}.action{display:inline-block;margin-top:12px;padding:10px 14px;border-radius:8px;background:${accent};color:#fff;font-weight:700}</style></head><body><main class="shell"><span class="badge">Bunker Studio design preview</span><section class="card"><h1>${escapeHtml(variant.headline)}</h1><p>${escapeHtml(variant.summary)}</p><span class="action">${escapeHtml(variant.primaryAction)}</span></section>${sections}${states}</main></body></html>`;
+    const described = `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>*{box-sizing:border-box}body{margin:0;background:${surface};color:#172033;font:16px system-ui,sans-serif}.shell{max-width:900px;margin:32px auto;padding:24px}.badge{color:${accent};font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.08em}.card{margin-top:16px;padding:24px;border:1px solid #d7dce5;border-radius:16px;background:#fff;box-shadow:0 12px 32px #17203312}h1{margin:8px 0 12px;font-size:28px}h2{margin:0 0 8px;font-size:18px}ul{padding-left:20px}.action{display:inline-block;margin-top:12px;padding:10px 14px;border-radius:8px;background:${accent};color:#fff;font-weight:700}</style></head><body><main class="shell"><span class="badge">Bunker Studio design preview</span><section class="card"><h1>${escapeHtml(variant.headline)}</h1><p>${escapeHtml(variant.summary)}</p><span class="action">${escapeHtml(variant.primaryAction)}</span></section>${sections}${states}</main></body></html>`;
+    const html = variant.prototype
+      ? renderPrototypeDocument(variant.prototype, variant.title)
+      : described;
     if (new TextEncoder().encode(html).byteLength > MAX_PREVIEW_BYTES)
       throw new Error('Generated design preview exceeds the safe size limit.');
     return {
@@ -99,7 +141,7 @@ export function renderDesignProposals(
         sections: variant.sections,
         accentColor: accent,
         surfaceColor: surface,
-        previewKind: 'STATIC_HTML',
+        previewKind: variant.prototype ? 'PROTOTYPE' : 'STATIC_HTML',
         source: 'DESIGNER_AGENT',
         variant: index + 1,
       },
