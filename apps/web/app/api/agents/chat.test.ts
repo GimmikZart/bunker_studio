@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { POST as createAgent } from './route';
-import { POST as chat } from './[agentId]/chat/route';
+import { GET as readChatHistory, POST as chat } from './[agentId]/chat/route';
 import { POST as createOrganization } from '../organizations/route';
 import { POST as createPolicy } from '../budgets/policies/route';
 import { GET as listCosts } from '../costs/route';
@@ -127,5 +127,24 @@ describe('direct chat budget gate', () => {
     // cost_ledger.run_id is a foreign key onto agent_runs: an invented
     // identifier is rejected by the database, and the answer is lost with it.
     expect((await costs.json()).entries[0].runId).toBe(runs[0]!.id);
+  });
+});
+
+describe('direct chat history', () => {
+  it('returns the exchange in order so a chat window can reopen on it', async () => {
+    const { headers, agentId } = await setup();
+    expect((await chatRequest(headers, agentId)).status).toBe(200);
+
+    const response = await readChatHistory(
+      new Request(`http://localhost/api/agents/${agentId}/chat`, { headers }),
+      { params: Promise.resolve({ agentId }) },
+    );
+    expect(response.status).toBe(200);
+    const { messages } = (await response.json()) as {
+      messages: { role: string; content: string }[];
+    };
+    expect(messages.map((message) => message.role)).toEqual(['USER', 'AGENT']);
+    expect(messages[0].content).toBe('Explain the current architecture.');
+    expect(messages[1].content.length).toBeGreaterThan(0);
   });
 });

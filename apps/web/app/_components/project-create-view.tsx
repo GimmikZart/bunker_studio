@@ -168,7 +168,7 @@ export function ProjectCreateView() {
           </div>
         ) : (
           <>
-            <label className="preference-list">
+            <label className="checkbox-row">
               <input
                 type="checkbox"
                 checked={attachRepository}

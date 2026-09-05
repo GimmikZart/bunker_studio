@@ -1,5 +1,4 @@
-import { AgentCrudPanel } from '../_components/agent-crud-panel';
-import { AgentDetailPanel } from '../_components/agent-detail-panel';
+import { AgentDirectory } from '../_components/agent-directory';
 
 export default function AgentsPage() {
   return (
@@ -11,8 +10,7 @@ export default function AgentsPage() {
         runs on. Change the AI whenever you like: the agent and everything it has learned stay the
         same. API keys never leave the server.
       </p>
-      <AgentDetailPanel />
-      <AgentCrudPanel />
+      <AgentDirectory />
     </main>
   );
 }

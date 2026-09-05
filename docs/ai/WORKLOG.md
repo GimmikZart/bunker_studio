@@ -1,5 +1,49 @@
 # Development Worklog
 
+## 2026-09-05 — Directory agenti a card, chat con storico, creazione progetto onesta
+
+### Lavoro svolto
+
+- Riscritta `/agents` come directory di card (`agent-directory.tsx`): select
+  organizzazione e `Create new agent` sotto la hero, una card verticale per
+  agente con avatar, nome, ruolo e `provider | modello | reasoning`, `Info` in
+  basso a sinistra e `Talk to them` in basso a destra con pallino di stato.
+  `Busy` disabilitato con pallino rosso lampeggiante quando l'agente ha un task
+  in `QUEUED`, `RUNNING` o `VERIFYING`. Rimosso l'elenco testuale in fondo.
+- Aggiunti `agent-chat-drawer.tsx` (pannello laterale su desktop, schermo intero
+  su mobile, bolle destra/sinistra, Invio manda) e `agent-info-dialog.tsx`
+  (scheda completa in sola lettura, `Edita` per rendere modificabili tutti i
+  campi, `Close`/`Cancel` a sinistra e `Edit`/`Save changes` a destra).
+- Estratti in `agent-shared.tsx` avatar, etichette provider/reasoning, scelte di
+  runtime e `CapabilityPicker`, condivisi fra creazione e modifica.
+- `agent-crud-panel.tsx` e' ora solo creazione e vive su `/agents/new`;
+  `agent-detail-panel.tsx` e' stato rimosso.
+- Nuovo `GET /api/agents/:id/chat` con `listAgentChatMessages` su entrambi i
+  modelli di persistenza: la chat riapre sullo storico reale, ordinato, e riusa
+  la sessione dell'ultimo messaggio.
+- `createProject` alza `ConflictError` (nuova classe in `@bunker-studio/core`)
+  quando lo slug e' gia' preso, con lo stesso controllo nello store in memoria;
+  la route distingue 409, 400 con il campo in errore, 403 e 500 con il motivo.
+- Il repository di un progetto si sceglie da un combobox con autocomplete e
+  pulsante `Reset`, al posto di filtro e select separati.
+
+### Verifiche
+
+- `pnpm format:check`, `pnpm lint`, `pnpm typecheck`: PASS.
+- `pnpm test`: PASS — 26 task, web 36 file / 98 test, incluse le nuove prove sul
+  conflitto di nome progetto (memoria e Supabase) e sullo storico chat.
+- `pnpm build`: PASS 15/15. `pnpm security`: nessuna vulnerabilita' nota.
+- Verifica in esecuzione su un'istanza in memory mode: card e stato Busy, chat
+  con invio e riapertura sullo storico, dialog Info con modifica e salvataggio,
+  combobox repository (filtro, tastiera, reset, avviso read-only), creazione
+  progetto duplicato che risponde 409 con il nome. Desktop e mobile.
+
+### Stato finale
+
+Checkpoint stabile. Resta aperta una decisione di prodotto: se mantenere il
+concetto di Team, oggi solo un raggruppamento senza effetti sull'esecuzione
+(vedi `docs/ai/NEXT_STEPS.md`).
+
 ## 2026-09-01 — Binding per-agent e worker Codex/GitHub locale
 
 ### Lavoro svolto

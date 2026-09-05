@@ -16,6 +16,39 @@ function chatEstimatedCost(): number {
   return Number.isFinite(value) && value >= 0 ? value : DEFAULT_CHAT_ESTIMATED_COST;
 }
 
+/**
+ * The transcript of this agent's direct chats. The chat window opens on what
+ * was already said instead of a blank pane that loses everything on reload.
+ */
+export async function GET(request: Request, context: { params: Promise<{ agentId: string }> }) {
+  const organizationId = request.headers.get('x-bunker-organization-id')?.trim();
+  const actorId = await resolveActorId(request);
+  const { agentId } = await context.params;
+  if (!organizationId || !actorId)
+    return NextResponse.json(
+      { error: 'Authentication and organization are required.' },
+      { status: 401 },
+    );
+  const operations = await getWebOperationalRepository();
+  if (!operations)
+    return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
+  try {
+    const messages = await operations.listAgentChatMessages(organizationId, agentId, actorId);
+    return NextResponse.json({ messages });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AuthorizationError')
+      return NextResponse.json({ error: 'Agent access denied.' }, { status: 403 });
+    return NextResponse.json(
+      {
+        error: `The chat history could not be read. ${
+          error instanceof Error ? error.message : 'Unknown failure.'
+        }`,
+      },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(request: Request, context: { params: Promise<{ agentId: string }> }) {
   const organizationId = request.headers.get('x-bunker-organization-id')?.trim();
   const actorId = await resolveActorId(request);

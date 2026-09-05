@@ -346,6 +346,13 @@ export type NotificationRecord = {
 
 export type NotificationPreferences = Record<NotificationRecord['category'], boolean>;
 
+export type ChatMessageRecord = {
+  role: 'USER' | 'AGENT';
+  content: string;
+  createdAt: string;
+  sessionId: string;
+};
+
 export type ConversationRecord = {
   id: string;
   organizationId: string;
@@ -698,6 +705,28 @@ export function recordConversation(
   const conversation: ConversationRecord = { ...input, id: crypto.randomUUID() };
   state.conversations.set(input.organizationId, [...current, conversation]);
   return structuredClone(conversation);
+}
+
+/**
+ * One direct chat rendered as a transcript. The stored messages alternate user
+ * then agent in the order they were exchanged, which is what a chat window
+ * needs — a flat list of strings is not enough to put a bubble on the right
+ * side.
+ */
+export function listAgentChatMessages(
+  organizationId: string,
+  agentId: string,
+): ChatMessageRecord[] {
+  return (state.conversations.get(organizationId) ?? [])
+    .filter((conversation) => conversation.agentId === agentId)
+    .flatMap((conversation) =>
+      conversation.messages.map((content, index) => ({
+        role: index % 2 === 0 ? ('USER' as const) : ('AGENT' as const),
+        content,
+        createdAt: '',
+        sessionId: conversation.externalSessionId,
+      })),
+    );
 }
 
 export function listConversations(organizationId: string): ConversationRecord[] {

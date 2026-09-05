@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { FieldLabel } from './help-tip';
@@ -10,42 +11,19 @@ import {
   ROLE_CHOICES,
   SKILL_SUGGESTIONS,
   TOOL_CHOICES,
-  type Choice,
 } from './agent-capabilities';
+import {
+  AVATARS,
+  CapabilityPicker,
+  defaultRuntimeFor,
+  runtimeChoices,
+  type Organization,
+  type Provider,
+  type ReasoningEffort,
+} from './agent-shared';
 
-type Organization = { id: string; name: string };
-type Agent = {
-  id: string;
-  name: string;
-  roleKey: string;
-  title: string;
-  avatarAssetId: string | null;
-  skills: string[];
-  tools: string[];
-  permissions: string[];
-  providerBindingId: string;
-  providerConnectionId: string;
-  providerType: string;
-  providerModelId: string;
-  runtimeType: string;
-  reasoningEffort: ReasoningEffort;
-};
-type Provider = {
-  id: string;
-  displayName: string;
-  providerType: string;
-  status: string;
-  models: string[];
-};
 type TemplateKey = 'lead' | 'frontend' | 'backend' | 'reviewer' | 'designer' | 'hr' | 'custom';
-type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
-const AVATARS = [
-  { id: '', label: 'Default' },
-  { id: '00000000-0000-0000-0000-000000000001', label: 'Amber' },
-  { id: '00000000-0000-0000-0000-000000000002', label: 'Cobalt' },
-  { id: '00000000-0000-0000-0000-000000000003', label: 'Mint' },
-];
 const TEMPLATES: Record<
   TemplateKey,
   { label: string; title: string; skills: string[]; tools: string[]; permissions: string[] }
@@ -96,106 +74,14 @@ const TEMPLATES: Record<
 };
 
 /**
- * A capability list as choices rather than a text box. The identifiers mean
- * something to the studio, so guessing them should not be part of creating an
- * agent — while anything you add yourself is still accepted.
+ * Hiring one agent, on its own page. Changing an agent that already exists
+ * happens in its card, so this form only has to do one thing well.
  */
-function CapabilityPicker({
-  legend,
-  name,
-  choices,
-  selected,
-  onChange,
-  addLabel,
-}: {
-  legend: React.ReactNode;
-  name: string;
-  choices: Choice[];
-  selected: string[];
-  onChange: (next: string[]) => void;
-  addLabel: string;
-}) {
-  const [custom, setCustom] = useState('');
-  const extras = selected.filter((value) => !choices.some((choice) => choice.id === value));
-
-  function toggle(value: string, checked: boolean) {
-    onChange(
-      checked ? [...new Set([...selected, value])] : selected.filter((item) => item !== value),
-    );
-  }
-
-  return (
-    <fieldset className="capability-picker">
-      <legend>{legend}</legend>
-      <div className="capability-options">
-        {choices.map((choice) => (
-          <label className="capability-option" key={choice.id}>
-            <input
-              type="checkbox"
-              name={name}
-              value={choice.id}
-              checked={selected.includes(choice.id)}
-              onChange={(event) => toggle(choice.id, event.target.checked)}
-            />
-            <span>
-              <strong>{choice.label}</strong>
-              <small>{choice.description}</small>
-            </span>
-          </label>
-        ))}
-        {extras.map((value) => (
-          <label className="capability-option" key={value}>
-            <input
-              type="checkbox"
-              name={name}
-              value={value}
-              checked
-              onChange={(event) => toggle(value, event.target.checked)}
-            />
-            <span>
-              <strong>{value}</strong>
-              <small>Added by you.</small>
-            </span>
-          </label>
-        ))}
-      </div>
-      <div className="capability-add">
-        <input
-          id={`${name}-add`}
-          aria-label={addLabel}
-          placeholder={addLabel}
-          value={custom}
-          onChange={(event) => setCustom(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter') return;
-            event.preventDefault();
-            if (!custom.trim()) return;
-            onChange([...new Set([...selected, custom.trim()])]);
-            setCustom('');
-          }}
-        />
-        <button
-          className="secondary-button"
-          type="button"
-          onClick={() => {
-            if (!custom.trim()) return;
-            onChange([...new Set([...selected, custom.trim()])]);
-            setCustom('');
-          }}
-        >
-          Add
-        </button>
-      </div>
-    </fieldset>
-  );
-}
-
 export function AgentCrudPanel() {
+  const router = useRouter();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationId, setOrganizationId] = useState('');
-  const [agents, setAgents] = useState<Agent[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
-  const [editingId, setEditingId] = useState('');
   const [templateKey, setTemplateKey] = useState<TemplateKey>('frontend');
   const [name, setName] = useState('');
   const [roleKey, setRoleKey] = useState('frontend');
@@ -208,29 +94,23 @@ export function AgentCrudPanel() {
   const [providerModelId, setProviderModelId] = useState('');
   const [runtimeType, setRuntimeType] = useState('');
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>('medium');
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
 
-  async function load(id: string) {
+  async function loadProviders(id: string) {
     if (!id) return;
-    const [agentsResponse, settingsResponse] = await Promise.all([
-      fetch('/api/agents', { headers: apiHeaders(id) }),
-      fetch('/api/settings', { headers: apiHeaders(id) }),
-    ]);
-    if (!agentsResponse.ok || !settingsResponse.ok) {
-      setError(
-        'We could not load this organization’s agents. Select the organization again or retry.',
-      );
+    const response = await fetch('/api/settings', { headers: apiHeaders(id) });
+    if (!response.ok) {
+      setError('We could not read this organization’s providers. Select it again or retry.');
       return;
     }
-    setAgents(((await agentsResponse.json()) as { agents?: Agent[] }).agents ?? []);
     setProviders(
-      (((await settingsResponse.json()) as { providers?: Provider[] }).providers ?? []).filter(
+      (((await response.json()) as { providers?: Provider[] }).providers ?? []).filter(
         (provider) => provider.status === 'READY',
       ),
     );
   }
+
   useEffect(() => {
     void fetch('/api/organizations', { headers: apiHeaders() })
       .then(async (response) => {
@@ -241,9 +121,9 @@ export function AgentCrudPanel() {
         const saved = window.localStorage.getItem('bunker-organization-id');
         const selected = next.some((item) => item.id === saved) ? saved! : (next[0]?.id ?? '');
         setOrganizationId(selected);
-        await load(selected);
+        await loadProviders(selected);
       })
-      .catch(() => setError('You need an organization before you can manage agents.'));
+      .catch(() => setError('You need an organization before you can create an agent.'));
   }, []);
 
   function applyTemplate(key: TemplateKey) {
@@ -255,47 +135,28 @@ export function AgentCrudPanel() {
     setTools([...template.tools]);
     setPermissions([...template.permissions]);
   }
-  function reset() {
-    setEditingId('');
-    setName('');
-    setAvatarAssetId('');
-    setProviderConnectionId('');
-    setProviderModelId('');
-    setRuntimeType('');
-    setReasoningEffort('medium');
-    setShowAdvanced(false);
-    applyTemplate('frontend');
-  }
+
   function selectOrganization(id: string) {
     setOrganizationId(id);
     window.localStorage.setItem('bunker-organization-id', id);
-    reset();
-    void load(id);
+    setProviderConnectionId('');
+    setProviderModelId('');
+    setRuntimeType('');
+    void loadProviders(id);
   }
-  function startEdit(agent: Agent) {
-    setEditingId(agent.id);
-    setName(agent.name);
-    const key = Object.keys(TEMPLATES).includes(agent.roleKey)
-      ? (agent.roleKey as TemplateKey)
-      : 'custom';
-    setTemplateKey(key);
-    setRoleKey(agent.roleKey);
-    setTitle(agent.title);
-    setAvatarAssetId(agent.avatarAssetId ?? '');
-    setSkills([...agent.skills]);
-    setTools([...agent.tools]);
-    setPermissions([...agent.permissions]);
-    setProviderConnectionId(agent.providerConnectionId);
-    setProviderModelId(agent.providerModelId);
-    setRuntimeType(agent.runtimeType);
-    setReasoningEffort(agent.reasoningEffort);
-    setShowAdvanced(true);
-    setNotice('');
+
+  const selectedProvider = providers.find((provider) => provider.id === providerConnectionId);
+
+  function selectProvider(id: string) {
+    const provider = providers.find((candidate) => candidate.id === id);
+    setProviderConnectionId(id);
+    setProviderModelId('');
+    setRuntimeType(defaultRuntimeFor(provider));
   }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
-    setNotice('');
     if (
       !organizationId ||
       !name.trim() ||
@@ -309,8 +170,9 @@ export function AgentCrudPanel() {
       );
       return;
     }
-    const response = await fetch(editingId ? `/api/agents/${editingId}` : '/api/agents', {
-      method: editingId ? 'PATCH' : 'POST',
+    setSaving(true);
+    const response = await fetch('/api/agents', {
+      method: 'POST',
       headers: { ...apiHeaders(organizationId), 'content-type': 'application/json' },
       body: JSON.stringify({
         name,
@@ -327,6 +189,7 @@ export function AgentCrudPanel() {
         personality: {},
       }),
     });
+    setSaving(false);
     if (!response.ok) {
       const payload = (await response.json().catch(() => ({}))) as { error?: string };
       setError(
@@ -335,56 +198,11 @@ export function AgentCrudPanel() {
       );
       return;
     }
-    await load(organizationId);
-    setNotice(
-      editingId
-        ? 'Agent updated. Its identity and history are unchanged.'
-        : 'Agent created and ready to be assigned to work.',
-    );
-    reset();
-  }
-  async function archive(agent: Agent) {
-    if (!window.confirm(`Archive ${agent.name}? It will remain recoverable.`)) return;
-    const response = await fetch(`/api/agents/${agent.id}`, {
-      method: 'DELETE',
-      headers: apiHeaders(organizationId),
-    });
-    if (!response.ok) {
-      setError('The agent could not be archived. Please retry.');
-      return;
-    }
-    await load(organizationId);
-    setNotice('Agent archived.');
-  }
-  const selectedProvider = providers.find((provider) => provider.id === providerConnectionId);
-  const runtimeChoices = selectedProvider
-    ? selectedProvider.providerType === 'OPENAI'
-      ? [
-          { value: 'OPENAI', label: 'OpenAI API (general purpose)' },
-          { value: 'CODEX_SDK', label: 'Codex SDK (repository work)' },
-        ]
-      : selectedProvider.providerType === 'ANTHROPIC'
-        ? [{ value: 'ANTHROPIC', label: 'Anthropic API' }]
-        : [{ value: 'OPENAI_COMPATIBLE', label: 'OpenAI-compatible API' }]
-    : [];
-
-  function selectProvider(id: string) {
-    const provider = providers.find((candidate) => candidate.id === id);
-    setProviderConnectionId(id);
-    setProviderModelId('');
-    setRuntimeType(
-      provider?.providerType === 'OPENAI'
-        ? 'OPENAI'
-        : provider?.providerType === 'ANTHROPIC'
-          ? 'ANTHROPIC'
-          : provider
-            ? 'OPENAI_COMPATIBLE'
-            : '',
-    );
+    router.push('/agents');
   }
 
   return (
-    <section className="live-panel" aria-label="Agent management">
+    <section className="live-panel" aria-label="Create an agent">
       <div className="live-panel-toolbar">
         <label htmlFor="agents-organization">Organization</label>
         <select
@@ -400,6 +218,9 @@ export function AgentCrudPanel() {
             </option>
           ))}
         </select>
+        <Link className="secondary-button" href="/agents">
+          Back to agents
+        </Link>
       </div>
       {!organizations.length && (
         <div className="actionable-empty-state">
@@ -522,11 +343,7 @@ export function AgentCrudPanel() {
             </option>
           ))}
         </select>
-        <details
-          className="advanced-section"
-          open={showAdvanced}
-          onToggle={(event) => setShowAdvanced(event.currentTarget.open)}
-        >
+        <details className="advanced-section">
           <summary>Advanced: capabilities and technical identifiers</summary>
           <FieldLabel
             htmlFor="agent-role"
@@ -582,7 +399,7 @@ export function AgentCrudPanel() {
             required
             disabled={!selectedProvider}
           >
-            {runtimeChoices.map((runtime) => (
+            {runtimeChoices(selectedProvider).map((runtime) => (
               <option key={runtime.value} value={runtime.value}>
                 {runtime.label}
               </option>
@@ -703,11 +520,17 @@ export function AgentCrudPanel() {
             addLabel="Add a permission identifier"
           />
         </details>
+        {error && (
+          <p className="live-error" role="alert">
+            {error}
+          </p>
+        )}
         <div className="action-row">
           <button
             className="primary-button"
             type="submit"
             disabled={
+              saving ||
               !organizationId ||
               !providers.length ||
               !providerConnectionId ||
@@ -715,52 +538,13 @@ export function AgentCrudPanel() {
               !runtimeType
             }
           >
-            {editingId ? 'Save changes' : 'Create agent'}
+            {saving ? 'Creating…' : 'Create agent'}
           </button>
-          {editingId && (
-            <button className="secondary-button" type="button" onClick={reset}>
-              Cancel
-            </button>
-          )}
+          <Link className="secondary-button" href="/agents">
+            Cancel
+          </Link>
         </div>
       </form>
-      {notice && (
-        <p className="live-summary" role="status">
-          {notice}
-        </p>
-      )}
-      {error && (
-        <p className="live-error" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="live-records">
-        {agents.length === 0 && !error && organizationId && (
-          <span className="empty-state">
-            No agents yet. Choose a template, provider model, and name above to create the first
-            one.
-          </span>
-        )}
-        {agents.map((agent) => (
-          <div className="live-record" key={agent.id}>
-            <span>
-              <strong>{agent.name}</strong>
-              <small>
-                {agent.title} · {agent.roleKey}
-              </small>
-            </span>
-            <button className="secondary-button" type="button" onClick={() => startEdit(agent)}>
-              Edit
-            </button>
-            <Link className="secondary-button" href={`/agents?agentId=${agent.id}`}>
-              Details
-            </Link>
-            <button className="secondary-button" type="button" onClick={() => void archive(agent)}>
-              Archive
-            </button>
-          </div>
-        ))}
-      </div>
     </section>
   );
 }

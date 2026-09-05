@@ -37,6 +37,7 @@ import {
   getNotificationPreferences,
   saveNotificationPreferences,
   importConversation,
+  listAgentChatMessages,
   listConversations,
   listReviews,
   listVerificationRuns,
@@ -72,6 +73,7 @@ import {
   type MeetingRecord,
   type NotificationRecord,
   type NotificationPreferences,
+  type ChatMessageRecord,
   type ConversationRecord,
   type ReviewRecord,
   type VerificationRunRecord,
@@ -325,6 +327,11 @@ type LocalOperationalRepository = {
     actorUserId: string,
   ) => void;
   listConversations: (organizationId: string, actorUserId: string) => ConversationRecord[];
+  listAgentChatMessages: (
+    organizationId: string,
+    agentId: string,
+    actorUserId: string,
+  ) => ChatMessageRecord[];
   importConversation: (
     input: Omit<ConversationRecord, 'id'>,
     actorUserId: string,
@@ -509,6 +516,8 @@ const localOperationalRepository: LocalOperationalRepository = {
       messages: [input.userContent, input.assistantContent],
     }),
   listConversations: (organizationId) => listConversations(organizationId),
+  listAgentChatMessages: (organizationId, agentId) =>
+    listAgentChatMessages(organizationId, agentId),
   importConversation: (input) => importConversation(input),
   listVerificationRuns: (organizationId, _actorUserId, taskId) =>
     listVerificationRuns(organizationId, taskId),

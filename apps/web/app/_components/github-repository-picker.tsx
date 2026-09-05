@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { FieldLabel } from './help-tip';
 import { apiHeaders } from './live-panel';
 
@@ -88,7 +88,6 @@ export function GitHubRepositoryPicker({
 }) {
   const [repositories, setRepositories] = useState<GitHubRepository[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState('');
 
   // The first account is preselected so the common case — one account — needs no
   // choice at all.
@@ -135,12 +134,6 @@ export function GitHubRepositoryPicker({
     // error handler identity does.
   }, [organizationId, connectionId, onError]);
 
-  const visible = repositories.filter((candidate) =>
-    filter.trim()
-      ? candidate.fullName.toLocaleLowerCase().includes(filter.trim().toLocaleLowerCase())
-      : true,
-  );
-
   return (
     <>
       {connections.length > 1 && (
@@ -163,40 +156,16 @@ export function GitHubRepositoryPicker({
           </select>
         </>
       )}
-      <label htmlFor={`${idPrefix}-filter`}>Find a repository</label>
-      <input
-        id={`${idPrefix}-filter`}
-        value={filter}
-        onChange={(event) => setFilter(event.target.value)}
-        placeholder="Type to narrow the list"
-        disabled={loading || !repositories.length}
-      />
-      <label htmlFor={`${idPrefix}-repository`}>Repository</label>
-      <select
-        id={`${idPrefix}-repository`}
-        value={repository?.fullName ?? ''}
-        onChange={(event) => {
-          const next = repositories.find((item) => item.fullName === event.target.value) ?? null;
+      <RepositoryCombobox
+        idPrefix={idPrefix}
+        loading={loading}
+        repositories={repositories}
+        repository={repository}
+        onRepositoryChange={(next) => {
           onRepositoryChange(next);
           onBranchChange(next?.defaultBranch ?? '');
         }}
-        disabled={loading || !repositories.length}
-      >
-        <option value="">
-          {loading
-            ? 'Reading repositories from GitHub…'
-            : repositories.length
-              ? 'Choose a repository'
-              : 'This account exposes no repository to the token'}
-        </option>
-        {visible.map((candidate) => (
-          <option key={candidate.fullName} value={candidate.fullName}>
-            {candidate.fullName}
-            {candidate.private ? ' · private' : ''}
-            {candidate.canPush ? '' : ' · read-only'}
-          </option>
-        ))}
-      </select>
+      />
       {repository && !repository.canPush && (
         <p className="live-error" role="status">
           The connected token can read {repository.fullName} but cannot push task branches. Widen
@@ -220,6 +189,178 @@ export function GitHubRepositoryPicker({
         Read from GitHub for the repository you picked. Change it only if the work targets a
         different branch.
       </p>
+    </>
+  );
+}
+
+/**
+ * One field instead of two. The filter used to live in its own input beside a
+ * plain select, so narrowing the list and choosing from it were separate
+ * gestures on a list that can hold hundreds of repositories. Here the typing
+ * and the choosing happen in the same control, and the reset button gives back
+ * the full list in one click.
+ */
+function RepositoryCombobox({
+  idPrefix,
+  loading,
+  repositories,
+  repository,
+  onRepositoryChange,
+}: {
+  idPrefix: string;
+  loading: boolean;
+  repositories: GitHubRepository[];
+  repository: GitHubRepository | null;
+  onRepositoryChange: (repository: GitHubRepository | null) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const listId = `${useId()}-repositories`;
+
+  // The chosen repository is what the field shows; the query only takes over
+  // while the list is being narrowed.
+  const text = open ? query : (repository?.fullName ?? '');
+  const visible = useMemo(() => {
+    const needle = open ? query.trim().toLocaleLowerCase() : '';
+    if (!needle) return repositories;
+    return repositories.filter((candidate) =>
+      candidate.fullName.toLocaleLowerCase().includes(needle),
+    );
+  }, [open, query, repositories]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: MouseEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [open]);
+
+  function choose(candidate: GitHubRepository | undefined) {
+    if (!candidate) return;
+    onRepositoryChange(candidate);
+    setQuery('');
+    setOpen(false);
+  }
+
+  function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (!open) {
+        setOpen(true);
+        setHighlighted(0);
+        return;
+      }
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      setHighlighted((current) =>
+        visible.length ? (current + step + visible.length) % visible.length : 0,
+      );
+      return;
+    }
+    if (event.key === 'Enter' && open) {
+      event.preventDefault();
+      choose(visible[highlighted]);
+      return;
+    }
+    if (event.key === 'Escape' && open) {
+      event.preventDefault();
+      setQuery('');
+      setOpen(false);
+    }
+  }
+
+  const placeholder = loading
+    ? 'Reading repositories from GitHub…'
+    : repositories.length
+      ? 'Search owner/repository'
+      : 'This account exposes no repository to the token';
+
+  return (
+    <>
+      <label htmlFor={`${idPrefix}-repository`}>Repository</label>
+      <div className="combobox" ref={containerRef}>
+        <div className="combobox-control">
+          <input
+            id={`${idPrefix}-repository`}
+            role="combobox"
+            aria-expanded={open}
+            aria-controls={listId}
+            aria-autocomplete="list"
+            aria-activedescendant={
+              open && visible[highlighted] ? `${listId}-${highlighted}` : undefined
+            }
+            autoComplete="off"
+            ref={inputRef}
+            value={text}
+            placeholder={placeholder}
+            disabled={loading || !repositories.length}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setHighlighted(0);
+              setOpen(true);
+            }}
+            onFocus={() => {
+              setQuery('');
+              setHighlighted(0);
+              setOpen(true);
+            }}
+            onKeyDown={onKeyDown}
+          />
+          <button
+            className="combobox-reset"
+            type="button"
+            aria-label="Clear the chosen repository"
+            disabled={!repository && !query}
+            onClick={() => {
+              onRepositoryChange(null);
+              setQuery('');
+              setOpen(false);
+              inputRef.current?.focus();
+            }}
+          >
+            Reset
+          </button>
+        </div>
+        {open && (
+          <ul className="combobox-list" id={listId} role="listbox">
+            {visible.length === 0 && (
+              <li className="combobox-empty" role="presentation">
+                No repository matches “{query}”.
+              </li>
+            )}
+            {visible.slice(0, 100).map((candidate, index) => (
+              <li
+                aria-selected={candidate.fullName === repository?.fullName}
+                className={
+                  index === highlighted ? 'combobox-option highlighted' : 'combobox-option'
+                }
+                id={`${listId}-${index}`}
+                key={candidate.fullName}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setHighlighted(index)}
+                onClick={() => choose(candidate)}
+                role="option"
+              >
+                <strong>{candidate.fullName}</strong>
+                <small>
+                  {candidate.private ? 'private' : 'public'}
+                  {candidate.canPush ? '' : ' · read-only'}
+                  {candidate.description ? ` · ${candidate.description}` : ''}
+                </small>
+              </li>
+            ))}
+            {visible.length > 100 && (
+              <li className="combobox-empty" role="presentation">
+                {visible.length - 100} more — keep typing to narrow the list.
+              </li>
+            )}
+          </ul>
+        )}
+      </div>
     </>
   );
 }

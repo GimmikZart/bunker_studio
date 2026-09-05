@@ -17,6 +17,7 @@ import type {
   MeetingRecord,
   NotificationRecord,
   NotificationPreferences,
+  ChatMessageRecord,
   ConversationRecord,
   PushSubscriptionRecord,
   RepositoryRecord,
@@ -1555,6 +1556,47 @@ export class SupabaseOperationalRepository {
         ])
         .select('*'),
     );
+  }
+
+  /**
+   * The transcript of the direct chats with one agent, oldest first. Ordering
+   * is applied here rather than in the query because the shared client type
+   * exposes no `order`, and a chat window that shows replies out of sequence is
+   * worse than no history at all.
+   */
+  async listAgentChatMessages(
+    organizationId: string,
+    agentId: string,
+    actorUserId: string,
+  ): Promise<ChatMessageRecord[]> {
+    await this.requireMember(organizationId, actorUserId);
+    const data = await unwrap(
+      this.client
+        .from('messages')
+        .select(
+          'content_json, sender_type, created_at, conversations!inner(primary_agent_id, external_session_id)',
+        )
+        .eq('organization_id', organizationId)
+        .eq('conversations.primary_agent_id', agentId),
+    );
+    if (!Array.isArray(data)) return [];
+    return data
+      .map((value) => {
+        const item = object(value);
+        const content =
+          item.content_json && typeof item.content_json === 'object'
+            ? object(item.content_json).text
+            : '';
+        const conversation = item.conversations ? object(item.conversations) : {};
+        return {
+          role: item.sender_type === 'USER' ? ('USER' as const) : ('AGENT' as const),
+          content: typeof content === 'string' ? content : '',
+          createdAt: nullableString(item.created_at) ?? '',
+          sessionId: nullableString(conversation.external_session_id) ?? '',
+        };
+      })
+      .filter((message) => message.content)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
   async listConversations(

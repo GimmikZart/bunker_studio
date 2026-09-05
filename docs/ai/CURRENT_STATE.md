@@ -1,5 +1,55 @@
 # Current Project State
 
+## Checkpoint 2026-09-05 — La vista Agents e' fatta di card, e creare un progetto dice cosa non va
+
+Tre interventi sulla superficie che l'utente tocca ogni giorno.
+
+- **`/agents` e' una directory di card.** Sotto la hero ci sono la select
+  dell'organizzazione e il pulsante `Create new agent`, che porta alla vista
+  dedicata `/agents/new`. Ogni agente e' una card verticale: avatar, nome,
+  ruolo, e la riga `provider | modello | capacita' di reasoning`. In fondo alla
+  card `Info` a sinistra e `Talk to them` a destra con un pallino verde; se
+  l'agente ha un task in `QUEUED`, `RUNNING` o `VERIFYING` il pulsante diventa
+  `Busy`, disabilitato, con il pallino rosso lampeggiante (fermo quando il
+  sistema chiede movimento ridotto). L'elenco testuale in fondo alla pagina non
+  serve piu' ed e' stato tolto.
+- **Parlare con un agente e' una chat, non un campo di testo.** `Talk to them`
+  apre un pannello laterale su desktop e a schermo intero su mobile: nome e
+  ruolo in alto con l'avatar, lo storico dei messaggi allineato a destra o a
+  sinistra secondo chi ha scritto, il compositore in basso con invio a destra
+  (Invio manda, Maiusc+Invio va a capo). Lo storico e' reale: nuovo
+  `GET /api/agents/:id/chat`, che legge i messaggi in ordine da entrambi i
+  modelli di persistenza. La sessione dell'ultimo messaggio viene ripresa, cosi'
+  riaprire la chat non azzera il contesto del provider.
+- **`Info` apre la scheda completa dell'agente.** Dialog su desktop, schermo
+  intero su mobile: ruolo, provider, modello, reasoning, runtime, avatar,
+  metriche, e poi Skills, Tools, Permissions e Assignments — questi ultimi con
+  il nome del progetto e del team, non l'UUID. Si legge e basta finche' non si
+  preme `Edita`; allora tutti i campi diventano modificabili e la coppia di
+  pulsanti in fondo diventa `Cancel` / `Save changes`. `Close` resta in basso a
+  sinistra.
+- **Creare un progetto non risponde piu' "Invalid project payload".** Il nome
+  del progetto e' unico per organizzazione attraverso lo slug: un secondo
+  "Vrsus App" violava il vincolo `projects_organization_id_slug_key` e la route
+  riportava ogni fallimento come payload malformato, mandando l'utente a
+  correggere un form corretto. Ora `createProject` alza un `ConflictError` che
+  nomina il progetto (409); un payload davvero malformato dice quale campo
+  (400); tutto il resto e' un 500 con il motivo. Lo stesso vincolo vale ora
+  anche nello store in memoria, cosi' i due modelli di persistenza si comportano
+  allo stesso modo.
+- **La scelta del repository e' un solo campo.** Il filtro non e' piu' un input
+  separato accanto a una select: e' un combobox con autocomplete — si scrive
+  dentro il campo che poi contiene la scelta, si naviga con le frecce, si
+  conferma con Invio, e il pulsante `Reset` accanto svuota la selezione. Il
+  branch di default continua ad arrivare da GitHub.
+
+Correzioni di stile emerse dalla verifica in esecuzione: le checkbox dentro
+`.resource-form` non vengono piu' stirate a tutta colonna, un'opzione singola
+con la sua etichetta sta su una riga, e i pulsanti delle card si allineano fra
+loro anche quando una riga provider va a capo.
+
+Nessuna migrazione richiesta.
+
 ## Checkpoint 2026-09-04 — GitHub per organizzazione, vista progetti e run reali
 
 Tre correzioni con lo stesso filo conduttore: quello che il sistema sa gia' non

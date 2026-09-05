@@ -137,6 +137,19 @@ export class AuthorizationError extends Error {
   }
 }
 
+/**
+ * A request that is well formed and authorized but conflicts with what already
+ * exists — a second project with a name that yields a slug already taken, for
+ * instance. It is not a malformed payload, and reporting it as one told people
+ * to fix a form that had nothing wrong with it.
+ */
+export class ConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ConflictError';
+  }
+}
+
 export function slugify(value: string): string {
   const slug = value
     .trim()

@@ -1,5 +1,6 @@
 import {
   AuthorizationError,
+  ConflictError,
   type AutonomyMode,
   type Organization,
   type OrganizationMember,
@@ -255,20 +256,31 @@ export class SupabaseTenancyRepository {
       if (!team)
         throw new AuthorizationError('The selected team does not belong to this organization.');
     }
+    const slug = slugify(input.name);
+    // A project name is unique per organization through its slug. Letting the
+    // constraint surface as an unnamed database failure made a second "Vrsus
+    // App" look like a malformed form.
     const data = await unwrap(
       this.client
         .from('projects')
         .insert({
           organization_id: input.organizationId,
           name: input.name.trim(),
-          slug: slugify(input.name),
+          slug,
           description: input.description?.trim() ?? '',
           default_team_id: teamIds[0] ?? null,
           is_studio_core: input.isStudioCore ?? false,
         })
         .select('*')
         .single(),
-    );
+    ).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : '';
+      if (/duplicate key|already exists|23505/i.test(message))
+        throw new ConflictError(
+          `This organization already has a project named "${input.name.trim()}" (${slug}). Choose a different name.`,
+        );
+      throw error;
+    });
     const project = mapProject(data);
     if (teamIds.length) {
       await unwrap(

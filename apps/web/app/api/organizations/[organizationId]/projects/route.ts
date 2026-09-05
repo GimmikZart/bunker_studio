@@ -3,6 +3,37 @@ import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../../_auth';
 import { getWebTenancyRepository } from '../../../_data';
 
+/**
+ * Says what actually went wrong. Every failure used to be answered with
+ * "Invalid project payload", so a name already taken, a database that had not
+ * been migrated and a genuinely malformed body were indistinguishable — and the
+ * form the user was told to fix had nothing wrong with it.
+ */
+function projectFailureResponse(error: unknown): NextResponse {
+  if (error instanceof Error && error.name === 'AuthorizationError')
+    return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
+  if (error instanceof Error && error.name === 'ConflictError')
+    return NextResponse.json({ error: error.message }, { status: 409 });
+  if (error instanceof Error && error.name === 'ZodError') {
+    const issues = (error as { issues?: { path: (string | number)[]; message: string }[] }).issues;
+    const detail = issues
+      ?.map((issue) => `${issue.path.join('.') || 'body'}: ${issue.message}`)
+      .join('; ');
+    return NextResponse.json(
+      { error: detail ? `Invalid project payload. ${detail}` : 'Invalid project payload.' },
+      { status: 400 },
+    );
+  }
+  return NextResponse.json(
+    {
+      error: `The project could not be saved. ${
+        error instanceof Error ? error.message : 'Unknown failure.'
+      }`,
+    },
+    { status: 500 },
+  );
+}
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ organizationId: string }> },
@@ -21,9 +52,7 @@ export async function POST(
       { status: 201 },
     );
   } catch (error) {
-    if (error instanceof Error && error.name === 'AuthorizationError')
-      return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
-    return NextResponse.json({ error: 'Invalid project payload.' }, { status: 400 });
+    return projectFailureResponse(error);
   }
 }
 
@@ -70,9 +99,7 @@ export async function PATCH(
       }),
     });
   } catch (error) {
-    if (error instanceof Error && error.name === 'AuthorizationError')
-      return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
-    return NextResponse.json({ error: 'Invalid project payload.' }, { status: 400 });
+    return projectFailureResponse(error);
   }
 }
 

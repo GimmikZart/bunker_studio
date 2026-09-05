@@ -2,6 +2,7 @@ import {
   type Agent,
   type AgentAssignment,
   AuthorizationError,
+  ConflictError,
   type AutonomyMode,
   canWrite,
   type Organization,
@@ -116,11 +117,26 @@ export class TenantStore {
     ) {
       throw new AuthorizationError('The selected team does not belong to this organization.');
     }
+    const slug = slugify(input.name);
+    // Same uniqueness the database enforces, so a name clash fails the same way
+    // in both persistence modes instead of only in Supabase.
+    if (
+      this.state.projects.some(
+        (candidate) =>
+          candidate.organizationId === input.organizationId &&
+          candidate.slug === slug &&
+          !candidate.archivedAt,
+      )
+    ) {
+      throw new ConflictError(
+        `This organization already has a project named "${input.name.trim()}" (${slug}). Choose a different name.`,
+      );
+    }
     const project: Project = {
       id: crypto.randomUUID(),
       organizationId: input.organizationId,
       name: input.name.trim(),
-      slug: slugify(input.name),
+      slug,
       description: input.description?.trim() ?? '',
       autonomyMode: 'AUTONOMOUS',
       status: 'ACTIVE',
