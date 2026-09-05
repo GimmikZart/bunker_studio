@@ -8,5 +8,10 @@
 -- An owner can always read their own organization, independently of the
 -- membership row. Policies are permissive and combined with OR, so this only
 -- widens SELECT for the owner and changes nothing else.
+--
+-- Dropped first so the file can be re-applied: a database where this policy was
+-- created by hand, or by a push whose ledger entry was lost, would otherwise
+-- fail with "policy already exists" and block every later migration behind it.
+drop policy if exists organization_owner_select on public.organizations;
 create policy organization_owner_select on public.organizations
   for select using (owner_user_id = auth.uid());

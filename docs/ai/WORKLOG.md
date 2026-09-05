@@ -1181,3 +1181,20 @@ Il giro reale contro GitHub (token vero, elenco repository dell'utente) non e'
 stato eseguito: le route sono coperte con `fetch` mockato. Resta sotto AC-009.
 La migrazione `34` va applicata con `supabase db push` prima di usare la nuova
 connessione GitHub sull'istanza dell'utente.
+
+### 2026-09-05 — Perche' la prima prova falliva su tutto
+
+Tre cause, nessuna nella logica scritta il giorno prima:
+
+- `pnpm dev` non ricompilava `packages/*`. Il web app importa quei pacchetti da
+  `dist/`, quindi girava ancora sul build del 2 settembre: `githubConnectionCreateSchema`
+  risultava `undefined` (400 "A GitHub access token is required") e
+  `listAssignments` non esisteva (403 su `/api/projects`). Ora `pnpm dev`
+  esegue prima `dev:libraries`.
+- Quattro migrazioni (`31`-`34`) non erano mai state applicate al database
+  remoto, e la `31` non era ri-eseguibile (`create policy` senza drop): il push
+  si fermava li' e bloccava tutte le successive. Resa idempotente e applicate.
+- `/api/projects` rispondeva 403 per qualunque errore, mascherando entrambe le
+  cause dietro "access denied"; le route GitHub rispondevano 500 nudo quando la
+  tabella non esisteva. Ora solo un rifiuto e' 403, e uno schema non migrato
+  dice di eseguire `supabase db push`.

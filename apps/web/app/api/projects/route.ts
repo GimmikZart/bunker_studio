@@ -42,11 +42,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   try {
     const projects = await tenancy.listProjects(organizationId, actorId);
+    // Nothing here is swallowed: a card showing zero agents because a query
+    // failed would be a lie, and the failure would stay invisible.
     const [repositories, agents, assignments, tasks] = await Promise.all([
-      Promise.resolve(operations.listRepositories(organizationId, actorId)).catch(() => []),
-      Promise.resolve(agentStore.listAgents(organizationId, actorId)).catch(() => []),
-      Promise.resolve(agentStore.listAssignments(organizationId, actorId)).catch(() => []),
-      Promise.resolve(operations.listTasks(organizationId, actorId)).catch(() => []),
+      operations.listRepositories(organizationId, actorId),
+      agentStore.listAgents(organizationId, actorId),
+      agentStore.listAssignments(organizationId, actorId),
+      operations.listTasks(organizationId, actorId),
     ]);
     return NextResponse.json({
       projects: projects.map((project) => {
@@ -92,7 +94,18 @@ export async function GET(request: Request) {
         };
       }),
     });
-  } catch {
-    return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
+  } catch (error) {
+    // Only a refusal is a refusal. Reporting every failure as 403 hid a stale
+    // build and a missing migration behind "access denied" for days.
+    if (error instanceof Error && error.name === 'AuthorizationError')
+      return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
+    return NextResponse.json(
+      {
+        error: `The projects could not be read. ${
+          error instanceof Error ? error.message : 'Unknown failure.'
+        }`,
+      },
+      { status: 500 },
+    );
   }
 }

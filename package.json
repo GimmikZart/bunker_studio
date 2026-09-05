@@ -8,7 +8,8 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "dev": "pnpm --parallel --filter @bunker-studio/web --filter @bunker-studio/worker run dev",
+    "dev": "pnpm run dev:libraries && pnpm --parallel --filter @bunker-studio/web --filter @bunker-studio/worker run dev",
+    "dev:libraries": "turbo run build --filter=@bunker-studio/web^... --filter=@bunker-studio/worker^...",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "turbo run lint",

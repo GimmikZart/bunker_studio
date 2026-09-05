@@ -92,6 +92,33 @@ describe('project cards', () => {
     ]);
   });
 
+  it('refuses an organization the caller does not belong to', async () => {
+    const owner = `cards-owner-${crypto.randomUUID()}`;
+    const organizationId = (
+      await (
+        await createOrganization(
+          new Request('http://localhost', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-bunker-user-id': owner },
+            body: JSON.stringify({ name: 'Private Studio' }),
+          }),
+        )
+      ).json()
+    ).organization.id as string;
+
+    // A stranger is refused, and only a refusal produces 403: any other failure
+    // must say what actually went wrong rather than hiding behind this status.
+    const response = await listProjectCards(
+      new Request('http://localhost/api/projects', {
+        headers: {
+          'x-bunker-user-id': `stranger-${crypto.randomUUID()}`,
+          'x-bunker-organization-id': organizationId,
+        },
+      }),
+    );
+    expect(response.status).toBe(403);
+  });
+
   it('refuses a request without an organization', async () => {
     const response = await listProjectCards(
       new Request('http://localhost/api/projects', {

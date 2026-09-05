@@ -60,12 +60,18 @@ export function ProjectDirectory() {
     setLoading(true);
     const response = await fetch('/api/projects', { headers: apiHeaders(nextOrganizationId) });
     setLoading(false);
+    const payload = (await response.json().catch(() => ({}))) as {
+      projects?: ProjectSummary[];
+      error?: string;
+    };
     if (!response.ok) {
-      setError('The projects of this organization could not be loaded.');
+      // The server names the cause; repeating a generic sentence over it only
+      // hides what needs fixing.
+      setError(payload.error ?? 'The projects of this organization could not be loaded.');
       return;
     }
     setError('');
-    setProjects(((await response.json()) as { projects?: ProjectSummary[] }).projects ?? []);
+    setProjects(payload.projects ?? []);
   }
 
   useEffect(() => {

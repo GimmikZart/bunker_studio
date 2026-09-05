@@ -37,7 +37,18 @@ davvero nel database.
   run, non un controllo di accesso — i limiti effettivi restano lo scope
   read/write del task, gli approval gate e i permessi del token GitHub.
 
-Migrazione richiesta prima dell'uso: `supabase db push` (aggiunge
+Correzioni di consegna del 2026-09-05, senza le quali quanto sopra restava
+invisibile in esecuzione:
+
+- `pnpm dev` ricompila i pacchetti del workspace prima di avviare web e worker.
+  Il web app li importa da `dist/`, quindi un `dist` vecchio faceva girare
+  codice vecchio pur avendo sorgenti e typecheck aggiornati.
+- La migrazione `31` e' resa ri-eseguibile: una policy gia' presente ma non
+  registrata nel ledger bloccava ogni migrazione successiva.
+- Un errore non e' piu' un 403. `/api/projects` distingue il rifiuto dal guasto,
+  e le route GitHub dicono esplicitamente quando lo schema non e' migrato.
+
+Migrazioni richieste: `supabase db push` (applica `31`-`34`, fra cui
 `github_connections` e `repo_connections.github_connection_id`).
 
 ## Checkpoint 2026-09-03 — I sei ruoli sono collegati al provider

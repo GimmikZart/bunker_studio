@@ -3,6 +3,7 @@ import { createGitHubApi, GitHubApiError } from '@bunker-studio/git';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../../../_auth';
 import { getWebOperationalRepository } from '../../../../_data';
+import { githubStorageFailure } from '../../../../_github-errors';
 
 /**
  * The repositories a connected account can already reach. This is what makes
@@ -29,7 +30,12 @@ export async function GET(
       { error: 'Secure credential storage is not configured.' },
       { status: 503 },
     );
-  const stored = await operations.getGitHubConnectionSecret(organizationId, connectionId, actorId);
+  let stored: Awaited<ReturnType<typeof operations.getGitHubConnectionSecret>>;
+  try {
+    stored = await operations.getGitHubConnectionSecret(organizationId, connectionId, actorId);
+  } catch (error) {
+    return githubStorageFailure(error);
+  }
   if (!stored) return NextResponse.json({ error: 'GitHub account not found.' }, { status: 404 });
   try {
     const repositories = await createGitHubApi({

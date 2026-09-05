@@ -3,6 +3,7 @@ import { encryptSecret } from '@bunker-studio/db';
 import { createGitHubApi, GitHubApiError } from '@bunker-studio/git';
 import { NextResponse } from 'next/server';
 import { resolveActorId } from '../../../_auth';
+import { githubStorageFailure } from '../../../_github-errors';
 import { getWebOperationalRepository } from '../../../_data';
 
 /**
@@ -22,9 +23,13 @@ export async function GET(
     return NextResponse.json({ error: 'Persistence is not configured.' }, { status: 503 });
   if (!(await operations.getRole(organizationId, actorId)))
     return NextResponse.json({ error: 'Organization access denied.' }, { status: 403 });
-  return NextResponse.json({
-    connections: await operations.listGitHubConnections(organizationId, actorId),
-  });
+  try {
+    return NextResponse.json({
+      connections: await operations.listGitHubConnections(organizationId, actorId),
+    });
+  } catch (error) {
+    return githubStorageFailure(error);
+  }
 }
 
 export async function POST(
@@ -78,6 +83,8 @@ export async function POST(
     );
     return NextResponse.json({ connection }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && /github_connections/.test(error.message))
+      return githubStorageFailure(error);
     if (error instanceof GitHubApiError)
       return NextResponse.json(
         {
@@ -123,7 +130,11 @@ export async function DELETE(
       { error: 'Owner or admin access is required to remove a GitHub account.' },
       { status: 403 },
     );
-  const removed = await operations.deleteGitHubConnection(organizationId, connectionId, actorId);
-  if (!removed) return NextResponse.json({ error: 'GitHub account not found.' }, { status: 404 });
+  try {
+    const removed = await operations.deleteGitHubConnection(organizationId, connectionId, actorId);
+    if (!removed) return NextResponse.json({ error: 'GitHub account not found.' }, { status: 404 });
+  } catch (error) {
+    return githubStorageFailure(error);
+  }
   return new NextResponse(null, { status: 204 });
 }
